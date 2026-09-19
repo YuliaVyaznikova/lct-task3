@@ -144,12 +144,13 @@ def _capacity_reason(
 ) -> str:
     by_engineer = {route.engineer_id: route for route in routes}
     count = len(capable)
-    who = _plural(count, "инженер", "инженера", "инженеров")
-    busy = _plural(count, "занят", "заняты", "заняты")
-    head = (
-        f"все {count} {who} с навыком «{SKILL_RU[order.skill]}» {busy} "
-        f"в окно {order.window_start}–{order.window_end}"
-    )
+    skill_ru = SKILL_RU[order.skill]
+    window = f"в окно {order.window_start}–{order.window_end}"
+    if count == 1:
+        head = f"единственный инженер с навыком «{skill_ru}» занят {window}"
+    else:
+        who = _plural(count, "инженер", "инженера", "инженеров")
+        head = f"все {count} {who} с навыком «{skill_ru}» заняты {window}"
 
     details: list[str] = []
     for engineer in capable[:3]:

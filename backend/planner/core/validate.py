@@ -66,7 +66,12 @@ class Geo:
 
 @dataclass
 class StartState:
-    """Откуда и когда инженер готов ехать. При обычном планировании — офис и начало смены."""
+    """Откуда и когда инженер готов ехать. При обычном планировании — офис и начало смены.
+
+    `closed` означает, что новых заявок инженер не получит (например, стал
+    недоступен), но уже начатые визиты остаются в плане: диспетчер должен
+    видеть, что успели сделать до события.
+    """
 
     node: int
     available_min: int
@@ -75,6 +80,7 @@ class StartState:
     travel_min: int = 0
     work_min: int = 0
     wait_min: int = 0
+    closed: bool = False
 
 
 def check_static(engineer: Engineer, order: Order) -> Violation | None:
@@ -301,7 +307,14 @@ def first_blocking_violation(
         _, violations = evaluate_route(geo, engineer, trial, start)
         if not violations:
             return None
-        own = [v for v in violations if v.order_id == candidate] or violations
+        # Мешать может как сама заявка, так и соседняя, которую сдвинула бы вставка;
+        # во втором случае это нужно назвать явно, иначе текст вводит в заблуждение.
+        own = [v for v in violations if v.order_id == candidate]
+        found = own[0] if own else violations[0]
+        if not own and found.order_id:
+            found = found.model_copy(
+                update={"text": f"вставка сдвинула бы заявку {found.order_id}: {found.text}"}
+            )
         if blocking is None:
-            blocking = own[0]
+            blocking = found
     return blocking

@@ -93,9 +93,13 @@ def solve(
     if order_ids is None:
         order_ids = [o.id for o in scenario.orders]
     pool = [geo.orders[order_id] for order_id in order_ids]
-    engineers = [e for e in scenario.engineers if e.id in {x.id for x in scenario.engineers}]
-    if starts:
-        engineers = [e for e in engineers if e.id in starts or not starts]
+    # Инженеры, помеченные closed (например, ставшие недоступными), новых заявок
+    # не получают, но их уже начатые визиты валидатор всё равно покажет в плане.
+    engineers = [
+        e
+        for e in scenario.engineers
+        if not (e.id in starts and starts[e.id].closed)
+    ]
 
     # Заявки, которые не может взять ни один инженер, в модель не попадают:
     # их причина определяется диагностикой, а не солвером.
