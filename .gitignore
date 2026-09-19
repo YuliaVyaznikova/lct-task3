@@ -1,0 +1,30 @@
+# secrets — никогда не коммитить
+.env
+*-key.txt
+*.key
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# runtime
+runtime/
+data/cache/matrices/
+
+# node
+node_modules/
+frontend/dist/
+
+# ide / os
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# исходные архивы задачи
+*.zip
+extracted/

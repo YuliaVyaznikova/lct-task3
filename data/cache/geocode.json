@@ -1,0 +1,1586 @@
+{
+ "Город Москва, б-р.Волжский, д. 50 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.696509,
+  "lon": 37.752203,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Кленовый, д. 10 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.682716,
+  "lon": 37.67318,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Ореховый, д. 11 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.610901,
+  "lon": 37.71274,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Ореховый, д. 35 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.614983,
+  "lon": 37.735449,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Ореховый, д. 61 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.616661,
+  "lon": 37.757826,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Ореховый, д. 7 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.609767,
+  "lon": 37.706056,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Самаркандский Квартал 137а, д. к5": {
+  "detail": "apartments",
+  "lat": 55.7000662,
+  "lon": 37.8193568,
+  "provider": "nominatim",
+  "quality": "exact",
+  "step": "3"
+ },
+ "Город Москва, б-р.Симферопольский, д. 27": {
+  "detail": "qc_geo=0",
+  "lat": 55.648692,
+  "lon": 37.606227,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Смоленский, д. 17 стр. 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.742326,
+  "lon": 37.583616,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Черноморский, д. 19 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.64487,
+  "lon": 37.597843,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Чонгарский, д. 1 к 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.6519948,
+  "lon": 37.6157021,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, б-р.Чонгарский, д. 22 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.65433,
+  "lon": 37.60369,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, наб.Нагатинская, д. 60 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.68794,
+  "lon": 37.687218,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пер.Большой Рогожский, д. 10 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.742027,
+  "lon": 37.667626,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пер.Маяковского, д. 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.739721,
+  "lon": 37.659874,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пер.Ослябинский, д. 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.713005,
+  "lon": 37.66044,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.60-летия Октября, д. 17": {
+  "detail": "qc_geo=0",
+  "lat": 55.695047,
+  "lon": 37.579391,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.60-летия Октября, д. 18 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.689445,
+  "lon": 37.573322,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Балаклавский, д. 20 к 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.642362,
+  "lon": 37.595878,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Балаклавский, д. 50": {
+  "detail": "qc_geo=0",
+  "lat": 55.649535,
+  "lon": 37.570564,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Волгоградский, д. 128 к 5": {
+  "detail": "qc_geo=0",
+  "lat": 55.700813,
+  "lon": 37.782193,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Волгоградский, д. 97 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.70782,
+  "lon": 37.75189,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Нахимовский, д. 50": {
+  "detail": "qc_geo=0",
+  "lat": 55.680625,
+  "lon": 37.559218,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Пролетарский, д. 14А": {
+  "detail": "qc_geo=0",
+  "lat": 55.63938,
+  "lon": 37.654324,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Пролетарский, д. 18 к 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.634334,
+  "lon": 37.65355,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Рязанский, д. 73": {
+  "detail": "qc_geo=0",
+  "lat": 55.718512,
+  "lon": 37.790202,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, пр-кт.Севастопольский, д. 9 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.691136,
+  "lon": 37.607448,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.3-й Павелецкий, д. 7 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.710686,
+  "lon": 37.6418,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.3-й Павелецкий, д. 9": {
+  "detail": "qc_geo=0",
+  "lat": 55.710732,
+  "lon": 37.640551,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Борисовский, д. 44 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.614516,
+  "lon": 37.724005,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Востряковский, д. 15 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.57603,
+  "lon": 37.64607,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Востряковский, д. 15 к 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.576887,
+  "lon": 37.649171,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Гурьевский, д. 19 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.60712,
+  "lon": 37.7502,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Гурьевский, д. 23 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.607066,
+  "lon": 37.753236,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Загорьевский, д. 7 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.574207,
+  "lon": 37.666171,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Загорьевский, д. 9": {
+  "detail": "qc_geo=0",
+  "lat": 55.57809,
+  "lon": 37.67747,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Коломенский, д. 27 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.6688423,
+  "lon": 37.658283,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Ореховый, д. 23 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.622812,
+  "lon": 37.731371,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Ореховый, д. 41": {
+  "detail": "qc_geo=0",
+  "lat": 55.61652,
+  "lon": 37.73067,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Ферганский, д. 7 к 5": {
+  "detail": "qc_geo=0",
+  "lat": 55.693916,
+  "lon": 37.824562,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, проезд.Шипиловский, д. 59 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.605999,
+  "lon": 37.706685,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.1-я Дубровская, д. 6": {
+  "detail": "qc_geo=0",
+  "lat": 55.726938,
+  "lon": 37.669351,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.1-я Новокузьминская, д. 16 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.714382,
+  "lon": 37.789734,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.11-я Текстильщиков, д. 10": {
+  "detail": "qc_geo=0",
+  "lat": 55.706857,
+  "lon": 37.743103,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.2-я Рощинская, д. 11": {
+  "detail": "qc_geo=0",
+  "lat": 55.709277,
+  "lon": 37.612605,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.2-я Синичкина, д. 9 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.762647,
+  "lon": 37.712946,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.3-я Институтская, д. 5 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.721954,
+  "lon": 37.782036,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.3-я Карачаровская, д. 4 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.73371,
+  "lon": 37.744568,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.3-я Карачаровская, д. 8 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.733326,
+  "lon": 37.747173,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.6-я Радиальная, д. 5 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.604692,
+  "lon": 37.661105,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.6-я Радиальная, д. 7/1 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.603747,
+  "lon": 37.653182,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Авиамоторная, д. 14": {
+  "detail": "qc_geo=0",
+  "lat": 55.752404,
+  "lon": 37.715776,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Автозаводская, д. 11": {
+  "detail": "qc_geo=0",
+  "lat": 55.706439,
+  "lon": 37.657502,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Академика Миллионщикова, д. 13 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.670033,
+  "lon": 37.649742,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Артюхиной, д. 16": {
+  "detail": "qc_geo=0",
+  "lat": 55.698532,
+  "lon": 37.737766,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Артюхиной, д. 20А": {
+  "detail": "qc_geo=0",
+  "lat": 55.6972857,
+  "lon": 37.7365762,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Артюхиной, д. 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.7029289,
+  "lon": 37.7378149,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Бирюлёвская, д. 39": {
+  "detail": "qc_geo=0",
+  "lat": 55.588191,
+  "lon": 37.665731,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Бирюлёвская, д. 58 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.580635,
+  "lon": 37.668076,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Болотниковская, д. 9 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.65526,
+  "lon": 37.609595,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Большая Калитниковская, д. 38": {
+  "detail": "qc_geo=0",
+  "lat": 55.7361667,
+  "lon": 37.6862061,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Большая Пионерская, д. 33 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.7262557,
+  "lon": 37.6351627,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Большая Серпуховская, д. 31 к 6": {
+  "detail": "qc_geo=0",
+  "lat": 55.723379,
+  "lon": 37.628577,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Борисовские Пруды, д. 20 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.638125,
+  "lon": 37.751682,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Борисовские Пруды, д. 48 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.641493,
+  "lon": 37.774481,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Боровая, д. 12": {
+  "detail": "qc_geo=0",
+  "lat": 55.77,
+  "lon": 37.714815,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Боровая, д. 14": {
+  "detail": "qc_geo=0",
+  "lat": 55.76953,
+  "lon": 37.715453,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Братеевская, д. 16 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.634334,
+  "lon": 37.76601,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Братеевская, д. 18 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.636204,
+  "lon": 37.769208,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Бронницкая, д. 12": {
+  "detail": "qc_geo=0",
+  "lat": 55.73142,
+  "lon": 37.759487,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Булатниковская, д. 4 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.581226,
+  "lon": 37.64747,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Весёлая, д. 33 к 7": {
+  "detail": "qc_geo=0",
+  "lat": 55.62355,
+  "lon": 37.663128,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Винокурова, д. 12 к 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.685513,
+  "lon": 37.588359,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Винокурова, д. 5/6 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.6898071,
+  "lon": 37.5850548,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Восточная, д. 2 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.717031,
+  "lon": 37.66035,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Генерала Белова, д. 45 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.607204,
+  "lon": 37.726143,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Городская, д. 9": {
+  "detail": "qc_geo=0",
+  "lat": 55.715043,
+  "lon": 37.617977,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Грайвороновская, д. 10 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.718334,
+  "lon": 37.731945,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Дмитрия Ульянова, д. 27": {
+  "detail": "qc_geo=0",
+  "lat": 55.685675,
+  "lon": 37.581379,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Домодедовская, д. 31": {
+  "detail": "qc_geo=0",
+  "lat": 55.603943,
+  "lon": 37.716026,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Дубининская, д. 59 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.719414,
+  "lon": 37.637657,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Ереванская, д. 29": {
+  "detail": "qc_geo=0",
+  "lat": 55.629572,
+  "lon": 37.6789,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Зарайская, д. 51 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.727942,
+  "lon": 37.777167,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Затонная, д. 11 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.679072,
+  "lon": 37.688431,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Затонная, д. 12 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.6771133,
+  "lon": 37.6857561,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Зеленодольская, д. 28Б": {
+  "detail": "qc_geo=1",
+  "lat": 55.7109472,
+  "lon": 37.7713744,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Земляной Вал, д. 24/30 стр. 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.758711,
+  "lon": 37.657152,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Кантемировская, д. 5 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.635127,
+  "lon": 37.67731,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Каховка, д. 7 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.651028,
+  "lon": 37.589924,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Керченская, д. 10 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.655579,
+  "lon": 37.581523,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Керченская, д. 6 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.657314,
+  "lon": 37.583057,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Коломенская, д. 21": {
+  "detail": "qc_geo=0",
+  "lat": 55.677727,
+  "lon": 37.694297,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Коломенская, д. 5": {
+  "detail": "qc_geo=0",
+  "lat": 55.683483,
+  "lon": 37.704502,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Красноказарменная, д. 9Б стр. 1": {
+  "detail": "qc_geo=2",
+  "lat": 55.756862,
+  "lon": 37.700927,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "Город Москва, ул.Кустанайская, д. 8 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.618883,
+  "lon": 37.751601,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Кустанайская, д. 9 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.617775,
+  "lon": 37.754177,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Луганская, д. 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.628418,
+  "lon": 37.663881,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Луганская, д. 3 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.627783,
+  "lon": 37.664482,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Луганская, д. 4 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.624281,
+  "lon": 37.664958,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Люсиновская, д. 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.727136,
+  "lon": 37.622333,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Малышева, д. 13": {
+  "detail": "qc_geo=0",
+  "lat": 55.698025,
+  "lon": 37.743813,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Маршала Захарова, д. 18 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.620133,
+  "lon": 37.69622,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Маршала Чуйкова, д. 9 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.69716,
+  "lon": 37.76198,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Машкова, д. 13 стр. 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.764425,
+  "lon": 37.65214,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Медынская, д. 5 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.58992,
+  "lon": 37.64843,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Международная, д. 28 стр. 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.743155,
+  "lon": 37.68773,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Михайлова, д. 14": {
+  "detail": "qc_geo=0",
+  "lat": 55.726984,
+  "lon": 37.765812,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Москворечье, д. 4 к 6": {
+  "detail": "qc_geo=0",
+  "lat": 55.643404,
+  "lon": 37.654772,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Мусы Джалиля, д. 9 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.627361,
+  "lon": 37.743687,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Нагорная, д. 44 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.670265,
+  "lon": 37.58913,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Нижегородская, д. 25": {
+  "detail": "qc_geo=0",
+  "lat": 55.737294,
+  "lon": 37.693857,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Нижегородская, д. 61": {
+  "detail": "qc_geo=0",
+  "lat": 55.73248,
+  "lon": 37.71779,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Нижегородская, д. 63": {
+  "detail": "qc_geo=0",
+  "lat": 55.732474,
+  "lon": 37.718678,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Новорогожская, д. 10": {
+  "detail": "qc_geo=0",
+  "lat": 55.740097,
+  "lon": 37.683205,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Новорогожская, д. 8": {
+  "detail": "qc_geo=0",
+  "lat": 55.74108,
+  "lon": 37.683877,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Окская, д. 32": {
+  "detail": "qc_geo=0",
+  "lat": 55.714409,
+  "lon": 37.769522,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Окская, д. 48/2": {
+  "detail": "qc_geo=0",
+  "lat": 55.717613,
+  "lon": 37.779396,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Окская, д. 6 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.710392,
+  "lon": 37.75141,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Паперника, д. 18": {
+  "detail": "qc_geo=0",
+  "lat": 55.721264,
+  "lon": 37.793488,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Паперника, д. 19": {
+  "detail": "qc_geo=0",
+  "lat": 55.721838,
+  "lon": 37.790768,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Паромная, д. 9 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.63697,
+  "lon": 37.763046,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Плющиха, д. 42": {
+  "detail": "qc_geo=0",
+  "lat": 55.741029,
+  "lon": 37.576313,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Профсоюзная, д. 8 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.686426,
+  "lon": 37.569387,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Ремизова, д. 15 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.675755,
+  "lon": 37.604046,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Рогожский Вал, д. 2/50": {
+  "detail": "qc_geo=0",
+  "lat": 55.745473,
+  "lon": 37.67784,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Садовники, д. 10 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.671047,
+  "lon": 37.65272,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Саратовская, д. 14/1": {
+  "detail": "qc_geo=0",
+  "lat": 55.7143,
+  "lon": 37.738297,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Севанская, д. 15 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.623468,
+  "lon": 37.653882,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Смирновская, д. 6": {
+  "detail": "qc_geo=0",
+  "lat": 55.736762,
+  "lon": 37.708347,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Сторожевая, д. 31": {
+  "detail": "qc_geo=0",
+  "lat": 55.764847,
+  "lon": 37.716846,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Стройковская, д. 8": {
+  "detail": "qc_geo=0",
+  "lat": 55.734668,
+  "lon": 37.673807,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Судостроительная, д. 27 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.68353,
+  "lon": 37.6794,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Судостроительная, д. 31 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.68485,
+  "lon": 37.68041,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Судостроительная, д. 36": {
+  "detail": "qc_geo=0",
+  "lat": 55.684174,
+  "lon": 37.687534,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Талалихина, д. 16": {
+  "detail": "qc_geo=0",
+  "lat": 55.735447,
+  "lon": 37.676778,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Талалихина, д. 2/1 к 4": {
+  "detail": "qc_geo=0",
+  "lat": 55.736979,
+  "lon": 37.673322,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Трофимова, д. 24 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.701922,
+  "lon": 37.676753,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Трофимова, д. 4А": {
+  "detail": "qc_geo=0",
+  "lat": 55.70108,
+  "lon": 37.661356,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Усачёва, д. 25": {
+  "detail": "qc_geo=0",
+  "lat": 55.724941,
+  "lon": 37.565138,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Усачёва, д. 29 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.724434,
+  "lon": 37.563817,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Ферганская, д. 28/7": {
+  "detail": "qc_geo=0",
+  "lat": 55.701136,
+  "lon": 37.82493,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Фёдора Полетаева, д. 2 к 6": {
+  "detail": "qc_geo=0",
+  "lat": 55.713573,
+  "lon": 37.772076,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Херсонская, д. 18": {
+  "detail": "qc_geo=0",
+  "lat": 55.652212,
+  "lon": 37.567887,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Чистова, д. 12": {
+  "detail": "qc_geo=0",
+  "lat": 55.696484,
+  "lon": 37.741943,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Чистопольская, д. 2 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.730583,
+  "lon": 37.758249,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Шверника, д. 12/2 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.691237,
+  "lon": 37.586554,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Шверника, д. 14/1 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.689964,
+  "lon": 37.59021,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Шверника, д. 18 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.689125,
+  "lon": 37.59271,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Шверника, д. 3": {
+  "detail": "qc_geo=0",
+  "lat": 55.694073,
+  "lon": 37.582127,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Шверника, д. 5 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.694633,
+  "lon": 37.582745,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Шипиловская, д. 38": {
+  "detail": "qc_geo=0",
+  "lat": 55.620611,
+  "lon": 37.723762,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ул.Юных Ленинцев, д. 84": {
+  "detail": "qc_geo=0",
+  "lat": 55.698082,
+  "lon": 37.778522,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ш.Каширское, д. 136": {
+  "detail": "qc_geo=0",
+  "lat": 55.599611,
+  "lon": 37.721885,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Город Москва, ш.Каширское, д. 94 к 1": {
+  "detail": "qc_geo=0",
+  "lat": 55.614948,
+  "lon": 37.713692,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, проезд.Кутузовский, д. 16": {
+  "detail": "yes",
+  "lat": 55.4371874,
+  "lon": 37.7619456,
+  "provider": "nominatim",
+  "quality": "exact",
+  "step": "3"
+ },
+ "Домодедово, проезд.Советский 1-й, д. 1А": {
+  "detail": "qc_geo=0",
+  "lat": 55.440662,
+  "lon": 37.770042,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, ул.1-я Коммунистическая, д. 39": {
+  "detail": "qc_geo=0",
+  "lat": 55.454586,
+  "lon": 37.744504,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, ул.Гагарина, д. 55/2": {
+  "detail": "qc_geo=2",
+  "lat": 55.434615,
+  "lon": 37.716558,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "Домодедово, ул.Зеленая, д. 85": {
+  "detail": "apartments",
+  "lat": 55.425109,
+  "lon": 37.7700594,
+  "provider": "nominatim",
+  "quality": "exact",
+  "step": "3"
+ },
+ "Домодедово, ул.Ильюшина, д. 11 к 2": {
+  "detail": "qc_geo=0",
+  "lat": 55.4144868,
+  "lon": 37.8424755,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, ул.Ильюшина, д. 20": {
+  "detail": "qc_geo=0",
+  "lat": 55.410648,
+  "lon": 37.83774,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, ул.Корнеева, д. 40": {
+  "detail": "qc_geo=0",
+  "lat": 55.425394,
+  "lon": 37.778371,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, ул.Корнеева, д. 48": {
+  "detail": "qc_geo=0",
+  "lat": 55.423325,
+  "lon": 37.777625,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Домодедово, ул.Корнеева, д. 50": {
+  "detail": "qc_geo=0",
+  "lat": 55.422578,
+  "lon": 37.778057,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.8 Марта, д. 22": {
+  "detail": "qc_geo=0",
+  "lat": 54.8445,
+  "lon": 38.239304,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Кржижановского, д. 7": {
+  "detail": "qc_geo=0",
+  "lat": 54.839702,
+  "lon": 38.239907,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Ленина, д. 11 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 54.842906,
+  "lon": 38.190787,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Металлургов, д. 5 к 3": {
+  "detail": "qc_geo=0",
+  "lat": 54.840946,
+  "lon": 38.189826,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Победы, д. 9": {
+  "detail": "qc_geo=0",
+  "lat": 54.838634,
+  "lon": 38.193482,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Садовая, д. 18": {
+  "detail": "qc_geo=0",
+  "lat": 54.842361,
+  "lon": 38.245387,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Садовая, д. 2/11": {
+  "detail": "qc_geo=0",
+  "lat": 54.850018,
+  "lon": 38.244345,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Юбилейная, д. 8": {
+  "detail": "qc_geo=0",
+  "lat": 54.841931,
+  "lon": 38.248082,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Кашира, ул.Юбилейная, д. 9": {
+  "detail": "qc_geo=0",
+  "lat": 54.840085,
+  "lon": 38.249555,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "МО, г. Кашира Кржижановского ул. д. 5/1": {
+  "detail": "qc_geo=2",
+  "lat": 54.839712,
+  "lon": 38.239422,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "МО, г. Кашира Кржижановского ул. д. 5/2": {
+  "detail": "qc_geo=2",
+  "lat": 54.839712,
+  "lon": 38.239422,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "МО, г. Кашира Кржижановского ул. д. 5/3": {
+  "detail": "qc_geo=2",
+  "lat": 54.839712,
+  "lon": 38.239422,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "МО, г. Кашира Кржижановского ул. д. 7к2": {
+  "detail": "qc_geo=0",
+  "lat": 54.839883,
+  "lon": 38.241641,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "МО, г. Кашира Центральная ул. д. 19": {
+  "detail": "qc_geo=0",
+  "lat": 54.842211,
+  "lon": 38.240491,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "МО, г. Кашира Центральная ул. д. 21": {
+  "detail": "qc_geo=0",
+  "lat": 54.842133,
+  "lon": 38.239755,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "МО, г. Ступино Андропова ул. д. 33": {
+  "detail": "qc_geo=0",
+  "lat": 54.885777,
+  "lon": 38.08299,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "МО, г. Ступино Андропова ул. д. 37": {
+  "detail": "qc_geo=0",
+  "lat": 54.88582,
+  "lon": 38.082146,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Москва Бирюлевская ул. д. 44": {
+  "detail": "qc_geo=0",
+  "lat": 55.5865199,
+  "lon": 37.6646465,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Москва Булатниковский пр-зд. д. 6к1": {
+  "detail": "apartments",
+  "lat": 55.5936117,
+  "lon": 37.6513869,
+  "provider": "nominatim",
+  "quality": "exact",
+  "step": "3"
+ },
+ "Москва, проезд Орехово-Зуевский, д. 18/8": {
+  "detail": "qc_geo=0",
+  "lat": 55.73137,
+  "lon": 37.753693,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "Ступино, ул.Калинина, д. 34": {
+  "detail": "qc_geo=0",
+  "lat": 54.891815,
+  "lon": 38.0692,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г. Москва, ул Бирюлёвская, д 1с1": {
+  "detail": "qc_geo=2",
+  "lat": 55.590704,
+  "lon": 37.664141,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "г. Москва, ул Юных Ленинцев, д 83с 4": {
+  "detail": "qc_geo=2",
+  "lat": 55.700588,
+  "lon": 37.762264,
+  "provider": "dadata",
+  "quality": "street",
+  "step": "1"
+ },
+ "г.Город Москва, б-р.Самаркандский, д. 10к2": {
+  "detail": "qc_geo=0",
+  "lat": 55.706516,
+  "lon": 37.826305,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, б-р.Самаркандский, д. 32к1": {
+  "detail": "qc_geo=0",
+  "lat": 55.6977027,
+  "lon": 37.8126854,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, наб.Семеновская, д. 2/1": {
+  "detail": "qc_geo=0",
+  "lat": 55.7779406,
+  "lon": 37.7067789,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, наб.Семеновская, д. 3/1к2": {
+  "detail": "qc_geo=0",
+  "lat": 55.778482,
+  "lon": 37.707988,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, пр-кт.Волгоградский, д. 128к1": {
+  "detail": "qc_geo=0",
+  "lat": 55.702312,
+  "lon": 37.782825,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, пр-кт.Ленинский, д. 70/11": {
+  "detail": "qc_geo=0",
+  "lat": 55.687497,
+  "lon": 37.543327,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, ул.Новорогожская, д. 20": {
+  "detail": "qc_geo=0",
+  "lat": 55.740013,
+  "lon": 37.68765,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, ул.Саратовская, д. 16": {
+  "detail": "qc_geo=0",
+  "lat": 55.71499,
+  "lon": 37.740074,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Город Москва, ул.Ташкентская, д. 16к2": {
+  "detail": "qc_geo=0",
+  "lat": 55.704002,
+  "lon": 37.813073,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "г.Москва проезд Симферопольский, д.7": {
+  "detail": "qc_geo=0",
+  "lat": 55.66501,
+  "lon": 37.615479,
+  "provider": "dadata",
+  "quality": "exact",
+  "step": "1"
+ },
+ "обл.Московская область, г.Домодедово, пгт.Востряково-1, ул.Жуковского, д. 14/18": {
+  "detail": "Домодедово",
+  "lat": 55.44251102139416,
+  "lon": 37.772544840087825,
+  "provider": "district",
+  "quality": "district",
+  "step": "7"
+ }
+}
