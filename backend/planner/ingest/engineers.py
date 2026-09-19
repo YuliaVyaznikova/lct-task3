@@ -241,9 +241,18 @@ def assign_required_transport(orders: list[Order], seed: int, share: float) -> i
     return how_many
 
 
-def populate(scenario: Scenario, seed: int = 42, config_path: Path | None = None) -> Scenario:
-    """Дополняет сценарий инженерами и требованиями к транспорту (на месте)."""
-    config = load_config(scenario.id, config_path)
+def populate(
+    scenario: Scenario,
+    seed: int = 42,
+    config_path: Path | None = None,
+    region_id: str | None = None,
+) -> Scenario:
+    """Дополняет сценарий инженерами и требованиями к транспорту (на месте).
+
+    `region_id` нужен, когда сценарий уже переименован (демо-набор), а настройки
+    надо взять от региона-основы.
+    """
+    config = load_config(region_id or scenario.id, config_path)
     engineers, used_seed = generate(config, seed, scenario.orders, scenario.office)
     scenario.engineers = engineers
     for order in scenario.orders:

@@ -68,6 +68,28 @@ def cmd_engineers(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo(args: argparse.Namespace) -> int:
+    from planner.ingest import demo
+
+    ensure_dirs()
+    print(f"подбираем демо-набор на основе региона «{args.base}»…")
+    scenario, report = demo.build(args.base, verbose=args.verbose)
+    path = store.save(scenario)
+
+    print(f"\n{scenario.name}: {len(scenario.orders)} заявок, {len(scenario.engineers)} инженеров")
+    for requirement in report:
+        mark = "+" if requirement.ok else "-"
+        print(f"  [{mark}] {requirement.title}" + (f" — {requirement.detail}" if requirement.detail else ""))
+    print(f"\n  события для демонстрации:")
+    for event in scenario.events:
+        target = getattr(event, "order_id", None) or getattr(event, "engineer_id", None)
+        if target is None:
+            target = event.order.id
+        print(f"    {event.time}  {event.type:<22} {target}")
+    print(f"\n  -> {path}")
+    return 0
+
+
 def cmd_show(args: argparse.Namespace) -> int:
     for spec in _specs(args.region):
         scenario = store.load(spec.id)
@@ -157,6 +179,51 @@ def cmd_geocode(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_plan(args: argparse.Namespace) -> int:
+    from planner.core import baseline, explain, metrics, solver
+    from planner.core.models import PlanParams
+    from planner.core.validate import Geo
+
+    for spec_id in ([args.region] if args.region != "all" else
+                    [s.id for s in beeline.REGIONS] + ["demo"]):
+        try:
+            scenario = store.load(spec_id)
+        except FileNotFoundError:
+            continue
+        if not scenario.engineers:
+            print(f"{spec_id}: нет инженеров, запустите «engineers»")
+            continue
+
+        geo = Geo(scenario)
+        params = PlanParams(objective=args.objective, time_limit_s=args.time_limit)
+        plan = solver.plan(scenario, geo, params)
+        explain.attach(geo, plan)
+        base = baseline.plan(scenario, geo)
+
+        print(f"\n=== {scenario.name} ===")
+        print(metrics.comparison_table(plan.metrics, base.metrics))
+        print(f"\n{plan.plan_explanation}")
+        if args.verbose:
+            for route in plan.routes:
+                if route.stops:
+                    print("\n" + plan.route_explanations[route.engineer_id])
+                    for line in explain.timeline_summary(geo, route):
+                        print("   " + line)
+            if plan.unassigned:
+                print("\nНе назначены:")
+                for item in plan.unassigned:
+                    print(f"   {item.order_id}: {item.reason}")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    ensure_dirs()
+    uvicorn.run("planner.api.app:app", host=args.host, port=args.port, reload=args.reload)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="planner", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -176,9 +243,28 @@ def main(argv: list[str] | None = None) -> int:
     engineers_cmd.add_argument("--verbose", action="store_true")
     engineers_cmd.set_defaults(func=cmd_engineers)
 
+    demo_cmd = sub.add_parser("demo", help="собрать демонстрационный сценарий с событиями")
+    demo_cmd.add_argument("--base", default="vostok", help="регион-основа")
+    demo_cmd.add_argument("--verbose", action="store_true")
+    demo_cmd.set_defaults(func=cmd_demo)
+
     show = sub.add_parser("show", help="сводка по собранному сценарию")
     show.add_argument("--region", default="all")
     show.set_defaults(func=cmd_show)
+
+    plan_cmd = sub.add_parser("plan", help="построить план и сравнить с базовым вариантом")
+    plan_cmd.add_argument("--region", default="demo")
+    plan_cmd.add_argument("--objective", default="auto",
+                          choices=["auto", "min_engineers", "min_distance"])
+    plan_cmd.add_argument("--time-limit", type=int, default=15, dest="time_limit")
+    plan_cmd.add_argument("--verbose", action="store_true", help="печатать маршруты и отказы")
+    plan_cmd.set_defaults(func=cmd_plan)
+
+    serve = sub.add_parser("serve", help="запустить веб-сервис")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--reload", action="store_true")
+    serve.set_defaults(func=cmd_serve)
 
     args = parser.parse_args(argv)
     return args.func(args)
