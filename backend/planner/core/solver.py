@@ -350,7 +350,10 @@ def plan(
         id=plan_id,
         scenario_id=scenario.id,
         kind="optimized",
-        params=params,
+        # Фиксируем, какая модель движения фактически использовалась:
+        # при недоступном OSRM сервис молча работает на офлайн-оценке,
+        # и это должно быть видно в плане, а не только в логе.
+        params=params.model_copy(update={"travel_model": geo.travel.name}),
         planned_from=planned_from,
         routes=routes,
         unassigned=unassigned,

@@ -22,6 +22,7 @@ from planner.core.models import (
     Transport,
     UrgentOrderEvent,
 )
+from planner.core.timeutil import hhmm_to_min
 from planner.core.validate import Geo, evaluate
 from planner.ingest import store
 
@@ -110,10 +111,19 @@ def test_2_1_6_replans_after_each_event(demo, demo_plan, event_type):
         event = UrgentOrderEvent(time="12:00", order=order)
 
     new_plan, diff = replan.replan(working, demo_plan, event, geo, FAST)
-    # Срочная заявка дополняет сценарий новой точкой, поэтому проверять план
-    # нужно индексацией, построенной уже после события.
-    _, violations = evaluate(Geo(working), {r.engineer_id: r.order_ids for r in new_plan.routes})
-    assert not violations
+
+    # План после события допустим в тех условиях, в которых строился:
+    # с той же индексацией точек и тем же состоянием заморозки. Проверять его
+    # «с нуля» некорректно — часть визитов к моменту события уже выполнена.
+    fresh = Geo(working)
+    frozen = replan.freeze(fresh, demo_plan, hhmm_to_min(event.time))
+    replan.remap_starts(fresh, frozen)
+    pending = {
+        route.engineer_id: [s.order_id for s in route.stops if not s.locked]
+        for route in new_plan.routes
+    }
+    _, violations = evaluate(fresh, pending, frozen.starts)
+    assert not violations, [v.text for v in violations]
     assert diff.summary
 
 
@@ -273,10 +283,25 @@ def test_2_4_2_result_contains_everything_required(demo, demo_plan):
 # ======================================================== ТЗ §3.2 «Программные требования»
 
 
-def test_3_2_solution_runs_without_network():
-    """Картографический сервис в рантайме не нужен: координаты уже в данных."""
-    source = inspect.getsource(travel)
-    assert "httpx" not in source and "requests" not in source
+def test_3_2_solution_runs_without_network(demo, monkeypatch):
+    """Сервис обязан считать план без сети: координаты уже лежат в данных.
+
+    Проверяем поведением, а не чтением исходника: маршрутизатор в модуле
+    есть, но он необязателен и включается только переменной окружения.
+    """
+    import httpx
+
+    monkeypatch.delenv("OSRM_URL", raising=False)
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("построение плана не должно ходить в сеть")
+
+    monkeypatch.setattr(httpx, "get", refuse)
+    monkeypatch.setattr(httpx, "post", refuse)
+
+    plan = solver.plan(demo, Geo(demo), FAST)
+    assert plan.metrics.assigned > 0
+    assert plan.params.travel_model == "haversine"
 
 
 def test_3_2_no_database_required():

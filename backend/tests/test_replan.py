@@ -110,6 +110,36 @@ def test_urgent_order_is_added_and_scheduled(day, day_plan):
     assert new_plan.parent_plan_id == day_plan.id
 
 
+def test_urgent_order_does_not_shift_engineers_start_points(day, day_plan):
+    """Регрессия: добавление заявки сдвигает нумерацию узлов.
+
+    Точки сценария идут как «заявки, затем офис, затем выездные базы».
+    Срочная заявка дописывается в конец списка заявок, и офис съезжает
+    на следующий индекс. Состояние заморозки, посчитанное до события,
+    после этого указывало бы на новую заявку: инженер без начатых визитов
+    начинал бы день из точки аварии, а не из офиса.
+    """
+    scenario = day.model_copy(deep=True)
+    before = Geo(scenario)
+    frozen = replan.freeze(before, day_plan, hhmm_to_min("09:00"))
+    idle = [e_id for e_id, s in frozen.starts.items() if not s.locked_stops]
+    assert idle, "к началу смены никто не должен быть в работе"
+
+    lat, lon = at_km(3)
+    order = replan.make_urgent_order(
+        scenario, "авария", lat, lon, Skill.EMERGENCY, ("09:00", "20:00"), 60
+    )
+    after, _, _ = replan.apply_event(
+        scenario, before, frozen, UrgentOrderEvent(time="09:00", order=order), hhmm_to_min("09:00")
+    )
+    replan.remap_starts(after, frozen)
+
+    for engineer_id in idle:
+        node = frozen.starts[engineer_id].node
+        assert node == after.start_node(after.engineers[engineer_id])
+        assert node != after.node(order.id), "инженер не должен стартовать из точки аварии"
+
+
 def test_urgent_order_with_closed_window_is_rejected(day, day_plan):
     scenario = day.model_copy(deep=True)
     lat, lon = at_km(3)

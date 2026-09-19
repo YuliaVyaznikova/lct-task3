@@ -26,6 +26,7 @@ from planner.core.models import (
 )
 from planner.core.timeutil import min_to_hhmm
 from planner.core.travel import TravelModel
+from planner.core.travel import build as build_travel
 
 
 class Geo:
@@ -68,7 +69,9 @@ class Geo:
                 extra[coords] = index
             self._start_index[engineer.id] = index
 
-        self.travel = travel or TravelModel(points)
+        # build() подключает OSRM, если он задан переменной окружения OSRM_URL
+        # и отвечает; иначе возвращает офлайн-модель (DESIGN.md §5).
+        self.travel = travel or build_travel(points)
         self.orders = scenario.orders_by_id
         self.engineers = scenario.engineers_by_id
 

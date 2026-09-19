@@ -5,7 +5,14 @@ from __future__ import annotations
 import pytest
 
 from planner.core.models import Transport
-from planner.core.travel import DETOUR_FACTOR, PROFILES, TravelModel, describe, haversine_km
+from planner.core.travel import (
+    DETOUR_CALIBRATION,
+    PROFILES,
+    TravelModel,
+    describe,
+    detour_factor,
+    haversine_km,
+)
 
 
 def test_haversine_symmetric_and_zero_on_diagonal():
@@ -18,7 +25,28 @@ def test_matrix_applies_detour_factor():
     points = [(55.700, 37.700), (55.700, 37.7159)]  # примерно 1 км по долготе
     model = TravelModel(points)
     straight = haversine_km(*points[0], *points[1])
-    assert model.distance_km(0, 1) == pytest.approx(straight * DETOUR_FACTOR, rel=1e-6)
+    expected = straight * float(detour_factor(straight))
+    assert model.distance_km(0, 1) == pytest.approx(expected, rel=1e-6)
+    assert model.distance_km(0, 1) > straight, "дорога длиннее прямой"
+
+
+def test_detour_factor_is_calibrated_by_distance():
+    """Коэффициент измерен по реальной сети: в городе объезд больше, на трассе меньше."""
+    for (km, factor) in DETOUR_CALIBRATION:
+        assert float(detour_factor(km)) == pytest.approx(factor, abs=1e-9)
+    assert float(detour_factor(0.5)) > float(detour_factor(6.0)) > float(detour_factor(60.0))
+    # За пределами таблицы значение не экстраполируется, а фиксируется.
+    assert float(detour_factor(0.05)) == pytest.approx(DETOUR_CALIBRATION[0][1])
+    assert float(detour_factor(500)) == pytest.approx(DETOUR_CALIBRATION[-1][1])
+
+
+def test_road_distance_grows_with_straight_distance():
+    """Иначе поездка на 1.01 км оказалась бы короче поездки на 0.99 км."""
+    previous = 0.0
+    for km in (0.1, 0.3, 0.5, 0.9, 1.1, 2, 3, 6, 10, 20, 30, 60, 91, 150):
+        road = km * float(detour_factor(km))
+        assert road > previous, f"немонотонно на {km} км"
+        previous = road
 
 
 def test_matrix_diagonal_is_zero():
@@ -102,3 +130,60 @@ def test_describe_mentions_every_transport():
     text = describe()
     for transport in Transport:
         assert transport.value in text
+
+
+# ------------------------------------------------------ OSRM (без сети)
+
+
+def test_osrm_falls_back_when_service_is_unreachable():
+    """Недоступный маршрутизатор не должен срывать построение плана."""
+    from planner.core.travel import OsrmTravel
+
+    points = [(55.70, 37.70), (55.71, 37.72)]
+    model = OsrmTravel(points, "http://127.0.0.1:1", timeout_s=0.5)
+    assert model.connected is False
+    assert model.errors
+    assert "недоступен" in model.name
+    # Расстояния всё равно посчитаны офлайн-моделью.
+    assert model.distance_km(0, 1) > 0
+
+
+def test_build_returns_offline_model_without_configuration(monkeypatch):
+    from planner.core import travel as travel_module
+
+    monkeypatch.delenv("OSRM_URL", raising=False)
+    model = travel_module.build([(55.70, 37.70), (55.71, 37.72)])
+    assert type(model) is TravelModel
+    assert model.name == "haversine"
+
+
+def test_build_falls_back_to_offline_on_bad_url(monkeypatch):
+    from planner.core import travel as travel_module
+
+    monkeypatch.setenv("OSRM_URL", "http://127.0.0.1:1")
+    model = travel_module.build([(55.70, 37.70), (55.71, 37.72)])
+    assert type(model) is TravelModel, "при недоступном сервисе возвращаем обычную модель"
+
+
+def test_osrm_refuses_oversized_requests():
+    from planner.core.travel import OsrmTravel
+
+    points = [(55.0 + i * 0.001, 37.0 + i * 0.001) for i in range(OsrmTravel.MAX_POINTS + 1)]
+    model = OsrmTravel(points, "http://127.0.0.1:1", timeout_s=0.5)
+    assert model.connected is False
+    assert any("предел запроса" in e for e in model.errors)
+
+
+def test_osrm_uses_our_speed_profiles_not_free_flow_times(tmp_path):
+    """Публичный OSRM отдаёт время без пробок; время должно оставаться нашим."""
+    import numpy as np
+
+    from planner.core.travel import OsrmTravel
+
+    points = [(55.70, 37.70), (55.75, 37.78)]
+    model = OsrmTravel(points, "http://127.0.0.1:1", timeout_s=0.5, cache_dir=tmp_path)
+    # Подменяем расстояния так, будто сервис ответил, и проверяем, что время
+    # пересчитано профилем, а не взято извне.
+    model._apply(np.array([[0.0, 10.0], [10.0, 0.0]]))
+    expected = round(PROFILES[Transport.CAR].minutes(10.0))
+    assert model.time_min(Transport.CAR)[0, 1] == expected

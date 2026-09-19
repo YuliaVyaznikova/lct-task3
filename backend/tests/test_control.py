@@ -86,14 +86,36 @@ def test_our_plan_never_misses_a_window(scenarios, region):
             assert order.window_start <= stop.start <= order.window_end
 
 
-@pytest.mark.parametrize("region", REGIONS)
-def test_we_drive_less_per_order_than_the_manual_plan(scenarios, region):
-    """Ключевое обещание: маршруты короче фактических в пересчёте на заявку."""
+@pytest.mark.parametrize("region", ["vostok", "yugocentr"])
+def test_compact_regions_beat_the_manual_plan_on_mileage(scenarios, region):
+    """На московских участках маршруты короче фактических в пересчёте на заявку."""
     scenario = scenarios[region]
     geo = Geo(scenario)
     ours = solver.plan(scenario, geo, PlanParams(objective="min_engineers", time_limit_s=6))
     reference = control.build(scenario)
-    assert ours.metrics.distance_per_order_km <= reference.metrics.distance_per_order_km
+    assert ours.metrics.distance_per_order_km < reference.metrics.distance_per_order_km
+
+
+def test_yugo_vostok_mileage_is_not_a_like_for_like_comparison(scenarios):
+    """На Юго-Востоке сравнивать километраж напрямую нельзя — и это нужно знать.
+
+    Факт закрывает все 83 заявки, но 17 визитов начинает позже обещанного
+    клиенту окна. Мы берём меньше заявок и не нарушаем ни одного окна,
+    поэтому наборы обслуженных заявок разные, а «км на заявку» считается
+    по разным множествам. Тест фиксирует именно это положение дел, чтобы
+    расхождение не выдавалось за победу и не пропало незамеченным.
+    """
+    scenario = scenarios["yugo-vostok"]
+    geo = Geo(scenario)
+    ours = solver.plan(scenario, geo, PlanParams(objective="min_engineers", time_limit_s=6))
+    reference = control.build(scenario)
+
+    assert reference.covered_orders > ours.metrics.assigned
+    assert reference.late_starts >= 10
+    orders = scenario.orders_by_id
+    for route in ours.routes:
+        for stop in route.stops:
+            assert stop.start <= orders[stop.order_id].window_end
 
 
 def test_comparison_rows_are_limited_to_comparable_metrics(scenarios):

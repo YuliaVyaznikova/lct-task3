@@ -96,6 +96,21 @@ def freeze(geo: Geo, plan: Plan, at_min: int) -> Frozen:
     return Frozen(starts=starts, pool=pool, locked_count=locked_count)
 
 
+def remap_starts(geo: Geo, frozen: Frozen) -> None:
+    """Переводит стартовые узлы заморозки в индексацию переданного `geo`.
+
+    Узлы заявок устойчивы (новые заявки дописываются в конец), а офис
+    и выездные базы идут после них, поэтому добавление хотя бы одной заявки
+    сдвигает их индексы. Место инженера задаётся не числом, а смыслом:
+    точка последнего выполненного визита либо его собственная стартовая точка.
+    """
+    for engineer_id, state in frozen.starts.items():
+        if state.locked_stops:
+            state.node = geo.node(state.locked_stops[-1].order_id)
+        elif engineer_id in geo.engineers:
+            state.node = geo.start_node(geo.engineers[engineer_id])
+
+
 def apply_event(
     scenario: Scenario, geo: Geo, frozen: Frozen, event: Event, at_min: int
 ) -> tuple[Geo, list[str], str]:
@@ -162,6 +177,10 @@ def replan(
 
     frozen = freeze(geo, plan, at_min)
     geo, pool, caption = apply_event(scenario, geo, frozen, event, at_min)
+    # Срочная заявка добавляет сценарию точку, и нумерация узлов сдвигается:
+    # индекс офиса, вычисленный при заморозке, после этого указывал бы
+    # на новую заявку. Пересчитываем стартовые узлы по свежей индексации.
+    remap_starts(geo, frozen)
 
     previous = plan.assignment
     new_plan = solver.plan(

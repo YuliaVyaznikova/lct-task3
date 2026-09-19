@@ -242,6 +242,60 @@ def cmd_control(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Сверяет офлайн-модель расстояний с реальной дорожной сетью (OSRM).
+
+    Результат — таблица коэффициентов извилистости по диапазонам длины.
+    Именно по ней подобраны значения DETOUR_CALIBRATION в core/travel.py,
+    и именно этой командой их можно перепроверить.
+    """
+    import numpy as np
+
+    from planner.core.travel import OsrmTravel, TravelModel, _haversine_matrix
+
+    pairs: list[tuple[float, float, float]] = []
+    for spec in _specs(args.region):
+        scenario = store.load(spec.id)
+        points = [o.coords for o in scenario.orders] + [scenario.office.coords]
+        if len(points) > OsrmTravel.MAX_POINTS:
+            points = points[: OsrmTravel.MAX_POINTS]
+        road_model = OsrmTravel(points, args.osrm)
+        if not road_model.connected:
+            print(f"{scenario.name}: OSRM недоступен ({'; '.join(road_model.errors[:1])})")
+            continue
+        straight = _haversine_matrix(points)
+        offline = TravelModel(points)
+        for i in range(len(points)):
+            for j in range(len(points)):
+                if i != j and straight[i, j] > 0.2:
+                    pairs.append(
+                        (straight[i, j], road_model.distance_km(i, j), offline.distance_km(i, j))
+                    )
+        print(f"{scenario.name:<12} точек {len(points):>3}")
+
+    if not pairs:
+        print("нет данных для калибровки")
+        return 1
+
+    data = np.array(pairs)
+    straight, road, offline = data[:, 0], data[:, 1], data[:, 2]
+    print()
+    print(f"пар точек: {len(data)}")
+    print()
+    print(f"{'диапазон, км':<16}{'пар':>7}{'дорога/прямая':>16}{'ошибка модели':>16}")
+    for low, high in ((0.2, 1), (1, 3), (3, 10), (10, 30), (30, 500)):
+        mask = (straight >= low) & (straight < high)
+        if not mask.any():
+            continue
+        factor = float(np.median(road[mask] / straight[mask]))
+        error = float(np.median(np.abs(offline[mask] - road[mask]) / road[mask]) * 100)
+        print(f"{f'{low}–{high}':<16}{int(mask.sum()):>7}{factor:>16.2f}{error:>15.1f}%")
+    total_error = float(np.median(np.abs(offline - road) / road) * 100)
+    print()
+    print(f"медианная ошибка офлайн-модели против дорожной сети: {total_error:.1f}%")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -292,6 +346,13 @@ def main(argv: list[str] | None = None) -> int:
     control_cmd.add_argument("--region", default="all")
     control_cmd.add_argument("--time-limit", type=int, default=15, dest="time_limit")
     control_cmd.set_defaults(func=cmd_control)
+
+    calibrate = sub.add_parser(
+        "calibrate", help="сверить модель расстояний с реальной дорожной сетью"
+    )
+    calibrate.add_argument("--region", default="all")
+    calibrate.add_argument("--osrm", default="https://router.project-osrm.org")
+    calibrate.set_defaults(func=cmd_calibrate)
 
     serve = sub.add_parser("serve", help="запустить веб-сервис")
     serve.add_argument("--host", default="127.0.0.1")
