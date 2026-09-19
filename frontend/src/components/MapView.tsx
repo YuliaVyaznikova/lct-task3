@@ -24,6 +24,16 @@ const officeIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
+/** Выездная база — тот же значок, но полый: старт не из офиса участка. */
+const baseIcon = L.divIcon({
+  className: '',
+  html:
+    '<div style="width:14px;height:14px;border-radius:3px;background:#fff;' +
+    'border:3px solid #1d2430"></div>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+})
+
 function FitBounds({ scenario }: { scenario: Scenario }) {
   const map = useMap()
   useEffect(() => {
@@ -102,15 +112,17 @@ export function MapView({
         .map((route) => {
           const color = engineerColor(engineerIds, route.engineer_id)
           const path: [number, number][] = []
-          const startOrder = ordersById[route.stops[0].order_id]
-          if (scenario.office.lat !== null && scenario.office.lon !== null) {
-            path.push([scenario.office.lat, scenario.office.lon])
+          // Маршрут начинается в стартовой точке инженера, а не обязательно
+          // в офисе: у части исполнителей Юго-Востока это выездная база
+          // в Домодедове или Кашире (ТЗ §2.4).
+          const start =
+            scenario.engineers.find((e) => e.id === route.engineer_id)?.start ?? scenario.office
+          if (start.lat != null && start.lon != null) {
+            path.push([start.lat, start.lon])
           }
-          if (startOrder) {
-            for (const stop of route.stops) {
-              const order = ordersById[stop.order_id]
-              if (order?.lat != null && order.lon != null) path.push([order.lat, order.lon])
-            }
+          for (const stop of route.stops) {
+            const order = ordersById[stop.order_id]
+            if (order?.lat != null && order.lon != null) path.push([order.lat, order.lon])
           }
           return (
             <Polyline
@@ -181,6 +193,30 @@ export function MapView({
           </Tooltip>
         </Marker>
       )}
+
+      {/* Выездные базы: инженеры, начинающие день не в офисе участка. */}
+      {Array.from(
+        new Map(
+          scenario.engineers
+            .filter(
+              (e) =>
+                e.start.lat != null &&
+                e.start.lon != null &&
+                (e.start.lat !== scenario.office.lat || e.start.lon !== scenario.office.lon),
+            )
+            .map((e) => [`${e.start.lat},${e.start.lon}`, e]),
+        ).values(),
+      ).map((engineer) => (
+        <Marker
+          key={`base-${engineer.id}`}
+          position={[engineer.start.lat as number, engineer.start.lon as number]}
+          icon={baseIcon}
+        >
+          <Tooltip direction="top" offset={[0, -10]}>
+            {engineer.start.address}
+          </Tooltip>
+        </Marker>
+      ))}
     </MapContainer>
   )
 }

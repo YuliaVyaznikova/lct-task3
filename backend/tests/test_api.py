@@ -167,6 +167,55 @@ def test_urgent_event_is_scheduled(client, plan):
     assert "API-SOS-1" in body["diff"]["added"]
 
 
+def test_urgent_order_stays_usable_after_replanning(client):
+    """Регрессия: заявка, добавленная событием, должна быть полноценной.
+
+    Индексация точек строится по составу сценария; если переиспользовать
+    ту, что была до события, новая заявка окажется «неизвестной» —
+    ручное переназначение вернёт 404, а проверка плана молча её выбросит.
+    """
+    created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
+    plan_id = created["optimized"]["id"]
+    anchor = created["scenario"]["orders"][0]
+    payload = {
+        "type": "urgent_order",
+        "time": "12:30",
+        "order": {
+            "id": "REGRESS-1",
+            "address": "авария после события",
+            "lat": anchor["lat"],
+            "lon": anchor["lon"],
+            "skill": "emergency",
+            "duration_min": 80,
+            "window_start": "12:30",
+            "window_end": "23:59",
+            "priority": "urgent",
+        },
+    }
+    replanned = client.post(f"/api/plans/{plan_id}/events", json=payload)
+    assert replanned.status_code == 200, replanned.text
+    new_plan = replanned.json()["plan"]
+    new_id = new_plan["id"]
+
+    assigned = {s["order_id"] for r in new_plan["routes"] for s in r["stops"]}
+    explained = {u["order_id"] for u in new_plan["unassigned"]}
+    assert "REGRESS-1" in assigned | explained, "новая заявка не должна пропадать из плана"
+
+    card = client.get(f"/api/plans/{new_id}/explain/REGRESS-1")
+    assert card.status_code == 200, card.text
+
+    response = client.post(
+        f"/api/plans/{new_id}/manual", json={"order_id": "REGRESS-1", "engineer_id": None}
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()["optimized"]
+    assert any(u["order_id"] == "REGRESS-1" for u in body["unassigned"])
+    covered = {s["order_id"] for r in body["routes"] for s in r["stops"]} | {
+        u["order_id"] for u in body["unassigned"]
+    }
+    assert len(covered) == len(response.json()["scenario"]["orders"])
+
+
 def test_engineer_unavailable_event(client, plan):
     plan_id = plan["optimized"]["id"]
     victim = max(plan["optimized"]["routes"], key=lambda r: len(r["stops"]))["engineer_id"]

@@ -154,10 +154,27 @@ export interface MetricRow {
   better: boolean | null
 }
 
+export interface ControlRow {
+  title: string
+  ours: number
+  control: number
+}
+
+/** Справочное сопоставление с фактическим ручным распределением из выгрузки. */
+export interface ControlReference {
+  available: boolean
+  summary: string
+  brigades: number
+  covered_orders: number
+  late_starts: number
+  rows: ControlRow[]
+}
+
 export interface PlanResponse {
   optimized: Plan
   baseline: Plan
   comparison: MetricRow[]
+  control: ControlReference
   scenario: Scenario
 }
 

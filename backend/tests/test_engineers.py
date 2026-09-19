@@ -111,12 +111,68 @@ def test_yugo_vostok_has_more_cars(scenarios):
 
 
 @pytest.mark.parametrize("region", REGIONS)
-def test_engineers_start_at_office(scenarios, region):
+def test_engineers_start_at_office_unless_they_have_a_remote_base(scenarios, region):
+    """По умолчанию старт — офис участка; исключение задаётся в конфигурации."""
     scenario = scenarios[region]
     config = gen.load_config(region)
     engineers, _ = gen.generate(config, 42, scenario.orders, scenario.office)
+
+    remote = [e for e in engineers if e.start.coords != scenario.office.coords]
+    expected_remote = sum(base.engineers for base in config.remote_bases)
+    assert len(remote) == expected_remote
+    assert all(e.start.has_coords for e in engineers)
+
+
+def test_remote_bases_sit_inside_their_clusters(scenarios):
+    """Выездная база должна стоять среди заявок своего кластера, а не у офиса.
+
+    В контрольном распределении Домодедово обслуживает закреплённая бригада,
+    Каширу и Ступино — две. Без этого все инженеры выезжали бы из Бирюлёва
+    и наматывали по 90 км в один конец.
+    """
+    from planner.core.travel import haversine_km
+
+    scenario = scenarios["yugo-vostok"]
+    config = gen.load_config("yugo-vostok")
+    assert config.remote_bases, "у Юго-Востока должны быть выездные базы"
+
+    engineers, _ = gen.generate(config, 42, scenario.orders, scenario.office)
+    remote = [e for e in engineers if e.start.coords != scenario.office.coords]
+    assert remote
+
+    for engineer in remote:
+        # Каждая база должна быть ближе к «своим» заявкам, чем офис участка.
+        district = engineer.name.split("(")[-1].rstrip(")")
+        cluster = [
+            o for o in scenario.orders if o.district.casefold().startswith(district.casefold())
+        ]
+        assert cluster, district
+        nearest = min(haversine_km(*engineer.start.coords, *o.coords) for o in cluster)
+        from_office = min(
+            haversine_km(*scenario.office.coords, *o.coords) for o in cluster
+        )
+        assert nearest < from_office
+
+
+def test_remote_bases_go_to_drivers(scenarios):
+    """На выездную базу отправляем автомобилиста: иначе он оттуда не уедет."""
+    from planner.core.models import Transport
+
+    scenario = scenarios["yugo-vostok"]
+    config = gen.load_config("yugo-vostok")
+    engineers, _ = gen.generate(config, 42, scenario.orders, scenario.office)
     for engineer in engineers:
-        assert engineer.start.coords == scenario.office.coords
+        if engineer.start.coords != scenario.office.coords:
+            assert engineer.transport is Transport.CAR
+
+
+def test_regions_without_remote_bases_all_start_at_office(scenarios):
+    for region in ("vostok", "yugocentr"):
+        scenario = scenarios[region]
+        config = gen.load_config(region)
+        assert not config.remote_bases
+        engineers, _ = gen.generate(config, 42, scenario.orders, scenario.office)
+        assert all(e.start.coords == scenario.office.coords for e in engineers)
 
 
 @pytest.mark.parametrize("region", REGIONS)

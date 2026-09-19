@@ -85,6 +85,19 @@ def test_time_matrix_is_cached():
     assert model.time_min(Transport.CAR) is model.time_min(Transport.CAR)
 
 
+def test_matrix_build_is_fast_enough_to_skip_caching():
+    """Обоснование отказа от кэша матриц на диске (DESIGN.md §5)."""
+    import time
+
+    points = [(55.5 + i * 0.004, 37.5 + i * 0.006) for i in range(85)]
+    start = time.perf_counter()
+    model = TravelModel(points)
+    for transport in Transport:
+        model.time_min(transport)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    assert elapsed_ms < 500, f"построение матриц заняло {elapsed_ms:.0f} мс"
+
+
 def test_describe_mentions_every_transport():
     text = describe()
     for transport in Transport:

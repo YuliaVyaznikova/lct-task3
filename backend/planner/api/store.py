@@ -36,14 +36,30 @@ def next_plan_id(prefix: str = "p") -> str:
 class PlanRecord:
     plan: Plan
     scenario: Scenario
-    geo: Geo
     baseline: Plan | None = None
     diff: Diff | None = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    _geo: Geo | None = field(default=None, repr=False)
+    _geo_key: tuple[str, ...] = field(default=(), repr=False)
 
     @property
     def id(self) -> str:
         return self.plan.id
+
+    @property
+    def geo(self) -> Geo:
+        """Индексация точек, пересобираемая при изменении состава заявок.
+
+        Перепланирование по срочной заявке дополняет сценарий новой точкой,
+        и сохранённый ранее Geo о ней не знает: его матрица и индексы короче.
+        Если такой объект переиспользовать, заявка выпадет из плана как
+        неизвестная. Поэтому ключом кэша служит состав заявок сценария.
+        """
+        key = tuple(order.id for order in self.scenario.orders)
+        if self._geo is None or self._geo_key != key:
+            self._geo = Geo(self.scenario)
+            self._geo_key = key
+        return self._geo
 
 
 class PlanStore:

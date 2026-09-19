@@ -12,6 +12,7 @@ import {
   UnassignedList,
 } from './components/Panels'
 import type {
+  ControlReference,
   Diff,
   MetricRow,
   Objective,
@@ -34,6 +35,7 @@ export default function App() {
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [comparison, setComparison] = useState<MetricRow[]>([])
+  const [control, setControl] = useState<ControlReference | null>(null)
   const [diff, setDiff] = useState<Diff | null>(null)
 
   const [busy, setBusy] = useState(false)
@@ -53,6 +55,7 @@ export default function App() {
     api.scenario(scenarioId).then(setScenario).catch((e) => setError(e.message))
     setPlan(null)
     setDiff(null)
+    setControl(null)
     setSelectedOrder(null)
     setSelectedEngineer(null)
   }, [scenarioId])
@@ -66,6 +69,7 @@ export default function App() {
       const response = await api.plan(scenarioId, objective, timeLimit, lunch)
       setPlan(response.optimized)
       setComparison(response.comparison)
+      setControl(response.control)
       setScenario(response.scenario)
       setTab('routes')
     } catch (e) {
@@ -104,6 +108,7 @@ export default function App() {
         const response = await api.manual(plan.id, orderId, engineerId)
         setPlan(response.optimized)
         setComparison(response.comparison)
+        setControl(response.control)
         setScenario(response.scenario)
       } catch (e) {
         setError((e as Error).message)
@@ -336,7 +341,9 @@ export default function App() {
                 onSelectOrder={setSelectedOrder}
               />
             )}
-            {tab === 'metrics' && <MetricsPanel plan={plan} comparison={comparison} />}
+            {tab === 'metrics' && (
+              <MetricsPanel plan={plan} comparison={comparison} control={control} />
+            )}
             {tab === 'diff' && <DiffView diff={diff} scenario={scenario} />}
           </>
         )}

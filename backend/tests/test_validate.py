@@ -196,6 +196,36 @@ def test_check_static_passes_for_suitable_engineer(toy_geo):
     assert check_static(toy_geo.engineers["E03"], toy_geo.orders["F"]) is None
 
 
+def test_personal_start_point_gets_its_own_node(toy):
+    """Инженер с выездной базой не должен считаться выезжающим из офиса."""
+    from planner.core.models import Point
+
+    remote = toy.engineers[2].model_copy(
+        update={"start": Point(address="выездная база", lat=55.700, lon=37.800)}
+    )
+    scenario = toy.model_copy(update={"engineers": [*toy.engineers[:2], remote]})
+    geo = Geo(scenario)
+
+    assert geo.start_node(remote) != geo.office_index
+    assert geo.start_node(scenario.engineers[0]) == geo.office_index
+
+    # Расстояние до первой заявки считается от базы, а не от офиса.
+    from_base = geo.leg(remote, geo.start_node(remote), geo.node("A"))[0]
+    from_office = geo.leg(remote, geo.office_index, geo.node("A"))[0]
+    assert from_base != pytest.approx(from_office)
+
+
+def test_engineers_sharing_a_start_point_share_a_node(toy):
+    from planner.core.models import Point
+
+    base = Point(address="общая база", lat=55.700, lon=37.800)
+    engineers = [e.model_copy(update={"start": base.model_copy()}) for e in toy.engineers]
+    geo = Geo(toy.model_copy(update={"engineers": engineers}))
+    nodes = {geo.start_node(e) for e in engineers}
+    assert len(nodes) == 1
+    assert nodes != {geo.office_index}
+
+
 def test_engineer_cannot_leave_before_shift(toy_geo):
     engineer = make_engineer("LATE", [Skill.LOCAL], Transport.CAR, ("14:00", "23:00"))
     scenario = make_scenario(list(toy_geo.scenario.orders), [engineer])

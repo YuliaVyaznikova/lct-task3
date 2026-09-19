@@ -29,7 +29,14 @@ from planner.core.travel import TravelModel
 
 
 class Geo:
-    """Индексация точек сценария: заявки + офис, и доступ к матрицам расстояний."""
+    """Индексация точек сценария и доступ к матрицам расстояний.
+
+    В набор точек входят заявки, офис участка и все стартовые точки инженеров,
+    отличные от офиса: ТЗ §2.4 предусматривает у инженера собственную точку
+    старта, а в данных Юго-Востока есть выездные базы в Домодедове и Кашире.
+    Без отдельного узла такой инженер считался бы выезжающим из офиса,
+    и расчёт занижал бы его маршрут на десятки километров.
+    """
 
     def __init__(self, scenario: Scenario, travel: TravelModel | None = None) -> None:
         self.scenario = scenario
@@ -42,8 +49,25 @@ class Geo:
         self.order_ids = [o.id for o in scenario.orders]
         self.order_index = {order_id: i for i, order_id in enumerate(self.order_ids)}
         points = [o.coords for o in scenario.orders]
+
         self.office_index = len(points)
         points.append(scenario.office.coords)
+
+        # Уникальные стартовые точки инженеров сверх офиса.
+        self._start_index: dict[str, int] = {}
+        extra: dict[tuple[float, float], int] = {scenario.office.coords: self.office_index}
+        for engineer in scenario.engineers:
+            if not engineer.start.has_coords:
+                self._start_index[engineer.id] = self.office_index
+                continue
+            coords = engineer.start.coords
+            index = extra.get(coords)
+            if index is None:
+                index = len(points)
+                points.append(coords)
+                extra[coords] = index
+            self._start_index[engineer.id] = index
+
         self.travel = travel or TravelModel(points)
         self.orders = scenario.orders_by_id
         self.engineers = scenario.engineers_by_id
@@ -52,13 +76,8 @@ class Geo:
         return self.order_index[order_id]
 
     def start_node(self, engineer: Engineer) -> int:
-        """Стартовая точка инженера. По умолчанию — офис региона (ТЗ §2.4)."""
-        if engineer.start.has_coords and engineer.start.coords != self.scenario.office.coords:
-            # Персональная точка старта встречается при перепланировании.
-            for order_id, index in self.order_index.items():
-                if self.orders[order_id].coords == engineer.start.coords:
-                    return index
-        return self.office_index
+        """Стартовая точка инженера: его собственная либо офис участка (ТЗ §2.4)."""
+        return self._start_index.get(engineer.id, self.office_index)
 
     def leg(self, engineer: Engineer, from_node: int, to_node: int) -> tuple[float, int]:
         return self.travel.travel(engineer.transport, from_node, to_node)

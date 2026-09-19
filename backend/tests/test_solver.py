@@ -144,6 +144,31 @@ def test_plan_metadata_is_filled(toy, toy_geo):
     assert plan.planned_from == min(e.shift_start for e in toy.engineers)
 
 
+def test_lunch_break_option_keeps_the_plan_valid(toy, toy_geo):
+    """Обед — необязательная настройка (Q&A, блок 5): план обязан остаться допустимым."""
+    with_lunch = solver.plan(toy, toy_geo, PlanParams(objective="min_engineers", time_limit_s=2, lunch=True))
+    _, violations = evaluate(toy_geo, {r.engineer_id: r.order_ids for r in with_lunch.routes})
+    assert not violations
+    assert with_lunch.params.lunch is True
+
+
+def test_lunch_break_costs_capacity_but_is_not_default():
+    """Перерыв отнимает мощность, поэтому по умолчанию выключен."""
+    assert PlanParams().lunch is False
+
+    orders = [
+        make_order(f"O{i}", i * 0.8, Skill.LOCAL, ("12:00", "16:00"), duration=60)
+        for i in range(1, 8)
+    ]
+    scenario = make_scenario(orders, [make_engineer("E01", [Skill.LOCAL])])
+    geo = Geo(scenario)
+    without = solver.plan(scenario, geo, PlanParams(objective="min_engineers", time_limit_s=3))
+    with_break = solver.plan(
+        scenario, geo, PlanParams(objective="min_engineers", time_limit_s=3, lunch=True)
+    )
+    assert with_break.metrics.assigned <= without.metrics.assigned
+
+
 def test_empty_pool_is_handled(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST, order_ids=[])
     assert plan.metrics.assigned == 0

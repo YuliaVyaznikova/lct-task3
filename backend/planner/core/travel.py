@@ -15,16 +15,12 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 
 from planner.core.models import Transport
-from planner.paths import CACHE_DIR
 
 EARTH_RADIUS_KM = 6371.0088
 
@@ -110,7 +106,13 @@ def _haversine_matrix(points: list[tuple[float, float]]) -> np.ndarray:
 
 
 class TravelModel:
-    """Расстояния и времена между точками для каждого типа транспорта."""
+    """Расстояния и времена между точками для каждого типа транспорта.
+
+    Матрицы считаются в памяти при создании сценария: на реальных участках
+    (70–85 точек, четыре типа транспорта) это занимает 9–17 мс, поэтому
+    сохранять их на диск незачем. Матрицы времени кэшируются по типу
+    транспорта внутри объекта.
+    """
 
     name = "haversine"
 
@@ -147,19 +149,6 @@ class TravelModel:
     def travel(self, transport: Transport, i: int, j: int) -> tuple[float, int]:
         """(километры, минуты) для одного переезда."""
         return round(self.distance_km(i, j), 3), int(self.time_min(transport)[i, j])
-
-
-def build(points: list[tuple[float, float]]) -> TravelModel:
-    return TravelModel(points)
-
-
-def points_hash(points: list[tuple[float, float]], name: str) -> str:
-    payload = json.dumps([[round(p[0], 6), round(p[1], 6)] for p in points], separators=(",", ":"))
-    return hashlib.sha256(f"{name}|{payload}".encode()).hexdigest()[:16]
-
-
-def cache_path(points: list[tuple[float, float]], name: str) -> Path:
-    return CACHE_DIR / "matrices" / f"{points_hash(points, name)}.npz"
 
 
 def describe() -> str:

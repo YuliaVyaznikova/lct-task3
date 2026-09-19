@@ -33,6 +33,14 @@ class Shift:
 
 
 @dataclass
+class RemoteBase:
+    """Выездная база: инженеры, начинающие день в удалённом кластере заявок."""
+
+    districts: list[str]
+    engineers: int
+
+
+@dataclass
 class EngineerConfig:
     count: int
     skills_mix: dict[str, float]
@@ -41,6 +49,7 @@ class EngineerConfig:
     shifts: list[Shift]
     required_transport_share: float
     min_cars: int
+    remote_bases: list[RemoteBase] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -63,6 +72,7 @@ def load_config(region_id: str, path: Path | None = None) -> EngineerConfig:
         shifts=[Shift(**s) for s in merged["shifts"]],
         required_transport_share=float(merged["required_transport_share"]),
         min_cars=int(merged["min_cars"]),
+        remote_bases=[RemoteBase(**base) for base in merged.get("remote_bases", [])],
     )
 
 
@@ -174,6 +184,44 @@ def check_invariants(engineers: list[Engineer], config: EngineerConfig) -> None:
         raise InvariantError("нужен хотя бы один узкий специалист с одним навыком")
 
 
+def _district_centroid(orders: list[Order], districts: list[str]) -> Point | None:
+    """Центр тяжести заявок кластера — там и базируется выездная бригада."""
+    wanted = {name.strip().casefold() for name in districts}
+    points = [
+        o for o in orders if o.has_coords and (o.district or "").strip().casefold() in wanted
+    ]
+    if not points:
+        return None
+    return Point(
+        address=f"выездная база: {', '.join(districts)}",
+        lat=sum(o.lat for o in points) / len(points),  # type: ignore[misc]
+        lon=sum(o.lon for o in points) / len(points),  # type: ignore[misc]
+    )
+
+
+def _assign_remote_bases(
+    engineers: list[Engineer], config: EngineerConfig, orders: list[Order]
+) -> int:
+    """Переносит часть автомобилистов на выездные базы (см. engineers.yaml)."""
+    if not config.remote_bases:
+        return 0
+
+    candidates = [e for e in engineers if e.transport is Transport.CAR]
+    moved = 0
+    for base in config.remote_bases:
+        point = _district_centroid(orders, base.districts)
+        if point is None:
+            continue
+        for _ in range(base.engineers):
+            if not candidates:
+                break
+            engineer = candidates.pop(0)
+            engineer.start = point.model_copy()
+            engineer.name = f"{engineer.name} ({base.districts[0]})"
+            moved += 1
+    return moved
+
+
 def _generate_once(
     seed: int, config: EngineerConfig, orders: list[Order], start: Point
 ) -> list[Engineer]:
@@ -203,6 +251,7 @@ def _generate_once(
                 start=Point(address=start.address, lat=start.lat, lon=start.lon),
             )
         )
+    _assign_remote_bases(engineers, config, orders)
     return engineers
 
 

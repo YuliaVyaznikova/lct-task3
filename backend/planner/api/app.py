@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from planner.api.store import PlanRecord, next_plan_id, store
 from planner.core import baseline as baseline_module
+from planner.core import control as control_module
 from planner.core import explain as explain_module
 from planner.core import metrics as metrics_module
 from planner.core import replan as replan_module
@@ -79,10 +80,22 @@ class MetricRowOut(BaseModel):
     better: bool | None
 
 
+class ControlReferenceOut(BaseModel):
+    """Справочное сопоставление с фактическим ручным распределением."""
+
+    available: bool
+    summary: str = ""
+    brigades: int = 0
+    covered_orders: int = 0
+    late_starts: int = 0
+    rows: list[dict] = Field(default_factory=list)
+
+
 class PlanResponse(BaseModel):
     optimized: Plan
     baseline: Plan
     comparison: list[MetricRowOut]
+    control: ControlReferenceOut
     scenario: Scenario
 
 
@@ -113,6 +126,26 @@ def _comparison(ours: Plan, base: Plan) -> list[MetricRowOut]:
         )
         for row in metrics_module.compare(ours.metrics, base.metrics)
     ]
+
+
+def _control(scenario: Scenario, plan: Plan) -> ControlReferenceOut:
+    """Как эти же заявки распределили вручную. Строго справочно, в оптимизации не участвует."""
+    if not control_module.has_control(scenario):
+        return ControlReferenceOut(available=False)
+    reference = control_module.build(scenario)
+    return ControlReferenceOut(
+        available=True,
+        summary=reference.summary(),
+        brigades=len(reference.brigades),
+        covered_orders=reference.covered_orders,
+        late_starts=reference.late_starts,
+        rows=[
+            {"title": title, "ours": ours, "control": fact}
+            for title, ours, fact in control_module.comparison_rows(
+                plan.metrics, reference.metrics
+            )
+        ],
+    )
 
 
 def _record(plan_id: str) -> PlanRecord:
@@ -243,11 +276,12 @@ def create_plan(request: PlanRequest) -> PlanResponse:
     explain_module.attach(geo, optimized)
     base = baseline_module.plan(working, geo, plan_id=f"{plan_id}-base")
 
-    store.put(PlanRecord(plan=optimized, scenario=working, geo=geo, baseline=base))
+    store.put(PlanRecord(plan=optimized, scenario=working, baseline=base))
     return PlanResponse(
         optimized=optimized,
         baseline=base,
         comparison=_comparison(optimized, base),
+        control=_control(working, optimized),
         scenario=working,
     )
 
@@ -260,6 +294,7 @@ def get_plan(plan_id: str) -> PlanResponse:
         optimized=record.plan,
         baseline=base,
         comparison=_comparison(record.plan, base),
+        control=_control(record.scenario, record.plan),
         scenario=record.scenario,
     )
 
@@ -278,7 +313,7 @@ def apply_event(plan_id: str, event: Annotated[Event, Body()]) -> ReplanResponse
         raise HTTPException(409, str(exc)) from None
 
     store.put(
-        PlanRecord(plan=new_plan, scenario=working, geo=geo, baseline=record.baseline, diff=diff)
+        PlanRecord(plan=new_plan, scenario=working, baseline=record.baseline, diff=diff)
     )
     return ReplanResponse(plan=new_plan, diff=diff, scenario=working)
 
@@ -355,6 +390,7 @@ def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
         optimized=record.plan,
         baseline=base,
         comparison=_comparison(record.plan, base),
+        control=_control(record.scenario, record.plan),
         scenario=record.scenario,
     )
 

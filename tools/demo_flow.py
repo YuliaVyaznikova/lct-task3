@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,7 +18,7 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 from browser import Browser  # noqa: E402
 
-URL = "http://127.0.0.1:8000"
+URL = os.environ.get("PLANNER_URL", "http://127.0.0.1:8000")
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "screenshots")
 
 problems: list[str] = []

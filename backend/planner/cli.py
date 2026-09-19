@@ -216,6 +216,32 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_control(args: argparse.Namespace) -> int:
+    from planner.core import control, solver
+    from planner.core.models import PlanParams
+    from planner.core.validate import Geo
+
+    for spec in _specs(args.region):
+        scenario = store.load(spec.id)
+        if not control.has_control(scenario):
+            print(f"{scenario.name}: контрольного распределения нет")
+            continue
+        reference = control.build(scenario)
+        geo = Geo(scenario)
+        ours = solver.plan(scenario, geo, PlanParams(time_limit_s=args.time_limit))
+
+        print(f"\n=== {scenario.name} ===")
+        print(" ", reference.summary())
+        print(f"  покрыто контролем: {reference.covered_orders} из {len(scenario.orders)} заявок")
+        print()
+        print(f"  {'показатель':<30}{'наш план':>12}{'факт':>12}")
+        print("  " + "-" * 54)
+        for title, mine, fact in control.comparison_rows(ours.metrics, reference.metrics):
+            print(f"  {title:<30}{mine:>12.1f}{fact:>12.1f}")
+        print(f"  {'визитов начато позже окна':<30}{0:>12}{reference.late_starts:>12}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -259,6 +285,13 @@ def main(argv: list[str] | None = None) -> int:
     plan_cmd.add_argument("--time-limit", type=int, default=15, dest="time_limit")
     plan_cmd.add_argument("--verbose", action="store_true", help="печатать маршруты и отказы")
     plan_cmd.set_defaults(func=cmd_plan)
+
+    control_cmd = sub.add_parser(
+        "control", help="справочное сравнение с фактическим ручным распределением"
+    )
+    control_cmd.add_argument("--region", default="all")
+    control_cmd.add_argument("--time-limit", type=int, default=15, dest="time_limit")
+    control_cmd.set_defaults(func=cmd_control)
 
     serve = sub.add_parser("serve", help="запустить веб-сервис")
     serve.add_argument("--host", default="127.0.0.1")

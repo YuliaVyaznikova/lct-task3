@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { engineerColor, formatMinutes } from '../colors'
 import type {
+  ControlReference,
   Diff,
   MetricRow,
   OrderExplanation,
@@ -171,7 +172,15 @@ export function UnassignedList({
 
 /* ---------------------------------------------------------- метрики */
 
-export function MetricsPanel({ plan, comparison }: { plan: Plan; comparison: MetricRow[] }) {
+export function MetricsPanel({
+  plan,
+  comparison,
+  control,
+}: {
+  plan: Plan
+  comparison: MetricRow[]
+  control: ControlReference | null
+}) {
   const m = plan.metrics
   return (
     <div style={{ padding: 12 }}>
@@ -246,6 +255,54 @@ export function MetricsPanel({ plan, comparison }: { plan: Plan; comparison: Met
           ))}
         </tbody>
       </table>
+
+      {control?.available && (
+        <>
+          <h2 style={{ fontSize: 12, color: 'var(--muted)', marginTop: 16 }}>
+            Справочно: как распределили вручную
+          </h2>
+          <p className="small muted" style={{ marginTop: -4 }}>
+            Контрольный файл выгрузки — не эталон, а факт того же дня. В расчётах
+            не используется.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Показатель</th>
+                <th style={{ textAlign: 'right' }}>Наш</th>
+                <th style={{ textAlign: 'right' }}>Факт</th>
+              </tr>
+            </thead>
+            <tbody>
+              {control.rows.map((row) => (
+                <tr key={row.title}>
+                  <td>{row.title}</td>
+                  <td className="mono" style={{ textAlign: 'right' }}>
+                    {row.ours.toFixed(1)}
+                  </td>
+                  <td className="mono muted" style={{ textAlign: 'right' }}>
+                    {row.control.toFixed(1)}
+                  </td>
+                </tr>
+              ))}
+              {control.late_starts > 0 && (
+                <tr>
+                  <td>Визитов начато позже окна</td>
+                  <td className="mono delta good" style={{ textAlign: 'right' }}>
+                    0
+                  </td>
+                  <td className="mono delta bad" style={{ textAlign: 'right' }}>
+                    {control.late_starts}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <p className="small" style={{ marginTop: 6 }}>
+            {control.summary}
+          </p>
+        </>
+      )}
 
       <h2 style={{ fontSize: 12, color: 'var(--muted)', marginTop: 16 }}>Пробег по инженерам</h2>
       <table>
