@@ -1,0 +1,288 @@
+:root {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #d9dde3;
+  --text: #1d2430;
+  --muted: #6b7684;
+  --accent: #3f76c4;
+  --good: #2e8b57;
+  --bad: #c9513e;
+  --locked: #9aa3ad;
+  font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+button.primary:hover:not(:disabled) { background: #33629f; color: #fff; }
+
+select, input {
+  font: inherit;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  width: 100%;
+}
+
+/* ------------------------------------------------------------ раскладка */
+
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr 440px;
+  grid-template-rows: 100vh;
+  gap: 1px;
+  background: var(--border);
+}
+
+.column {
+  background: var(--bg);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.field { margin-bottom: 10px; }
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+.row { display: flex; gap: 8px; align-items: center; }
+.grow { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.mono { font-variant-numeric: tabular-nums; }
+
+/* -------------------------------------------------------------- карта */
+
+.map { flex: 1; min-height: 0; }
+.leaflet-container { height: 100%; width: 100%; background: #e9ecef; }
+
+.legend {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  align-items: center;
+}
+.legend .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+/* ------------------------------------------------------------ вкладки */
+
+.tabs {
+  display: flex;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 12px;
+  color: var(--muted);
+  background: none;
+}
+.tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.tabs .count {
+  font-size: 11px;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 1px 6px;
+  margin-left: 5px;
+}
+
+/* ------------------------------------------------------------ таблицы */
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+td { padding: 5px 8px; border-bottom: 1px solid #eef0f3; vertical-align: top; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: #f0f5fc; }
+tr.selected { background: #e3edfb; }
+
+.delta.good { color: var(--good); font-weight: 600; }
+.delta.bad { color: var(--bad); }
+
+/* ---------------------------------------------------------- таймлайн */
+
+.timeline { padding: 10px 12px; background: var(--panel); }
+.tl-row { display: flex; align-items: center; height: 22px; gap: 6px; }
+.tl-name {
+  width: 92px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.tl-track {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  background: #f0f2f5;
+  border-radius: 3px;
+}
+.tl-bar { position: absolute; top: 0; height: 14px; border-radius: 2px; }
+.tl-bar.travel { background: #c6ccd4; height: 6px; top: 4px; border-radius: 1px; }
+.tl-bar.wait {
+  background: repeating-linear-gradient(45deg, #dfe4ea, #dfe4ea 3px, #eef0f3 3px, #eef0f3 6px);
+  height: 8px;
+  top: 3px;
+}
+.tl-bar.work { cursor: pointer; }
+.tl-bar.work:hover { outline: 2px solid var(--text); }
+.tl-bar.locked { opacity: 0.45; }
+.tl-axis {
+  display: flex;
+  margin-left: 98px;
+  font-size: 10px;
+  color: var(--muted);
+  justify-content: space-between;
+  padding-top: 2px;
+}
+.tl-now {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 18px;
+  background: var(--bad);
+}
+
+/* ---------------------------------------------------------- карточка */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 12px;
+}
+.card h3 { margin: 0 0 4px; font-size: 14px; }
+.card ul { margin: 6px 0; padding-left: 18px; }
+.card li { margin: 2px 0; }
+.check-ok::marker { content: '✓  '; color: var(--good); }
+.check-bad::marker { content: '✗  '; color: var(--bad); }
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  margin-right: 4px;
+}
+.badge.urgent { background: #fdecea; border-color: #f0b6ae; color: var(--bad); }
+
+.error {
+  background: #fdecea;
+  border: 1px solid #f0b6ae;
+  color: #8a2f22;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin: 10px 12px;
+  font-size: 13px;
+}
+
+.summary {
+  background: #eef4fd;
+  border: 1px solid #cfdff5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.stat .value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .label { font-size: 11px; color: var(--muted); }

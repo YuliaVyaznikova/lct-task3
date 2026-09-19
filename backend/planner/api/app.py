@@ -453,7 +453,11 @@ if _FRONTEND.is_dir():
 
     @app.get("/{path:path}")
     def spa(path: str) -> FileResponse:
-        candidate = _FRONTEND / path
-        if candidate.is_file():
+        # Неизвестные адреса под /api должны оставаться ошибкой API, иначе
+        # опечатка в запросе вернёт фронтенду страницу вместо понятного 404.
+        if path == "api" or path.startswith("api/"):
+            raise HTTPException(404, f"Нет такого метода API: /{path}")
+        candidate = (_FRONTEND / path).resolve()
+        if candidate.is_file() and candidate.is_relative_to(_FRONTEND.resolve()):
             return FileResponse(candidate)
         return FileResponse(_FRONTEND / "index.html")

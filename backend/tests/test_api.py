@@ -53,6 +53,13 @@ def test_unknown_scenario_gives_readable_error(client):
     assert "не найден" in response.json()["detail"]
 
 
+def test_unknown_api_path_is_not_swallowed_by_the_spa(client):
+    """Опечатка в адресе должна дать понятный 404, а не страницу интерфейса."""
+    response = client.get("/api/нет-такого-метода")
+    assert response.status_code == 404
+    assert "application/json" in response.headers.get("content-type", "")
+
+
 def test_reference_lists_dictionaries(client):
     body = client.get("/api/reference").json()
     assert set(body["skills"]) == {"local", "connection", "emergency"}

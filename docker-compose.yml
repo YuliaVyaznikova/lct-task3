@@ -1,0 +1,10 @@
+services:
+  planner:
+    build: .
+    image: lct2026-task3-planner
+    ports:
+      - "8000:8000"
+    environment:
+      # Ключ геокодера нужен только для пересборки данных из сырых CSV.
+      # Готовые сценарии с координатами уже лежат в data/scenarios.
+      DADATA_KEY: "${DADATA_KEY:-}"
