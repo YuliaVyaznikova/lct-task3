@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -442,6 +443,19 @@ def export_plan(plan_id: str) -> dict:
 
 
 # --------------------------------------------------------------- фронтенд
+
+# На Windows таблица типов берётся из реестра, где «.js» нередко записан как
+# text/plain. Браузер отказывается исполнять модуль с таким типом — страница
+# открывается пустой, причём без ошибки в консоли. Задаём типы явно.
+for _extension, _mime in {
+    ".js": "text/javascript",
+    ".mjs": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+}.items():
+    mimetypes.add_type(_mime, _extension)
 
 _FRONTEND = ROOT / "frontend" / "dist"
 if _FRONTEND.is_dir():

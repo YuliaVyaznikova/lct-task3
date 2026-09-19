@@ -268,25 +268,42 @@ export default function App() {
               onSelectEngineer={setSelectedEngineer}
             />
             <div className="tabs">
+              {/* Карточка заявки закрывается при смене вкладки: иначе она занимает
+                  всю панель и выталкивает содержимое вкладки за пределы экрана. */}
               <button
                 className={tab === 'routes' ? 'active' : ''}
-                onClick={() => setTab('routes')}
+                onClick={() => {
+                  setTab('routes')
+                  setSelectedOrder(null)
+                }}
               >
                 Маршруты<span className="count">{plan.metrics.engineers_used}</span>
               </button>
               <button
                 className={tab === 'unassigned' ? 'active' : ''}
-                onClick={() => setTab('unassigned')}
+                onClick={() => {
+                  setTab('unassigned')
+                  setSelectedOrder(null)
+                }}
               >
                 Не назначены<span className="count">{plan.unassigned.length}</span>
               </button>
               <button
                 className={tab === 'metrics' ? 'active' : ''}
-                onClick={() => setTab('metrics')}
+                onClick={() => {
+                  setTab('metrics')
+                  setSelectedOrder(null)
+                }}
               >
                 Метрики
               </button>
-              <button className={tab === 'diff' ? 'active' : ''} onClick={() => setTab('diff')}>
+              <button
+                className={tab === 'diff' ? 'active' : ''}
+                onClick={() => {
+                  setTab('diff')
+                  setSelectedOrder(null)
+                }}
+              >
                 Изменения{diff && <span className="count">{diff.changed.length}</span>}
               </button>
             </div>

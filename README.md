@@ -46,6 +46,13 @@ python -m planner.cli plan --region demo --time-limit 20 --verbose
 
 Тесты: `python -m pytest -q` (около 250 проверок, три минуты).
 
+Визуальная проверка интерфейса — прогон сценария защиты в headless-браузере
+со снимками каждого шага (нужен запущенный сервис и установленный Chrome):
+
+```bash
+python tools/demo_flow.py screenshots
+```
+
 ---
 
 ## Что умеет решение
