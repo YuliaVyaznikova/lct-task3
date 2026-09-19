@@ -204,6 +204,15 @@ export interface Diff {
   summary: string
 }
 
+/** Ломаные маршрутов по дорогам. Только для отрисовки, на расчёт не влияют. */
+export interface PlanGeometry {
+  available: boolean
+  source: string
+  profile: string
+  routes: Record<string, [number, number][]>
+  errors: string[]
+}
+
 export interface ReplanResponse {
   plan: Plan
   diff: Diff

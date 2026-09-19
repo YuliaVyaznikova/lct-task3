@@ -25,6 +25,7 @@ from planner.core.models import (
     Violation,
 )
 from planner.core.timeutil import min_to_hhmm
+from planner.ingest import equipment as equipment_module
 from planner.core.travel import TravelModel
 from planner.core.travel import build as build_travel
 
@@ -74,6 +75,7 @@ class Geo:
         self.travel = travel or build_travel(points)
         self.orders = scenario.orders_by_id
         self.engineers = scenario.engineers_by_id
+        self.equipment = equipment_module.load()
 
     def node(self, order_id: str) -> int:
         return self.order_index[order_id]
@@ -84,6 +86,14 @@ class Geo:
 
     def leg(self, engineer: Engineer, from_node: int, to_node: int) -> tuple[float, int]:
         return self.travel.travel(engineer.transport, from_node, to_node)
+
+    def equipment_needs(self, order_id: str) -> dict[str, int]:
+        """Что нужно везти к этой заявке (ответ экспертов, п.4)."""
+        return equipment_module.order_needs(self.orders[order_id], self.equipment)
+
+    def equipment_stock(self, engineer_id: str) -> dict[str, int]:
+        """Что бригада взяла в офисе утром — на весь день, без пополнения."""
+        return equipment_module.stock_for(engineer_id, self.equipment)
 
 
 @dataclass
@@ -140,6 +150,14 @@ def evaluate_route(
     stops: list[Stop] = list(start.locked_stops)
     node = start.node
     clock = start.available_min
+    # Оборудование выдаётся утром на весь день и не пополняется (эксперты, п.4),
+    # поэтому считаем израсходованное нарастающим итогом по всему маршруту,
+    # включая уже выполненные до события визиты.
+    stock = geo.equipment_stock(engineer.id)
+    used: dict[str, int] = {}
+    for locked in start.locked_stops:
+        for kind, count in geo.equipment_needs(locked.order_id).items():
+            used[kind] = used.get(kind, 0) + count
     distance_km = start.distance_km
     travel_min = start.travel_min
     work_min = start.work_min
@@ -150,6 +168,22 @@ def evaluate_route(
         static = check_static(engineer, order)
         if static is not None:
             violations.append(static)
+
+        for kind, count in geo.equipment_needs(order_id).items():
+            used[kind] = used.get(kind, 0) + count
+            if used[kind] > stock.get(kind, 0):
+                violations.append(
+                    Violation(
+                        engineer_id=engineer.id,
+                        order_id=order_id,
+                        code="NO_EQUIPMENT",
+                        text=(
+                            f"не хватает оборудования: "
+                            f"«{geo.equipment.title(kind)}» нужен {used[kind]}-й раз, "
+                            f"а утром взято {stock.get(kind, 0)}"
+                        ),
+                    )
+                )
 
         leg_km, leg_min = geo.leg(engineer, node, geo.node(order_id))
         arrival = clock + leg_min

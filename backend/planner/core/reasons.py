@@ -42,6 +42,13 @@ def can_serve_alone(geo: Geo, engineer: Engineer, order: Order) -> ReasonCode | 
     if order.required_transport is not None and order.required_transport != engineer.transport:
         return ReasonCode.NO_TRANSPORT
 
+    # Оборудование выдаётся утром на весь день (эксперты, п.4): если заявке
+    # нужно больше, чем бригада вообще берёт с собой, она невыполнима в принципе.
+    stock = geo.equipment_stock(engineer.id)
+    for kind, count in geo.equipment_needs(order.id).items():
+        if count > stock.get(kind, 0):
+            return ReasonCode.NO_EQUIPMENT
+
     _, travel_min = geo.leg(engineer, geo.start_node(engineer), geo.node(order.id))
     earliest = max(order.window_start_min, engineer.shift_start_min + travel_min)
     latest = min(order.window_end_min, engineer.shift_end_min - order.duration_min)
@@ -88,6 +95,18 @@ def diagnose(
             )
 
         blocked = [verdicts[e.id] for e in with_skill]
+        if all(code is ReasonCode.NO_EQUIPMENT for code in blocked):
+            from planner.ingest.equipment import describe_needs
+
+            return Unassigned(
+                order_id=order.id,
+                reason_code=ReasonCode.NO_EQUIPMENT,
+                reason=(
+                    f"для заявки нужно {describe_needs(geo.equipment_needs(order.id), geo.equipment)}, "
+                    "а бригады столько с собой не берут — нужно увеличить утренний запас"
+                ),
+            )
+
         if all(code is ReasonCode.NO_TRANSPORT for code in blocked):
             required = TRANSPORT_RU[order.required_transport] if order.required_transport else "—"
             have = ", ".join(sorted({TRANSPORT_RU[e.transport] for e in with_skill}))

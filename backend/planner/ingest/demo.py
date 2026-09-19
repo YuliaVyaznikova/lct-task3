@@ -31,6 +31,7 @@ from planner.core.models import (
 from planner.core.replan import make_urgent_order
 from planner.core.validate import Geo
 from planner.ingest import beeline, engineers as engineers_module
+from planner.ingest import equipment as equipment_module
 
 #: Регион-основа: компактный, целиком в городе — на карте читается лучше,
 #: чем Юго-Восток с вылетами в Каширу за 90 км.
@@ -180,6 +181,7 @@ def build(
         candidate.id = DEMO_ID
         candidate.name = DEMO_NAME
         engineers_module.populate(candidate, seed=seed, region_id=base_region)
+        equipment_module.populate(candidate)
 
         checks = check_dataset(candidate)
         if not all(check.ok for check in checks):

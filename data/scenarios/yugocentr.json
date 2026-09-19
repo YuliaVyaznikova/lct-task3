@@ -24,6 +24,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -31,6 +32,9 @@
         "control_status": "Отправлена",
         "control_engineer": "Капитанчук Александр",
         "control_id": "305894566",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -50,13 +54,17 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отправлена",
         "control_engineer": "Капитанчук Александр",
-        "control_id": "305923871"
+        "control_id": "305923871",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -75,13 +83,17 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отправлена",
         "control_engineer": "Исхаков Денис",
-        "control_id": "305857442"
+        "control_id": "305857442",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -100,6 +112,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -107,6 +120,9 @@
         "control_status": "Отправлена",
         "control_engineer": "Брюзгин Ярослав",
         "control_id": "305848096",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -126,13 +142,17 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отправлена",
         "control_engineer": "Бахарев Андрей",
-        "control_id": "305715188"
+        "control_id": "305715188",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -151,13 +171,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Прокопенко Вячеслав",
-        "control_id": "305885689"
+        "control_id": "305885689",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -176,13 +200,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Выговский Сергей",
-        "control_id": "305896115"
+        "control_id": "305896115",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -201,13 +229,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бахарев Андрей",
-        "control_id": "305826867"
+        "control_id": "305826867",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -226,13 +258,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Данилов Даниил",
-        "control_id": "305888827"
+        "control_id": "305888827",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -251,13 +287,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "В работе",
         "control_engineer": "Выговский Сергей",
-        "control_id": "305923588"
+        "control_id": "305923588",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -276,13 +316,17 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "В работе",
         "control_engineer": "Переладов Алексей",
-        "control_id": "305911433"
+        "control_id": "305911433",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -301,13 +345,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "В работе",
         "control_engineer": "Сакур Тимофей",
-        "control_id": "305885500"
+        "control_id": "305885500",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -326,13 +374,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Прокопенко Вячеслав",
-        "control_id": "305896271"
+        "control_id": "305896271",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -351,13 +403,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Капитанчук Александр",
-        "control_id": "305862599"
+        "control_id": "305862599",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -376,13 +432,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Капитанчук Александр",
-        "control_id": "305885170"
+        "control_id": "305885170",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -401,13 +461,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Рыбалкин Егор",
-        "control_id": "305894946"
+        "control_id": "305894946",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -426,13 +490,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Рыбалкин Егор",
-        "control_id": "305897647"
+        "control_id": "305897647",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -451,13 +519,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Ионов Геннадий",
-        "control_id": "305848336"
+        "control_id": "305848336",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -476,13 +548,17 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Исхаков Денис",
-        "control_id": "305924398"
+        "control_id": "305924398",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -501,13 +577,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Брюзгин Ярослав",
-        "control_id": "305597759"
+        "control_id": "305597759",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -526,6 +606,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -533,6 +614,9 @@
         "control_status": "Выполнена",
         "control_engineer": "Бахарев Андрей",
         "control_id": "305773274",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -552,13 +636,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бахарев Андрей",
-        "control_id": "305892707"
+        "control_id": "305892707",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -577,13 +665,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Переладов Алексей",
-        "control_id": "305853788"
+        "control_id": "305853788",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -602,13 +694,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Переладов Алексей",
-        "control_id": "305865903"
+        "control_id": "305865903",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -627,13 +723,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Сакур Тимофей",
-        "control_id": "305836042"
+        "control_id": "305836042",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -652,13 +752,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Сакур Тимофей",
-        "control_id": "305857303"
+        "control_id": "305857303",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -677,13 +781,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Данилов Даниил",
-        "control_id": "305888542"
+        "control_id": "305888542",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -702,13 +810,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Данилов Даниил",
-        "control_id": "305893538"
+        "control_id": "305893538",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -727,13 +839,17 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Дозаказ оборудования",
         "control_status": "Отправлена",
         "control_engineer": "Брюзгин Ярослав",
-        "control_id": "305866081"
+        "control_id": "305866081",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -752,13 +868,17 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Дозаказ оборудования",
         "control_status": "Отменена",
         "control_engineer": "Бахарев Андрей",
-        "control_id": "305914018"
+        "control_id": "305914018",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -777,6 +897,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -802,6 +923,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -827,6 +949,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -852,6 +975,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -877,6 +1001,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -902,6 +1027,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -927,6 +1053,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -952,6 +1079,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -977,6 +1105,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1002,6 +1131,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1027,6 +1157,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1052,6 +1183,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1077,6 +1209,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1102,13 +1235,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Локальная заявка/ремонт у клиента",
         "control_status": "Выполнена",
         "control_engineer": "Исхаков Денис",
-        "control_id": "305886379"
+        "control_id": "305886379",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -1127,6 +1264,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1152,6 +1290,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1177,13 +1316,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Локальная заявка/ремонт у клиента",
         "control_status": "Выполнена",
         "control_engineer": "Исхаков Денис",
-        "control_id": "305924262"
+        "control_id": "305924262",
+        "equipment": {
+          "stb": 1
+        }
       }
     },
     {
@@ -1202,6 +1345,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1227,6 +1371,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1252,13 +1397,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Локальная заявка/ремонт у клиента",
         "control_status": "Выполнена",
         "control_engineer": "Брюзгин Ярослав",
-        "control_id": "305897498"
+        "control_id": "305897498",
+        "equipment": {
+          "stb": 1
+        }
       }
     },
     {
@@ -1277,6 +1426,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1302,6 +1452,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1327,6 +1478,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1352,6 +1504,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1377,6 +1530,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1402,6 +1556,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,

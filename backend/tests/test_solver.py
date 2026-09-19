@@ -205,3 +205,48 @@ def test_beats_baseline_on_real_data(real, region):
     base = baseline.plan(scenario, geo)
     assert ours.metrics.assigned > base.metrics.assigned
     assert ours.metrics.distance_per_order_km < base.metrics.distance_per_order_km
+
+
+# ------------------------------------- очерёдность по ярусам (эксперты, п.15)
+
+
+def test_priority_order_is_emergency_then_connection_then_the_rest():
+    """Авария → Подключение → Ремонт и дозаказ (ответ экспертов, п.15).
+
+    Раньше дозаказ шёл в одном ярусе с подключением, потому что выполняется
+    тем же навыком. Эксперты поставили его к ремонту: при дефиците ресурсов
+    он уступает подключению.
+    """
+    from planner.core.solver import _drop_penalty
+    from planner.ingest.normatives import classify
+
+    penalties = {}
+    for label, (work_type, hd) in {
+        "авария": ("Глобальная проблема", "Авария"),
+        "подключение": ("Подключение", "Конвергенция абонента"),
+        "дозаказ": ("Дозаказ", "Дозаказ оборудования"),
+        "ремонт": ("Локальная заявка", "Нет линка"),
+    }.items():
+        norm = classify(work_type, hd)
+        order = make_order(label, 1, norm.skill, duration=norm.duration_min)
+        order = order.model_copy(update={"priority": norm.priority, "priority_tier": norm.priority_tier})
+        penalties[label] = _drop_penalty(order)
+
+    assert penalties["авария"] > penalties["подключение"] > penalties["дозаказ"]
+    assert penalties["дозаказ"] == penalties["ремонт"], "дозаказ и ремонт — один ярус"
+
+
+def test_connection_wins_over_a_repair_when_only_one_fits():
+    """При нехватке времени выбирается подключение, а не ремонт."""
+    window = ("10:00", "11:00")
+    connection = make_order("CONN", 1, Skill.CONNECTION, window, duration=55)
+    connection = connection.model_copy(update={"priority_tier": 2})
+    repair = make_order("REP", 12, Skill.LOCAL, window, duration=55)
+    repair = repair.model_copy(update={"priority_tier": 3})
+
+    scenario = make_scenario(
+        [repair, connection], [make_engineer("E01", [Skill.LOCAL, Skill.CONNECTION])]
+    )
+    plan = solver.plan(scenario, Geo(scenario), FAST)
+    assert plan.metrics.assigned == 1
+    assert "CONN" in plan.assignment, "подключение приоритетнее ремонта"

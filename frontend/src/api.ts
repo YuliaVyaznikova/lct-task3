@@ -2,6 +2,7 @@ import type {
   Objective,
   OrderExplanation,
   PlanEvent,
+  PlanGeometry,
   PlanResponse,
   ReplanResponse,
   Scenario,
@@ -54,6 +55,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ order_id: orderId, engineer_id: engineerId, position: 'best' }),
     }),
+
+  geometry: (planId: string) => request<PlanGeometry>(`/plans/${planId}/geometry`),
 
   explain: (planId: string, orderId: string) =>
     request<OrderExplanation & { assigned: boolean; reason?: string; reason_code?: string }>(

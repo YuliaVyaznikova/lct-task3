@@ -21,6 +21,11 @@ class Norm:
     tech_min: int
     docs_min: int
     priority: Priority
+    #: Очерёдность при нехватке ресурсов: 1 — авария, 2 — подключение,
+    #: 3 — ремонт и дозаказ (ответ экспертов, п.15). Определяется типом
+    #: работ, а не навыком: дозаказ делает тот же инженер, что и подключение,
+    #: но при дефиците уступает ему.
+    priority_tier: int
     name: str
 
     @property
@@ -51,6 +56,7 @@ def load_rules(path: Path | None = None) -> tuple[_Rule, ...]:
                     tech_min=int(row["tech_min"]),
                     docs_min=int(row["docs_min"]),
                     priority=Priority(row["priority"].strip()),
+                    priority_tier=int(row["priority_tier"]),
                     name=row["normative_name"].strip(),
                 ),
             )

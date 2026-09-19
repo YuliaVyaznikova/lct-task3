@@ -20,6 +20,7 @@ from planner.api.store import PlanRecord, next_plan_id, store
 from planner.core import baseline as baseline_module
 from planner.core import control as control_module
 from planner.core import explain as explain_module
+from planner.core import geometry as geometry_module
 from planner.core import metrics as metrics_module
 from planner.core import replan as replan_module
 from planner.core import solver, travel
@@ -410,6 +411,24 @@ def explain_order(plan_id: str, order_id: str) -> dict:
                 "reason": unassigned.reason,
             }
     raise HTTPException(404, f"Заявки {order_id} нет в плане {plan_id}")
+
+
+@app.get("/api/plans/{plan_id}/geometry")
+def plan_geometry(plan_id: str) -> dict:
+    """Ломаные маршрутов по дорогам — только для отрисовки на карте.
+
+    На расчёт не влияет: план уже построен офлайн-моделью. Если сервис
+    маршрутизации недоступен, интерфейс рисует прямые отрезки.
+    """
+    record = _record(plan_id)
+    geometry = geometry_module.build(record.geo, record.plan)
+    return {
+        "available": geometry.available,
+        "source": geometry.source,
+        "profile": geometry_module.PROFILE,
+        "routes": geometry.routes,
+        "errors": geometry.errors[:5],
+    }
 
 
 @app.get("/api/plans/{plan_id}/export")

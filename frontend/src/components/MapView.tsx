@@ -52,6 +52,8 @@ interface Props {
   scenario: Scenario
   plan: Plan
   diff: Diff | null
+  /** Ломаные по дорогам; когда их нет, маршруты рисуются прямыми отрезками. */
+  geometry: Record<string, [number, number][]> | null
   selectedOrder: string | null
   selectedEngineer: string | null
   onSelectOrder: (orderId: string | null) => void
@@ -61,6 +63,7 @@ export function MapView({
   scenario,
   plan,
   diff,
+  geometry,
   selectedOrder,
   selectedEngineer,
   onSelectOrder,
@@ -111,18 +114,23 @@ export function MapView({
         .filter((route) => route.stops.length && visible(route.engineer_id))
         .map((route) => {
           const color = engineerColor(engineerIds, route.engineer_id)
-          const path: [number, number][] = []
-          // Маршрут начинается в стартовой точке инженера, а не обязательно
-          // в офисе: у части исполнителей Юго-Востока это выездная база
-          // в Домодедове или Кашире (ТЗ §2.4).
-          const start =
-            scenario.engineers.find((e) => e.id === route.engineer_id)?.start ?? scenario.office
-          if (start.lat != null && start.lon != null) {
-            path.push([start.lat, start.lon])
-          }
-          for (const stop of route.stops) {
-            const order = ordersById[stop.order_id]
-            if (order?.lat != null && order.lon != null) path.push([order.lat, order.lon])
+          // Если пришла геометрия по дорогам — рисуем её, иначе прямые отрезки
+          // между точками. Вид линии одинаков, отличается только достоверность.
+          const road = geometry?.[route.engineer_id]
+          const path: [number, number][] = road ? road : []
+          if (!road) {
+            // Маршрут начинается в стартовой точке инженера, а не обязательно
+            // в офисе: у части исполнителей Юго-Востока это выездная база
+            // в Домодедове или Кашире (ТЗ §2.4).
+            const start =
+              scenario.engineers.find((e) => e.id === route.engineer_id)?.start ?? scenario.office
+            if (start.lat != null && start.lon != null) {
+              path.push([start.lat, start.lon])
+            }
+            for (const stop of route.stops) {
+              const order = ordersById[stop.order_id]
+              if (order?.lat != null && order.lon != null) path.push([order.lat, order.lon])
+            }
           }
           return (
             <Polyline

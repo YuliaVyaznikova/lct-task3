@@ -59,6 +59,7 @@ class ReasonCode(StrEnum):
 
     NO_SKILL = "NO_SKILL"
     NO_TRANSPORT = "NO_TRANSPORT"
+    NO_EQUIPMENT = "NO_EQUIPMENT"
     SHIFT_MISMATCH = "SHIFT_MISMATCH"
     UNREACHABLE = "UNREACHABLE"
     CAPACITY = "CAPACITY"
@@ -126,6 +127,9 @@ class Order(Base):
     window_start: HHMM
     window_end: HHMM
     priority: Priority = Priority.NORMAL
+    #: Очерёдность при нехватке ресурсов (ответ экспертов, п.15):
+    #: 1 — авария, 2 — подключение, 3 — ремонт и дозаказ.
+    priority_tier: int = 3
     required_transport: Transport | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
 
@@ -308,7 +312,11 @@ class PlanParams(Base):
     # (заявки → инженеры → пробег). Нужен потому, что плата за выход инженера
     # на смену бесполезно искажает поиск, когда сократить штат всё равно нельзя.
     objective: Literal["auto", "min_engineers", "min_distance"] = "auto"
-    time_limit_s: int = 10
+    # Режим «auto» делит бюджет пополам между двумя прогонами, поэтому
+    # значение ниже 20 с означает менее 10 с на попытку. На самом крупном
+    # участке (Юго-Восток, 83 заявки и три удалённых кластера) этого мало:
+    # при 7 с получается 8.1 км на заявку, при 10 с — 5.9. Замер — в README.
+    time_limit_s: int = 20
     seed: int = 42
     stability_weight_m: int = 0
     lunch: bool = False

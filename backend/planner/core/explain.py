@@ -72,6 +72,25 @@ def explain_order(
     order = geo.orders[order_id]
     engineer = geo.engineers[route.engineer_id]
 
+    from planner.ingest.equipment import describe_needs
+
+    needs = geo.equipment_needs(order_id)
+    position = route.stops.index(stop)
+    taken: dict[str, int] = {}
+    for earlier in route.stops[: position + 1]:
+        for kind, count in geo.equipment_needs(earlier.order_id).items():
+            taken[kind] = taken.get(kind, 0) + count
+    stock = geo.equipment_stock(engineer.id)
+
+    if needs:
+        spent = ", ".join(
+            f"{geo.equipment.title(kind)} {taken.get(kind, 0)} из {stock.get(kind, 0)}"
+            for kind in sorted(needs)
+        )
+        equipment_text = f"Оборудование: нужен {describe_needs(needs, geo.equipment)}; израсходовано {spent}"
+    else:
+        equipment_text = "Оборудование — не требуется"
+
     checks = [
         Check(True, f"Навык «{SKILL_RU[order.skill]}» — есть (навыки инженера: {engineer.skills_ru})"),
         Check(
@@ -89,6 +108,7 @@ def explain_order(
             f"Смена {engineer.shift_start}–{engineer.shift_end}: "
             f"маршрут завершается в {route.end_time}",
         ),
+        Check(True, equipment_text),
     ]
 
     headline = (

@@ -14,6 +14,7 @@ import {
 import type {
   ControlReference,
   Diff,
+  PlanGeometry,
   MetricRow,
   Objective,
   Plan,
@@ -29,7 +30,7 @@ export default function App() {
   const [scenarios, setScenarios] = useState<ScenarioBrief[]>([])
   const [scenarioId, setScenarioId] = useState('demo')
   const [objective, setObjective] = useState<Objective>('auto')
-  const [timeLimit, setTimeLimit] = useState(15)
+  const [timeLimit, setTimeLimit] = useState(30)
   const [lunch, setLunch] = useState(false)
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
@@ -37,6 +38,10 @@ export default function App() {
   const [comparison, setComparison] = useState<MetricRow[]>([])
   const [control, setControl] = useState<ControlReference | null>(null)
   const [diff, setDiff] = useState<Diff | null>(null)
+  // Линии по дорогам: только оформление карты, на расчёт не влияют.
+  const [roads, setRoads] = useState<PlanGeometry | null>(null)
+  const [roadsOn, setRoadsOn] = useState(true)
+  const [roadsBusy, setRoadsBusy] = useState(false)
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +61,7 @@ export default function App() {
     setPlan(null)
     setDiff(null)
     setControl(null)
+    setRoads(null)
     setSelectedOrder(null)
     setSelectedEngineer(null)
   }, [scenarioId])
@@ -119,6 +125,27 @@ export default function App() {
     [plan],
   )
 
+  // Геометрия подгружается отдельно и не задерживает показ плана.
+  useEffect(() => {
+    if (!plan || !roadsOn) return
+    let cancelled = false
+    setRoadsBusy(true)
+    api
+      .geometry(plan.id)
+      .then((result) => {
+        if (!cancelled) setRoads(result)
+      })
+      .catch(() => {
+        if (!cancelled) setRoads({ available: false, source: '', profile: '', routes: {}, errors: [] })
+      })
+      .finally(() => {
+        if (!cancelled) setRoadsBusy(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [plan?.id, roadsOn])
+
   const brief = useMemo(
     () => scenarios.find((s) => s.id === scenarioId),
     [scenarios, scenarioId],
@@ -160,8 +187,8 @@ export default function App() {
             <label>Время на расчёт: {timeLimit} с</label>
             <input
               type="range"
-              min={3}
-              max={60}
+              min={6}
+              max={90}
               value={timeLimit}
               onChange={(e) => setTimeLimit(Number(e.target.value))}
             />
@@ -223,6 +250,7 @@ export default function App() {
                 scenario={scenario}
                 plan={plan}
                 diff={diff}
+                geometry={roadsOn && roads?.available ? roads.routes : null}
                 selectedOrder={selectedOrder}
                 selectedEngineer={selectedEngineer}
                 onSelectOrder={setSelectedOrder}
@@ -249,6 +277,21 @@ export default function App() {
                 </span>
               )}
               <span className="muted">заливка кружка — цвет инженера</span>
+              <label className="row small" style={{ gap: 4, marginLeft: 'auto' }}>
+                <input
+                  type="checkbox"
+                  style={{ width: 'auto' }}
+                  checked={roadsOn}
+                  onChange={(e) => setRoadsOn(e.target.checked)}
+                />
+                <span>
+                  {roadsBusy
+                    ? 'строим по дорогам…'
+                    : roadsOn && roads?.available
+                      ? 'линии по дорогам'
+                      : 'линии по прямой'}
+                </span>
+              </label>
             </div>
           </>
         ) : (

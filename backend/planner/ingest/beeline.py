@@ -23,6 +23,7 @@ from pathlib import Path
 from planner.core.models import (
     Order,
     Point,
+    Priority,
     Scenario,
     ScenarioMeta,
 )
@@ -39,6 +40,14 @@ OFFICE_PREFIX = "адрес оф"
 # Время события «отмена заявки» в заготовках: за 50 минут до начала окна —
 # клиент успевает отказаться, когда бригада уже в пути.
 CANCEL_LEAD_MIN = 50
+
+#: Окно шире этого считаем «суточным»: в выгрузке аварии стоят как 0:01–23:59.
+FULL_DAY_WINDOW_MIN = 20 * 60
+
+#: В какие часы может возникнуть авария. Эксперты (п.5): «начало выполнения
+#: аварийной заявки определяется временем её фактического поступления»,
+#: то есть авария возникает в течение рабочего дня, а не висит с полуночи.
+INCIDENT_HOURS = (9 * 60, 19 * 60)
 
 
 @dataclass(frozen=True)
@@ -177,6 +186,7 @@ def load_region(
                 window_start=min_to_hhmm(window_start),
                 window_end=min_to_hhmm(window_end),
                 priority=norm.priority,
+                priority_tier=norm.priority_tier,
                 attributes=attributes,
             )
         )
@@ -190,6 +200,7 @@ def load_region(
         meta=ScenarioMeta(source="beeline", notes=f"синтетика: {synthetic_csv.name}"),
     )
 
+    assign_incident_times(scenario)
     if control_csv is not None:
         attach_control(scenario, control_csv)
     return scenario
@@ -231,6 +242,34 @@ def attach_control(scenario: Scenario, control_csv: Path) -> int:
         matched += 1
     scenario.meta.notes += f"; контроль: {control_csv.name} ({matched} строк)"
     return matched
+
+
+def assign_incident_times(scenario: Scenario, seed: int = 42) -> int:
+    """Проставляет аварийным заявкам время фактического поступления.
+
+    В выгрузке аварии записаны окном 0:01–23:59: это не значит, что их можно
+    начинать с полуночи, — это суточный срок обязательства перед клиентом.
+    Эксперты уточнили, что авария возникает в течение дня и с этого момента
+    влияет на расписание бригады. Самого времени в данных нет, поэтому оно
+    распределяется по рабочему дню детерминированно — одинаково при каждом
+    запуске, чтобы демонстрация была воспроизводимой.
+    """
+    import hashlib
+
+    low, high = INCIDENT_HOURS
+    marked = 0
+    for order in scenario.orders:
+        span = order.window_end_min - order.window_start_min
+        if order.priority is not Priority.URGENT or span < FULL_DAY_WINDOW_MIN:
+            continue
+        digest = hashlib.sha256(f"{seed}|{order.id}".encode()).digest()
+        reported = low + int.from_bytes(digest[:4], "big") % max(1, high - low)
+        reported -= reported % 5  # ровные пять минут читаются лучше
+        order.window_start = min_to_hhmm(reported)
+        order.attributes["reported_at"] = order.window_start
+        order.attributes["incident_window"] = "сутки от поступления"
+        marked += 1
+    return marked
 
 
 def cancelled_orders(scenario: Scenario) -> list[Order]:

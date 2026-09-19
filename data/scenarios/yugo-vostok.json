@@ -24,13 +24,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отправлена",
         "control_engineer": "Бригада Паршин",
-        "control_id": "305894907"
+        "control_id": "305894907",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -49,6 +53,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -56,6 +61,9 @@
         "control_status": "Отправлена",
         "control_engineer": "Бригада Андреев",
         "control_id": "305834087",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -75,13 +83,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отправлена",
         "control_engineer": "Бригада Белоновский",
-        "control_id": "305895440"
+        "control_id": "305895440",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -100,13 +112,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "В пути",
         "control_engineer": "Бригада Рыбин",
-        "control_id": "305923527"
+        "control_id": "305923527",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -125,13 +141,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Паршин",
-        "control_id": "305669724"
+        "control_id": "305669724",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -150,13 +170,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Горбанев",
-        "control_id": "305795109"
+        "control_id": "305795109",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -175,13 +199,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Бузань",
-        "control_id": "305829447"
+        "control_id": "305829447",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -200,6 +228,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -207,6 +236,9 @@
         "control_status": "Отменена",
         "control_engineer": "Бригада Бузань",
         "control_id": "305889825",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -226,13 +258,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Бузань",
-        "control_id": "305889960"
+        "control_id": "305889960",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -251,13 +287,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Козырь",
-        "control_id": "305886995"
+        "control_id": "305886995",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -276,13 +316,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Андреев",
-        "control_id": "305859123"
+        "control_id": "305859123",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -301,13 +345,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Отменена",
         "control_engineer": "Бригада Белоновский",
-        "control_id": "305465139"
+        "control_id": "305465139",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -326,13 +374,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "В работе",
         "control_engineer": "Бригада Белоновский",
-        "control_id": "305932266"
+        "control_id": "305932266",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -351,13 +403,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Царьков",
-        "control_id": "305882397"
+        "control_id": "305882397",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -376,13 +432,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Паршин",
-        "control_id": "305664067"
+        "control_id": "305664067",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -401,6 +461,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -408,6 +469,9 @@
         "control_status": "Выполнена",
         "control_engineer": "Бригада Паршин",
         "control_id": "305913811",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -427,13 +491,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Паршин",
-        "control_id": "305920263"
+        "control_id": "305920263",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -452,6 +520,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": "car",
       "attributes": {
         "gigabit": false,
@@ -459,6 +528,9 @@
         "control_status": "Выполнена",
         "control_engineer": "Бригада Горбанев",
         "control_id": "303643298",
+        "equipment": {
+          "router": 1
+        },
         "required_transport_synthetic": true
       }
     },
@@ -478,13 +550,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Горбанев",
-        "control_id": "305897534"
+        "control_id": "305897534",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -503,13 +579,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Бузань",
-        "control_id": "305896708"
+        "control_id": "305896708",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -528,13 +608,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Бузань",
-        "control_id": "305919778"
+        "control_id": "305919778",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -553,13 +637,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Саламатин",
-        "control_id": "305740327"
+        "control_id": "305740327",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -578,13 +666,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Саламатин",
-        "control_id": "305882589"
+        "control_id": "305882589",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -603,13 +695,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Макаров",
-        "control_id": "305627560"
+        "control_id": "305627560",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -628,13 +724,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Макаров",
-        "control_id": "305831197"
+        "control_id": "305831197",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -653,13 +753,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Макаров",
-        "control_id": "305856459"
+        "control_id": "305856459",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -678,13 +782,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Козырь",
-        "control_id": "305053598"
+        "control_id": "305053598",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -703,13 +811,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Козырь",
-        "control_id": "305789470"
+        "control_id": "305789470",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -728,13 +840,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Рыбин",
-        "control_id": "305860084"
+        "control_id": "305860084",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -753,13 +869,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Рыбин",
-        "control_id": "305868733"
+        "control_id": "305868733",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -778,13 +898,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Рыбин",
-        "control_id": "305879453"
+        "control_id": "305879453",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -803,13 +927,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Андреев",
-        "control_id": "305734411"
+        "control_id": "305734411",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -828,13 +956,17 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Белоновский",
-        "control_id": "305349726"
+        "control_id": "305349726",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -853,13 +985,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Каушнян",
-        "control_id": "305835785"
+        "control_id": "305835785",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -878,13 +1014,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Просрочена",
         "control_engineer": "Бригада Саламатин",
-        "control_id": "305756926"
+        "control_id": "305756926",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -903,13 +1043,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 2,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Подключение клиентов Базовая",
         "control_status": "Просрочена",
         "control_engineer": "Бригада Белоновский",
-        "control_id": "305880503"
+        "control_id": "305880503",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -928,13 +1072,17 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Дозаказ оборудования",
         "control_status": "Отправлена",
         "control_engineer": "Бригада Горбанев",
-        "control_id": "305878634"
+        "control_id": "305878634",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -953,13 +1101,17 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Дозаказ оборудования",
         "control_status": "Отправлена",
         "control_engineer": "Бригада Макаров",
-        "control_id": "305858678"
+        "control_id": "305858678",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -978,13 +1130,17 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Дозаказ оборудования",
         "control_status": "Отправлена",
         "control_engineer": "Бригада Козырь",
-        "control_id": "305542376"
+        "control_id": "305542376",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -1003,13 +1159,17 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Дозаказ оборудования",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Горбанев",
-        "control_id": "305906639"
+        "control_id": "305906639",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -1028,6 +1188,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1053,6 +1214,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1078,6 +1240,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1103,6 +1266,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1128,6 +1292,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1153,6 +1318,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1178,6 +1344,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1203,6 +1370,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1228,6 +1396,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1253,6 +1422,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1278,6 +1448,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1303,13 +1474,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Локальная заявка/ремонт у клиента",
         "control_status": "В работе",
         "control_engineer": "Бригада Горбанев",
-        "control_id": "305887906"
+        "control_id": "305887906",
+        "equipment": {
+          "router": 1
+        }
       }
     },
     {
@@ -1328,6 +1503,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1353,6 +1529,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1378,13 +1555,17 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Локальная заявка/ремонт у клиента",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Горбанев",
-        "control_id": "305898219"
+        "control_id": "305898219",
+        "equipment": {
+          "stb": 1
+        }
       }
     },
     {
@@ -1403,6 +1584,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1428,6 +1610,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1453,6 +1636,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1478,6 +1662,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1503,6 +1688,7 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1528,6 +1714,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1553,6 +1740,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1578,13 +1766,17 @@
       "window_start": "16:00",
       "window_end": "18:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Локальная заявка/ремонт у клиента",
         "control_status": "Выполнена",
         "control_engineer": "Бригада Рыбин",
-        "control_id": "305921652"
+        "control_id": "305921652",
+        "equipment": {
+          "stb": 1
+        }
       }
     },
     {
@@ -1603,6 +1795,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1628,6 +1821,7 @@
       "window_start": "18:00",
       "window_end": "20:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1653,6 +1847,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1678,6 +1873,7 @@
       "window_start": "10:00",
       "window_end": "12:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1703,6 +1899,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1728,6 +1925,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1753,6 +1951,7 @@
       "window_start": "14:00",
       "window_end": "16:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1778,6 +1977,7 @@
       "window_start": "12:00",
       "window_end": "14:00",
       "priority": "normal",
+      "priority_tier": 3,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1803,6 +2003,7 @@
       "window_start": "20:00",
       "window_end": "22:00",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
@@ -1825,16 +2026,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "15:00",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305921706"
+        "reported_at": "15:00",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -1850,16 +2051,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "14:15",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305921752"
+        "reported_at": "14:15",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -1875,16 +2076,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "16:40",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305924066"
+        "reported_at": "16:40",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -1900,16 +2101,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "18:55",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305924099"
+        "reported_at": "18:55",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -1925,16 +2126,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "17:50",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305924131"
+        "reported_at": "17:50",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -1950,16 +2151,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "14:35",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305924132"
+        "reported_at": "14:35",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -1975,16 +2176,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "12:55",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Козырь",
-        "control_id": "305921069"
+        "reported_at": "12:55",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -2000,16 +2201,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "12:05",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Отправлена",
-        "control_engineer": "Бригада Козырь",
-        "control_id": "305921133"
+        "reported_at": "12:05",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -2025,16 +2226,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "10:50",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "В пути",
-        "control_engineer": "Бригада Саламатин",
-        "control_id": "305780570"
+        "reported_at": "10:50",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -2050,16 +2251,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "15:30",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Выполнена",
-        "control_engineer": "Бригада Горбанев",
-        "control_id": "305921105"
+        "reported_at": "15:30",
+        "incident_window": "сутки от поступления"
       }
     },
     {
@@ -2075,16 +2276,16 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "00:01",
+      "window_start": "10:50",
       "window_end": "23:59",
       "priority": "urgent",
+      "priority_tier": 1,
       "required_transport": null,
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "control_status": "Выполнена",
-        "control_engineer": "Бригада Горбанев",
-        "control_id": "305928428"
+        "reported_at": "10:50",
+        "incident_window": "сутки от поступления"
       }
     }
   ],
@@ -2286,6 +2487,6 @@
     "source": "beeline",
     "generator_seed": 42,
     "geocoder": "dadata+district+nominatim",
-    "notes": "синтетика: Юго-восток Синтетические данные.csv; контроль: Юго-восток Контрольное распределение.csv (83 строк)"
+    "notes": "синтетика: Юго-восток Синтетические данные.csv; контроль: Юго-восток Контрольное распределение.csv (72 строк)"
   }
 }

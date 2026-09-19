@@ -26,12 +26,16 @@ def test_every_assigned_order_has_a_card(explained):
 
 
 def test_card_confirms_all_mandatory_constraints(explained):
-    """Четыре проверки: навык, транспорт, окно, смена — и все пройдены."""
+    """Пять проверок: навык, транспорт, окно, смена и оборудование — все пройдены.
+
+    Оборудование добавилось после ответа экспертов (п.4): исходное ТЗ §2.2
+    относило его к необязательному усложнению, эксперты сделали ограничением.
+    """
     for card in explained.explanations.values():
-        assert len(card["checks"]) == 4
+        assert len(card["checks"]) == 5
         assert all(check["ok"] for check in card["checks"])
         joined = " ".join(check["text"] for check in card["checks"])
-        for word in ("Навык", "Транспорт", "Окно", "Смена"):
+        for word in ("Навык", "Транспорт", "Окно", "Смена", "Оборудование"):
             assert word in joined
 
 

@@ -13,7 +13,7 @@ import argparse
 import collections
 import sys
 
-from planner.ingest import beeline, store
+from planner.ingest import beeline, equipment, store
 from planner.paths import CACHE_DIR, RAW_DIR, ensure_dirs
 
 
@@ -33,9 +33,11 @@ def cmd_build(args: argparse.Namespace) -> int:
     for spec in _specs(args.region):
         synthetic, control = beeline.find_region_files(spec, RAW_DIR)
         scenario = beeline.load_region(synthetic, control, spec=spec)
+        equipment.populate(scenario)
         path = store.save(scenario)
         brigades = beeline.control_brigades(scenario)
         cancelled = beeline.cancelled_orders(scenario)
+        needs_equipment = sum(1 for o in scenario.orders if o.attributes.get("equipment"))
         print(
             f"{scenario.name:<12} заявок {len(scenario.orders):>3}"
             f"  бригад в контроле {len(brigades):>2}"
@@ -44,6 +46,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             f"  -> {path.relative_to(path.parents[2])}"
         )
         print(f"{'':<12} офис: {scenario.office.address}")
+        print(f"{'':<12} заявок с оборудованием: {needs_equipment}; {equipment.summary(scenario)}")
     return 0
 
 

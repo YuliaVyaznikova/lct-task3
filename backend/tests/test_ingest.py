@@ -72,14 +72,38 @@ def test_ids_are_unique_and_ordered(scenarios):
 
 
 def test_midnight_window_parsed(scenarios):
-    """Аварии Юго-Востока идут с окном 0:01–23:59 — час без ведущего нуля."""
-    day_long = [
-        o
-        for o in scenarios["yugo-vostok"].orders
-        if o.window_start == "00:01" and o.window_end == "23:59"
-    ]
+    """Аварии Юго-Востока записаны окном 0:01–23:59 — час без ведущего нуля."""
+    day_long = [o for o in scenarios["yugo-vostok"].orders if o.window_end == "23:59"]
     assert len(day_long) == 11
     assert all(o.priority is Priority.URGENT for o in day_long)
+
+
+def test_incidents_get_an_arrival_time(scenarios):
+    """Суточное окно — это срок обязательства, а не разрешение начать с полуночи.
+
+    Эксперты (п.5): «начало выполнения аварийной заявки определяется временем
+    её фактического поступления». Времени в выгрузке нет, поэтому оно
+    расставляется детерминированно по рабочему дню.
+    """
+    incidents = [
+        o for o in scenarios["yugo-vostok"].orders if o.attributes.get("reported_at")
+    ]
+    assert len(incidents) == 11
+    for order in incidents:
+        assert order.window_start == order.attributes["reported_at"]
+        assert "09:00" <= order.window_start <= "19:00"
+        assert order.window_start != "00:01"
+
+
+def test_incident_times_are_reproducible():
+    """Демонстрация должна повторяться: время поступления не случайно от запуска."""
+    from planner.ingest.beeline import REGION_BY_ID, find_region_files, load_region
+
+    spec = REGION_BY_ID["yugo-vostok"]
+    synthetic, control = find_region_files(spec)
+    first = load_region(synthetic, control, spec=spec)
+    second = load_region(synthetic, control, spec=spec)
+    assert [o.window_start for o in first.orders] == [o.window_start for o in second.orders]
 
 
 def test_optional_connection_column(scenarios):

@@ -37,11 +37,13 @@ from planner.core.models import (
 from planner.core.timeutil import min_to_hhmm
 from planner.core.validate import Geo, StartState, check_static, evaluate
 
-#: Штраф за пропуск заявки, метры. Больше любого мыслимого пробега и платы за инженера.
-DROP_PENALTY = {
-    "normal": 1_000_000,
-    "connection": 1_500_000,
-    "urgent": 10_000_000,
+#: Штраф за пропуск заявки по ярусу приоритета, метры. Больше любого мыслимого
+#: пробега и платы за инженера, поэтому выполнение заявок всегда важнее экономии.
+#: Очерёдность задана экспертами (п.15): авария → подключение → ремонт и дозаказ.
+DROP_PENALTY_BY_TIER = {
+    1: 10_000_000,  # авария
+    2: 2_000_000,   # подключение
+    3: 1_000_000,   # ремонт, дозаказ, информационные выезды
 }
 
 #: Плата за вывод инженера на смену в режиме «меньше инженеров», метры.
@@ -63,11 +65,11 @@ class SolveResult:
 
 
 def _drop_penalty(order) -> int:
+    """Цена отказа от заявки: чем выше ярус, тем дороже её не выполнить."""
+    tier = getattr(order, "priority_tier", 3)
     if order.priority is Priority.URGENT:
-        return DROP_PENALTY["urgent"]
-    if order.skill.value == "connection":
-        return DROP_PENALTY["connection"]
-    return DROP_PENALTY["normal"]
+        tier = min(tier, 1)
+    return DROP_PENALTY_BY_TIER.get(tier, DROP_PENALTY_BY_TIER[3])
 
 
 def _capable(scenario: Scenario, order) -> list[Engineer]:
@@ -221,6 +223,41 @@ def solve(
         index = manager.NodeToIndex(node_of_order[order.id])
         routing.VehicleVar(index).SetValues([-1, *allowed])
         routing.AddDisjunction([index], _drop_penalty(order))
+
+    # ---- оборудование: то, что взято утром, нельзя израсходовать дважды
+    # (ответ экспертов, п.4). Для модели это обычная вместимость: у каждого
+    # вида оборудования своя размерность, потребности заявок складываются
+    # вдоль маршрута и не могут превысить утренний запас инженера. При
+    # перепланировании запас уменьшается на уже израсходованное до события.
+    for kind in geo.equipment.kinds:
+        demand = np.zeros(total_nodes, dtype=np.int64)
+        for order in servable:
+            demand[node_of_order[order.id]] = geo.equipment_needs(order.id).get(kind, 0)
+        if not demand.any():
+            continue
+
+        def make_demand_callback(row: np.ndarray):
+            def callback(index: int) -> int:
+                return int(row[manager.IndexToNode(index)])
+
+            return callback
+
+        capacities = []
+        for engineer in engineers:
+            left = geo.equipment_stock(engineer.id).get(kind, 0)
+            state = starts.get(engineer.id)
+            if state is not None:
+                for stop in state.locked_stops:
+                    left -= geo.equipment_needs(stop.order_id).get(kind, 0)
+            capacities.append(max(0, left))
+
+        routing.AddDimensionWithVehicleCapacity(
+            routing.RegisterUnaryTransitCallback(make_demand_callback(demand)),
+            0,
+            capacities,
+            True,  # запас считается с нуля на старте маршрута
+            f"Equipment:{kind}",
+        )
 
     if params.objective == "min_engineers":
         routing.SetFixedCostOfAllVehicles(ENGINEER_FIXED_COST)
