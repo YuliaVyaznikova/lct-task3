@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import {
+  AttributionControl,
   CircleMarker,
   MapContainer,
   Marker,
@@ -103,7 +104,14 @@ export function MapView({
     selectedEngineer === null || selectedEngineer === engineerId
 
   return (
-    <MapContainer center={center} zoom={11} className="leaflet-container" preferCanvas>
+    <MapContainer
+      center={center}
+      zoom={11}
+      className="leaflet-container"
+      preferCanvas
+      attributionControl={false}
+    >
+      <AttributionControl position="bottomright" prefix={false} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
