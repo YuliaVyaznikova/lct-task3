@@ -313,32 +313,43 @@ def test_6_dataset_covers_all_constraints(demo):
 def test_6_assumptions_are_documented():
     from planner.paths import ROOT
 
-    text = (ROOT / "docs" / "ASSUMPTIONS.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs" / "assumptions.md").read_text(encoding="utf-8")
     for topic in ("норматив", "синтетич", "транспорт", "окно", "контрольн"):
         assert topic in text.lower(), topic
 
 
 @pytest.mark.parametrize(
-    "section",
+    "topic, document, markers",
     [
-        "Запуск",
-        "Схема решения",
-        "Логика оптимизации",
-        "Метрики",
-        "Известные ограничения",
-        "Идеи дальнейшего развития",
+        ("инструкция запуска", "README.md", ("Быстрый запуск", "docker compose")),
+        ("схема решения", "README.md", ("Архитектура", "mermaid")),
+        ("логика оптимизации", "docs/algorithm.md", ("Целевая функция", "Ограничения")),
+        ("обязательные метрики", "docs/algorithm.md", ("Метрики", "Базовый вариант")),
+        ("известные ограничения", "README.md", ("Известные ограничения",)),
+        ("идеи развития", "README.md", ("развития",)),
     ],
 )
-def test_5_readme_has_required_sections(section):
+def test_5_documentation_covers_every_required_topic(topic, document, markers):
     from planner.paths import ROOT
 
-    assert section in (ROOT / "README.md").read_text(encoding="utf-8")
+    text = (ROOT.joinpath(*document.split("/"))).read_text(encoding="utf-8")
+    for marker in markers:
+        assert marker in text, f"{topic}: в {document} нет «{marker}»"
+
+
+def test_5_readme_links_to_every_document():
+    from planner.paths import ROOT
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for name in ("architecture", "algorithm", "data", "assumptions", "api", "design"):
+        assert f"docs/{name}.md" in readme, f"README не ссылается на docs/{name}.md"
+        assert (ROOT / "docs" / f"{name}.md").exists(), f"нет файла docs/{name}.md"
 
 
 def test_5_data_documentation_describes_units():
     from planner.paths import ROOT
 
-    text = (ROOT / "docs" / "DATA.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs" / "data.md").read_text(encoding="utf-8")
     for topic in ("единиц", "справочник", "мин", "километр"):
         assert topic in text.lower(), topic
 

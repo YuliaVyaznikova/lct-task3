@@ -185,7 +185,7 @@ def _district_centroid(orders: list[Order], districts: list[str]) -> Point | Non
 def _assign_remote_bases(
     engineers: list[Engineer], config: EngineerConfig, orders: list[Order]
 ) -> int:
-    """Переносит часть автомобилистов на выездные базы (см."""
+    """Переносит часть автомобилистов на выездные базы."""
     if not config.remote_bases:
         return 0
 

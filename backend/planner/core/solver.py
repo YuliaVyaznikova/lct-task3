@@ -9,6 +9,7 @@ from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
 from planner.core import metrics as metrics_module
 from planner.core import reasons
+from planner.core import zones
 from planner.core.models import (
     Engineer,
     Plan,
@@ -31,6 +32,8 @@ ENGINEER_FIXED_COST = 100_000
 URGENT_LATENESS_WEIGHT = 50
 
 RESCHEDULE_WEIGHT = 5_000
+
+ZONE_SWITCH_PENALTY_M = 30_000
 
 HORIZON_MIN = 1_800
 
@@ -121,6 +124,7 @@ def solve(
         for order_id, engineer_id in previous.items()
         if order_id in node_of_order
     }
+    zone_of_node = [geo.zone(node) for node in geo_nodes] + [zones.BASE_ZONE]
 
     def make_distance_callback(vehicle: int):
         engineer_id = engineers[vehicle].id
@@ -131,6 +135,8 @@ def solve(
             cost = int(distance_m[i, j])
             if stability and j in previous_vehicle and previous_vehicle[j] != engineer_id:
                 cost += stability
+            if j != dummy_end and zone_of_node[i] != zone_of_node[j]:
+                cost += ZONE_SWITCH_PENALTY_M
             return cost
 
         return callback

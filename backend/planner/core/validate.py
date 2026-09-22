@@ -12,6 +12,7 @@ from planner.core.models import (
     Stop,
     Violation,
 )
+from planner.core import zones as zones_module
 from planner.core.timeutil import min_to_hhmm
 from planner.ingest import equipment as equipment_module
 from planner.core.travel import TravelModel
@@ -54,6 +55,7 @@ class Geo:
         self.orders = scenario.orders_by_id
         self.engineers = scenario.engineers_by_id
         self.equipment = equipment_module.load()
+        self.zones = zones_module.split_into_zones(self.travel.distance_m(), self.office_index)
 
     def node(self, order_id: str) -> int:
         return self.order_index[order_id]
@@ -61,6 +63,10 @@ class Geo:
     def start_node(self, engineer: Engineer) -> int:
         """Стартовая точка инженера: его собственная либо офис участка."""
         return self._start_index.get(engineer.id, self.office_index)
+
+    def zone(self, node: int) -> int:
+        """Зона обслуживания: ноль это окрестность офиса, дальше удалённые кластеры."""
+        return self.zones[node]
 
     def leg(self, engineer: Engineer, from_node: int, to_node: int) -> tuple[float, int]:
         return self.travel.travel(engineer.transport, from_node, to_node)
