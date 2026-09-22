@@ -327,7 +327,7 @@ def main(argv: list[str] | None = None) -> int:
     plan_cmd.add_argument("--region", default="demo")
     plan_cmd.add_argument("--objective", default="auto",
                           choices=["auto", "min_engineers", "min_distance"])
-    plan_cmd.add_argument("--time-limit", type=int, default=15, dest="time_limit")
+    plan_cmd.add_argument("--time-limit", type=int, default=20, dest="time_limit")
     plan_cmd.add_argument("--verbose", action="store_true", help="печатать маршруты и отказы")
     plan_cmd.set_defaults(func=cmd_plan)
 
@@ -335,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
         "control", help="справочное сравнение с фактическим ручным распределением"
     )
     control_cmd.add_argument("--region", default="all")
-    control_cmd.add_argument("--time-limit", type=int, default=15, dest="time_limit")
+    control_cmd.add_argument("--time-limit", type=int, default=20, dest="time_limit")
     control_cmd.set_defaults(func=cmd_control)
 
     calibrate = sub.add_parser(

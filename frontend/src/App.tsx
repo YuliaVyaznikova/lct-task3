@@ -30,7 +30,7 @@ export default function App() {
   const [scenarios, setScenarios] = useState<ScenarioBrief[]>([])
   const [scenarioId, setScenarioId] = useState('demo')
   const [objective, setObjective] = useState<Objective>('auto')
-  const [timeLimit, setTimeLimit] = useState(30)
+  const [timeLimit, setTimeLimit] = useState(20)
   const [lunch, setLunch] = useState(false)
   // Эксперты (п.12): число бригад команда определяет сама, контроль — ориентир.
   const [engineerCount, setEngineerCount] = useState<number | null>(null)
