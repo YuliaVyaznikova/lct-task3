@@ -51,6 +51,8 @@ export interface Stop {
   start: string
   finish: string
   locked: boolean
+  /** На сколько минут визит начат позже обещанного клиенту окна. */
+  late_min: number
 }
 
 export interface Route {
@@ -86,6 +88,8 @@ export interface Metrics {
   utilization_by_engineer: Record<string, number>
   extra_engineers_needed: number
   late_risk: number
+  /** Сколько визитов перенесено за пределы обещанного окна. */
+  rescheduled: number
 }
 
 export interface Check {
@@ -141,6 +145,8 @@ export interface ScenarioBrief {
   date: string
   orders: number
   engineers: number
+  /** Наименьшее число бригад, которое можно запросить для сценария. */
+  engineers_min: number
   events: number
   office: string
 }

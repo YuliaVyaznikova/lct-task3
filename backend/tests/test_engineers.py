@@ -222,3 +222,54 @@ def test_config_falls_back_to_defaults():
 def test_unknown_region_is_rejected():
     with pytest.raises(ValueError, match="count"):
         gen.load_config("нет-такого-региона")
+
+
+# ------------------------------------------- число бригад (эксперты, п.12)
+
+
+@pytest.mark.parametrize("region", REGIONS)
+def test_resize_builds_a_valid_directory_of_any_allowed_size(scenarios, region):
+    config = gen.load_config(region)
+    for count in range(gen.min_count(config), 21):
+        scenario = scenarios[region].model_copy(deep=True)
+        gen.resize(scenario, count)
+        assert len(scenario.engineers) == count
+        gen.check_invariants(scenario.engineers, config)
+
+
+def test_resize_keeps_remote_bases(scenarios):
+    """Удалённые кластеры обслуживаются с выездных баз при любом составе."""
+    scenario = scenarios["yugo-vostok"].model_copy(deep=True)
+    gen.resize(scenario, 16)
+    remote = [e for e in scenario.engineers if e.start.coords != scenario.office.coords]
+    assert len(remote) == 3
+    assert all(e.transport is Transport.CAR for e in remote)
+
+
+def test_resize_does_not_touch_orders(scenarios):
+    """Планы с разным числом бригад должны считаться на одних и тех же заявках."""
+    scenario = scenarios["vostok"].model_copy(deep=True)
+    before = [order.model_dump() for order in scenario.orders]
+    gen.resize(scenario, 8)
+    assert [order.model_dump() for order in scenario.orders] == before
+
+
+def test_resize_is_deterministic(scenarios):
+    first = gen.resize(scenarios["vostok"].model_copy(deep=True), 9)
+    second = gen.resize(scenarios["vostok"].model_copy(deep=True), 9)
+    assert [e.model_dump() for e in first.engineers] == [
+        e.model_dump() for e in second.engineers
+    ]
+
+
+def test_minimum_depends_on_region():
+    """Юго-Востоку нужно больше: трое начинают день на выездных базах."""
+    assert gen.min_count(gen.load_config("vostok")) == gen.MIN_ENGINEERS
+    assert gen.min_count(gen.load_config("yugo-vostok")) > gen.MIN_ENGINEERS
+
+
+@pytest.mark.parametrize("region", REGIONS)
+def test_resize_below_minimum_explains_why(scenarios, region):
+    minimum = gen.min_count(gen.load_config(region))
+    with pytest.raises(gen.InvariantError, match=f"не меньше {minimum}"):
+        gen.resize(scenarios[region].model_copy(deep=True), minimum - 1)

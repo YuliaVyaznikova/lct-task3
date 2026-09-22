@@ -50,6 +50,7 @@ def compute(
             if order.window_end_min - hhmm_to_min(stop.start) < LATE_RISK_MARGIN_MIN:
                 late_risk += 1
 
+    rescheduled = sum(1 for route in routes for stop in route.stops if stop.late_min > 0)
     urgent = [o for o in scenario.orders if o.priority is Priority.URGENT]
     total_km = sum(route.distance_km for route in used)
     per_order = round(total_km / len(assigned_ids), 2) if assigned_ids else 0.0
@@ -71,6 +72,7 @@ def compute(
         utilization_by_engineer=utilization,
         extra_engineers_needed=extra_engineers_needed,
         late_risk=late_risk,
+        rescheduled=rescheduled,
     )
 
 

@@ -312,6 +312,69 @@ def populate(
     return scenario
 
 
+#: Меньше этого числа инварианты не выполнимы: нужны все четыре типа
+#: транспорта, аварийщик в каждой смене и хотя бы один узкий специалист.
+MIN_ENGINEERS = 6
+
+
+def min_count(config: EngineerConfig) -> int:
+    """Наименьший состав региона, при котором квоты транспорта сходятся.
+
+    Общего минимума мало: на Юго-Востоке автомобилистов нужно не меньше пяти
+    (трое начинают день на выездных базах), а при половине машин в квоте это
+    достижимо только с девяти бригад.
+    """
+    for count in range(MIN_ENGINEERS, 100):
+        quota = _quota(config.transport_mix, count)
+        if quota.count(Transport.CAR.value) >= config.min_cars and all(
+            transport.value in quota for transport in Transport
+        ):
+            return count
+    raise InvariantError("квоты транспорта не сходятся ни при каком составе")
+
+
+def resize(
+    scenario: Scenario,
+    count: int,
+    seed: int | None = None,
+    config_path: Path | None = None,
+    region_id: str | None = None,
+) -> Scenario:
+    """Пересобирает состав бригад под заданное число (ответ экспертов, п.12).
+
+    Эксперты разрешили определять количество бригад самостоятельно, взяв
+    контрольное распределение лишь как ориентир. Состав именно пересобирается,
+    а не обрезается: если просто отбросить «лишних», можно остаться без
+    аварийщика в вечерней смене или без автомобилиста, и половина заявок
+    станет невыполнимой по формальной причине.
+
+    Заявки не трогаются: требование «только на автомобиле» — свойство заявки,
+    а не состава, иначе планы с разным числом бригад считались бы на разных
+    данных и сравнивать их было бы нельзя.
+    """
+    base = region_id or scenario.id
+    config = load_config(base, config_path)
+    minimum = min_count(config)
+    if count < minimum:
+        reason = (
+            f"нужно не меньше {config.min_cars} автомобилистов, часть из них "
+            "начинает день на выездных базах"
+            if minimum > MIN_ENGINEERS
+            else "при меньшем составе невозможно представить все типы транспорта "
+            "и закрыть обе смены"
+        )
+        raise InvariantError(f"бригад должно быть не меньше {minimum}: {reason}")
+
+    config.count = count
+    engineers, used_seed = generate(
+        config, seed if seed is not None else (scenario.meta.generator_seed or 42),
+        scenario.orders, scenario.office,
+    )
+    scenario.engineers = engineers
+    scenario.meta.generator_seed = used_seed
+    return scenario
+
+
 def summary(engineers: list[Engineer]) -> str:
     import collections
 

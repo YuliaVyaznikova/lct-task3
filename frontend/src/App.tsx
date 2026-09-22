@@ -32,6 +32,11 @@ export default function App() {
   const [objective, setObjective] = useState<Objective>('auto')
   const [timeLimit, setTimeLimit] = useState(30)
   const [lunch, setLunch] = useState(false)
+  // Эксперты (п.12): число бригад команда определяет сама, контроль — ориентир.
+  const [engineerCount, setEngineerCount] = useState<number | null>(null)
+  // Эксперты (п.2): при перепланировании обещанное клиенту время можно сдвинуть,
+  // предупреждает служба поддержки. При первичном расчёте окно всегда жёсткое.
+  const [allowReschedule, setAllowReschedule] = useState(false)
 
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
@@ -62,6 +67,7 @@ export default function App() {
     setDiff(null)
     setControl(null)
     setRoads(null)
+    setEngineerCount(null)
     setSelectedOrder(null)
     setSelectedEngineer(null)
   }, [scenarioId])
@@ -72,7 +78,9 @@ export default function App() {
     setDiff(null)
     setSelectedOrder(null)
     try {
-      const response = await api.plan(scenarioId, objective, timeLimit, lunch)
+      const response = await api.plan(
+        scenarioId, objective, timeLimit, lunch, engineerCount, allowReschedule,
+      )
       setPlan(response.optimized)
       setComparison(response.comparison)
       setControl(response.control)
@@ -83,7 +91,7 @@ export default function App() {
     } finally {
       setBusy(false)
     }
-  }, [scenarioId, objective, timeLimit, lunch])
+  }, [scenarioId, objective, timeLimit, lunch, engineerCount, allowReschedule])
 
   const applyEvent = useCallback(
     async (event: PlanEvent) => {
@@ -193,7 +201,29 @@ export default function App() {
               onChange={(e) => setTimeLimit(Number(e.target.value))}
             />
           </div>
-          <label className="row small" style={{ marginBottom: 10 }}>
+          <div className="field">
+            <label>
+              Бригад на смене: {engineerCount ?? brief?.engineers ?? '—'}
+              {engineerCount === null && ' (как в контроле)'}
+            </label>
+            <input
+              type="range"
+              min={brief?.engineers_min ?? 6}
+              max={20}
+              value={engineerCount ?? brief?.engineers ?? 12}
+              onChange={(e) => setEngineerCount(Number(e.target.value))}
+            />
+            {engineerCount !== null && (
+              <button
+                style={{ fontSize: 11, padding: '2px 6px', marginTop: 4 }}
+                onClick={() => setEngineerCount(null)}
+              >
+                вернуть как в контроле
+              </button>
+            )}
+          </div>
+
+          <label className="row small" style={{ marginBottom: 6 }}>
             <input
               type="checkbox"
               style={{ width: 'auto' }}
@@ -201,6 +231,19 @@ export default function App() {
               onChange={(e) => setLunch(e.target.checked)}
             />
             <span>учитывать обеденный перерыв</span>
+          </label>
+          <label
+            className="row small"
+            style={{ marginBottom: 10 }}
+            title="При перепланировании разрешить сдвинуть обещанное клиенту время. Клиента предупреждает служба поддержки."
+          >
+            <input
+              type="checkbox"
+              style={{ width: 'auto' }}
+              checked={allowReschedule}
+              onChange={(e) => setAllowReschedule(e.target.checked)}
+            />
+            <span>при событии можно двигать время клиенту</span>
           </label>
 
           <button className="primary" style={{ width: '100%' }} disabled={busy} onClick={run}>

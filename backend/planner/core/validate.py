@@ -142,8 +142,16 @@ def evaluate_route(
     engineer: Engineer,
     order_ids: list[str],
     start: StartState | None = None,
+    allow_late: bool = False,
 ) -> tuple[Route, list[Violation]]:
-    """Считает времена по порядку посещения и собирает нарушения."""
+    """Считает времена по порядку посещения и собирает нарушения.
+
+    `allow_late` включается только при перепланировании с разрешённым
+    переносом (эксперты, п.2): начало позже обещанного окна перестаёт быть
+    нарушением, но фиксируется в `Stop.late_min` — такой визит требует
+    звонка клиенту от службы поддержки. Конец смены остаётся жёстким
+    в любом случае: за инженера решать нельзя.
+    """
     start = start or StartState(node=geo.start_node(engineer), available_min=engineer.shift_start_min)
     violations: list[Violation] = []
 
@@ -192,7 +200,8 @@ def evaluate_route(
         wait = begin - arrival
         finish = begin + order.duration_min
 
-        if begin > order.window_end_min:
+        late = max(0, begin - order.window_end_min)
+        if late and not allow_late:
             violations.append(
                 Violation(
                     engineer_id=engineer.id,
@@ -200,7 +209,7 @@ def evaluate_route(
                     code="WINDOW",
                     text=(
                         f"начало {min_to_hhmm(begin)} позже конца окна "
-                        f"{order.window_end} (опоздание {begin - order.window_end_min} мин)"
+                        f"{order.window_end} (опоздание {late} мин)"
                     ),
                 )
             )
@@ -228,6 +237,7 @@ def evaluate_route(
                 start=min_to_hhmm(begin),
                 finish=min_to_hhmm(finish),
                 locked=False,
+                late_min=late if allow_late else 0,
             )
         )
 
@@ -254,6 +264,7 @@ def evaluate(
     geo: Geo,
     assignment: dict[str, list[str]],
     starts: dict[str, StartState] | None = None,
+    allow_late: bool = False,
 ) -> tuple[list[Route], list[Violation]]:
     """Пересчитывает все маршруты плана и собирает нарушения по всему плану."""
     starts = starts or {}
@@ -296,7 +307,9 @@ def evaluate(
                 seen[order_id] = engineer_id
 
         known = [o for o in order_ids if o in geo.orders]
-        route, route_violations = evaluate_route(geo, engineer, known, starts.get(engineer_id))
+        route, route_violations = evaluate_route(
+            geo, engineer, known, starts.get(engineer_id), allow_late
+        )
         routes.append(route)
         violations.extend(route_violations)
 

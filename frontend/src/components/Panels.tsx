@@ -81,6 +81,15 @@ export function RoutesTable({
                               зафиксир.
                             </div>
                           )}
+                          {stop.late_min > 0 && (
+                            <div
+                              className="small"
+                              style={{ color: 'var(--bad)' }}
+                              title="Время сдвинуто относительно обещанного клиенту — нужен звонок службы поддержки"
+                            >
+                              +{stop.late_min} мин
+                            </div>
+                          )}
                         </td>
                         <td>
                           <span className="mono">{order?.id}</span>{' '}
@@ -212,6 +221,13 @@ export function MetricsPanel({
           <div className="label">км на заявку</div>
         </div>
       </div>
+
+      {m.rescheduled > 0 && (
+        <p className="small" style={{ color: 'var(--bad)', marginTop: -6 }}>
+          Перенесено за пределы обещанного окна: {m.rescheduled}. Службе поддержки
+          нужно предупредить клиентов.
+        </p>
+      )}
 
       <h2 style={{ fontSize: 12, color: 'var(--muted)' }}>Сравнение с базовым вариантом</h2>
       <p className="small muted" style={{ marginTop: -4 }}>

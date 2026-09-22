@@ -359,3 +359,52 @@ def test_export_matches_the_specification_format(client, plan):
     assert body["объяснение"]
     for item in body["не_назначены"]:
         assert item["причина"]
+
+
+# ------------------------------------------- число бригад (эксперты, п.12)
+
+
+def test_scenarios_report_the_minimum_brigade_count(client):
+    body = {item["id"]: item for item in client.get("/api/scenarios").json()}
+    assert body["demo"]["engineers_min"] == 6
+    assert body["yugo-vostok"]["engineers_min"] > body["vostok"]["engineers_min"]
+    for item in body.values():
+        assert item["engineers_min"] <= item["engineers"]
+
+
+def test_plan_with_custom_brigade_count(client):
+    response = client.post(
+        "/api/plans", json={"scenario_id": "demo", "params": FAST, "engineer_count": 8}
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(body["scenario"]["engineers"]) == 8
+    assert body["optimized"]["metrics"]["engineers_total"] == 8
+    assert body["baseline"]["metrics"]["engineers_total"] == 8, "сравнение на одном составе"
+    assert body["optimized"]["metrics"]["engineers_used"] <= 8
+
+
+def test_custom_brigade_count_does_not_change_the_saved_scenario(client):
+    before = client.get("/api/scenarios/demo").json()
+    client.post("/api/plans", json={"scenario_id": "demo", "params": FAST, "engineer_count": 7})
+    after = client.get("/api/scenarios/demo").json()
+    assert len(after["engineers"]) == len(before["engineers"])
+
+
+def test_too_few_brigades_is_a_readable_error(client):
+    response = client.post(
+        "/api/plans", json={"scenario_id": "yugo-vostok", "params": FAST, "engineer_count": 7}
+    )
+    assert response.status_code == 422
+    assert "не меньше 9" in response.json()["detail"]
+
+
+def test_reschedule_flag_passes_through_the_api(client):
+    response = client.post(
+        "/api/plans",
+        json={"scenario_id": "demo", "params": {**FAST, "allow_reschedule": True}},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["optimized"]["params"]["allow_reschedule"] is True
+    assert body["optimized"]["metrics"]["rescheduled"] == 0, "первичный план окно не двигает"

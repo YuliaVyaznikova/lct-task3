@@ -35,12 +35,25 @@ export const api = {
 
   scenario: (id: string) => request<Scenario>(`/scenarios/${id}`),
 
-  plan: (scenarioId: string, objective: Objective, timeLimit: number, lunch: boolean) =>
+  plan: (
+    scenarioId: string,
+    objective: Objective,
+    timeLimit: number,
+    lunch: boolean,
+    engineerCount: number | null,
+    allowReschedule: boolean,
+  ) =>
     request<PlanResponse>('/plans', {
       method: 'POST',
       body: JSON.stringify({
         scenario_id: scenarioId,
-        params: { objective, time_limit_s: timeLimit, lunch },
+        params: {
+          objective,
+          time_limit_s: timeLimit,
+          lunch,
+          allow_reschedule: allowReschedule,
+        },
+        engineer_count: engineerCount,
       }),
     }),
 

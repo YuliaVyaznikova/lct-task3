@@ -263,6 +263,10 @@ class Stop(Base):
     start: HHMM
     finish: HHMM
     locked: bool = False
+    #: На сколько минут визит начат позже обещанного клиенту окна.
+    #: Отлично от нуля только при перепланировании с разрешённым переносом;
+    #: такой визит требует звонка от службы поддержки.
+    late_min: int = 0
 
 
 class Route(Base):
@@ -305,6 +309,8 @@ class Metrics(Base):
     utilization_by_engineer: dict[str, float] = Field(default_factory=dict)
     extra_engineers_needed: int = 0
     late_risk: int = 0
+    #: Сколько визитов перенесено за пределы обещанного окна (эксперты, п.2).
+    rescheduled: int = 0
 
 
 class PlanParams(Base):
@@ -320,6 +326,12 @@ class PlanParams(Base):
     seed: int = 42
     stability_weight_m: int = 0
     lunch: bool = False
+    #: Разрешить при перепланировании сдвинуть обещанное клиенту время.
+    #: Эксперты (п.2): «при изменении расписания ранее озвученное клиенту
+    #: время может быть скорректировано; коммуникация с клиентом в этом
+    #: случае осуществляется службой поддержки». Применяется только к
+    #: перепланированию: при первичном расчёте окно всегда жёсткое.
+    allow_reschedule: bool = False
     travel_model: str = "haversine"
 
 

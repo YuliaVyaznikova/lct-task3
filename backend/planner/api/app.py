@@ -63,6 +63,8 @@ class ScenarioBrief(BaseModel):
     date: str
     orders: int
     engineers: int
+    #: Наименьшее число бригад, которое можно запросить для этого сценария.
+    engineers_min: int
     events: int
     office: str
 
@@ -70,6 +72,10 @@ class ScenarioBrief(BaseModel):
 class PlanRequest(BaseModel):
     scenario_id: str
     params: PlanParams = Field(default_factory=PlanParams)
+    #: Сколько бригад вывести на смену. Эксперты (п.12) разрешили определять
+    #: это самостоятельно, взяв контроль лишь как ориентир. None — оставить
+    #: состав сценария (по числу бригад в контрольном распределении).
+    engineer_count: int | None = None
 
 
 class MetricRowOut(BaseModel):
@@ -149,6 +155,11 @@ def _control(scenario: Scenario, plan: Plan) -> ControlReferenceOut:
     )
 
 
+#: У демо-набора нет собственной записи в engineers.yaml — он собран из Востока.
+def _config_region(scenario_id: str) -> str:
+    return scenario_id if scenario_id in {"vostok", "yugo-vostok", "yugocentr"} else "vostok"
+
+
 def _record(plan_id: str) -> PlanRecord:
     try:
         return store.get(plan_id)
@@ -184,6 +195,9 @@ def list_scenarios() -> list[ScenarioBrief]:
             date=s.date,
             orders=len(s.orders),
             engineers=len(s.engineers),
+            engineers_min=engineers_module.min_count(
+                engineers_module.load_config(_config_region(s.id))
+            ),
             events=len(s.events),
             office=s.office.address,
         )
@@ -270,6 +284,17 @@ async def upload_scenario(
 def create_plan(request: PlanRequest) -> PlanResponse:
     source = _load_scenario(request.scenario_id)
     working = source.model_copy(deep=True)
+
+    if request.engineer_count and request.engineer_count != len(working.engineers):
+        try:
+            engineers_module.resize(
+                working,
+                request.engineer_count,
+                region_id=_config_region(working.id),
+            )
+        except engineers_module.InvariantError as exc:
+            raise HTTPException(422, str(exc)) from None
+
     geo = Geo(working)
 
     plan_id = next_plan_id()

@@ -52,6 +52,14 @@ ENGINEER_FIXED_COST = 100_000
 #: Цена минуты задержки срочной заявки, метры за минуту.
 URGENT_LATENESS_WEIGHT = 50
 
+#: Цена минуты переноса за пределы обещанного клиенту окна, метры за минуту.
+#: Работает только при `allow_reschedule` (эксперты, п.2). Величина подобрана
+#: так, чтобы перенос был дороже любой перестановки маршрута, но дешевле
+#: отказа от заявки: 200 минут опоздания стоят столько же, сколько невыполнение.
+#: Иначе говоря, сдвинуть время клиенту допустимо только когда альтернатива —
+#: вовсе не приехать.
+RESCHEDULE_WEIGHT = 5_000
+
 #: Верхняя граница горизонта планирования в минутах (сутки с запасом).
 HORIZON_MIN = 1_800
 
@@ -194,9 +202,20 @@ def solve(
     earliest_shift = min(
         (starts[e.id].available_min if e.id in starts else e.shift_start_min) for e in engineers
     )
+    allow_reschedule = params.allow_reschedule and bool(starts)
     for order in servable:
         index = manager.NodeToIndex(node_of_order[order.id])
-        time_dim.CumulVar(index).SetRange(order.window_start_min, order.window_end_min)
+        if allow_reschedule:
+            # Перенос разрешён: верхняя граница отодвигается до конца смены,
+            # а выход за обещанное окно штрафуется (эксперты, п.2 — время
+            # можно скорректировать, клиента предупредит служба поддержки).
+            latest = max(order.window_end_min, max(e.shift_end_min for e in engineers))
+            time_dim.CumulVar(index).SetRange(order.window_start_min, latest)
+            time_dim.SetCumulVarSoftUpperBound(
+                index, order.window_end_min, RESCHEDULE_WEIGHT
+            )
+        else:
+            time_dim.CumulVar(index).SetRange(order.window_start_min, order.window_end_min)
         if order.priority is Priority.URGENT:
             # «Аварию нужно выполнить как можно раньше» (Q&A, блок 3).
             bound = max(order.window_start_min, earliest_shift)
@@ -371,7 +390,9 @@ def plan(
 
     result = solve(scenario, geo, params, starts, order_ids, previous)
 
-    routes, violations = evaluate(geo, result.assignment, starts)
+    routes, violations = evaluate(
+        geo, result.assignment, starts, allow_late=params.allow_reschedule and bool(starts)
+    )
     if violations:
         raise AssertionError(
             "солвер вернул недопустимый план: " + "; ".join(v.text for v in violations[:3])

@@ -311,6 +311,14 @@ def _summary(
     if not moved and not shifted and not newly_assigned and not newly_unassigned:
         parts.append("Остальной план не изменился.")
 
+    if after.metrics.rescheduled:
+        count = after.metrics.rescheduled
+        word = _plural(count, "заявке", "заявкам", "заявкам")
+        parts.append(
+            f"По {count} {word} пришлось сдвинуть обещанное клиенту время — "
+            "службе поддержки нужно предупредить."
+        )
+
     delta_distance = round(after.metrics.distance_total_km - before.metrics.distance_total_km, 1)
     delta_engineers = after.metrics.engineers_used - before.metrics.engineers_used
     parts.append(
