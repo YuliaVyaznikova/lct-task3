@@ -1,4 +1,4 @@
-"""Время внутри ядра — минуты от полуночи (int). Наружу — строки HH:MM."""
+"""Время внутри ядра минуты от полуночи (int)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ DAY_MIN = 24 * 60
 
 
 def hhmm_to_min(value: str) -> int:
-    """'9:05' / '09:05' -> 545. Допускает 24:00 как конец суток."""
+    """'9:05' / '09:05' -> 545."""
     m = _HHMM.match(value.strip())
     if not m:
         raise ValueError(f"не время в формате HH:MM: {value!r}")
@@ -22,14 +22,14 @@ def hhmm_to_min(value: str) -> int:
 
 
 def min_to_hhmm(value: int) -> str:
-    """545 -> '09:05'. Значения за пределами суток не сворачиваются (1500 -> '25:00')."""
+    """545 -> '09:05'."""
     if value < 0:
         raise ValueError(f"отрицательное время: {value}")
     return f"{value // 60:02d}:{value % 60:02d}"
 
 
 def parse_ru_datetime(value: str) -> tuple[str, int]:
-    """'17.08.2026 0:01' -> ('2026-08-17', 1). Формат выгрузки билайна."""
+    """'17.08.2026 0:01' -> ('2026-08-17', 1)."""
     m = _DT.match(value.strip())
     if not m:
         raise ValueError(f"не дата-время dd.mm.yyyy HH:MM: {value!r}")

@@ -1,26 +1,10 @@
-"""Разбор адресов выгрузки билайна в вид, понятный геокодерам.
-
-В данных соседствуют несколько форматов, все встречаются в реальных файлах:
-
-    Город Москва, пр-кт.Волгоградский, д. 128 к 5
-    г.Город Москва, наб.Семеновская, д. 3/1к2
-    Город Москва, ул.Земляной Вал, д. 24/30 стр. 1
-    Домодедово, проезд.Советский 1-й, д. 1А
-    МО, г. Кашира Кржижановского ул. д. 5/1          <- тип улицы после названия
-    Москва Булатниковский пр-зд. д. 6к1
-    обл.Московская область, г.Домодедово, пгт.Востряково-1, ул.Жуковского, д. 14/18
-    Город Москва, б-р.Самаркандский Квартал 137а, д. к5
-
-Результат — NormalizedAddress: город, улица «как принято писать», дом и
-свободная строка для текстового поиска.
-"""
+"""Разбор адресов выгрузки билайна в вид, понятный геокодерам."""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 
-# Тип улицы: сокращение в данных -> полное слово.
 STREET_TYPES: dict[str, str] = {
     "ул": "улица",
     "улица": "улица",
@@ -43,14 +27,10 @@ STREET_TYPES: dict[str, str] = {
     "квартал": "квартал",
 }
 
-# Названия-прилагательные ставятся перед типом («Ореховый бульвар»),
-# названия в родительном падеже — после («улица Корнеева»).
 _ADJECTIVE_TAIL = re.compile(
     r"(ский|ской|цкий|цкой|ный|ная|ний|няя|ый|ая|ой|ий|яя|ое|ее)$",
     re.IGNORECASE,
 )
-# Родительный падеж фамилии тоже оканчивается на «-ой» («улица Артюхиной»),
-# поэтому такие окончания исключаем из правила выше.
 _GENITIVE_TAIL = re.compile(r"(иной|овой|евой|ёвой|ыной)$", re.IGNORECASE)
 
 CITIES = ("Домодедово", "Кашира", "Ступино", "Москва")
@@ -90,7 +70,6 @@ def _strip_city(text: str) -> tuple[str, str, str]:
     settlement = ""
     city = ""
 
-    # «обл.Московская область, г.Домодедово, пгт.Востряково-1, ул.Жуковского, д. 14/18»
     m = re.search(r"пгт\.?\s*([\w\-]+)", rest, re.IGNORECASE)
     if m:
         settlement = m.group(1)
@@ -110,24 +89,20 @@ def _strip_city(text: str) -> tuple[str, str, str]:
             rest = (rest[: m.start()] + " " + rest[m.end() :]).strip(" ,")
             break
 
-    # Повторный «Город Москва» после снятия первого префикса.
     rest = re.sub(r"^(?:г\.)?город\s+москва\b[,\s]*", "", rest, flags=re.IGNORECASE)
     rest = re.sub(r"^(?:г\.)\s*", "", rest)
     rest = rest.strip(" ,")
 
     region = "Москва" if city == "Москва" else "Московская область"
-    return rest, city or "Москва", region if city else "Москва", settlement  # type: ignore[return-value]
+    return rest, city or "Москва", region if city else "Москва", settlement
 
 
-# «д.» распознаём только как отдельное слово: иначе в «проезд.3-й Павелецкий»
-# подстрока «д.3» будет принята за номер дома.
 _HOUSE_RE = re.compile(
     r"(?:^|[,\s])д\.?\s*"
     r"(?P<number>[0-9]+(?:/[0-9]+)?)"
     r"(?P<letter>[а-яё](?![0-9]))?",
     re.IGNORECASE,
 )
-# «д. к5» — дом задан только корпусом (Самаркандский Квартал 137а, д. к5).
 _HOUSE_KORPUS_ONLY_RE = re.compile(r"(?:^|[,\s])д\.?\s*(к\s*[0-9]+[а-яё]?)", re.IGNORECASE)
 
 
@@ -148,8 +123,6 @@ def _extract_house(text: str) -> tuple[str, str]:
         cut_start, cut_end = m.start(), m.end()
         house_parts.append(re.sub(r"\s+", "", m.group(1)).lower())
 
-    # Корпус и строение идут сразу за номером — со скольки угодно пробелами
-    # («д. 2/1 к 4») или вплотную («д. 16к2»).
     tail = text[cut_end:]
     korpus = re.match(r"\s*к(?:орп)?\.?\s*([0-9]+[а-яё]?)", tail, re.IGNORECASE)
     if korpus:
@@ -180,12 +153,10 @@ def _extract_street(text: str) -> str:
     if not text:
         return ""
 
-    # Форма «ул.Корнеева», «пр-кт.Волгоградский», «проезд Орехово-Зуевский».
     m = re.match(r"^([а-яё\-]+)\.?\s*(.+)$", text, re.IGNORECASE)
     if m and m.group(1).casefold() in STREET_TYPES:
         return _format_street(m.group(2), STREET_TYPES[m.group(1).casefold()])
 
-    # Форма «Кржижановского ул.», «Булатниковский пр-зд.» — тип после названия.
     m = re.match(r"^(.+?)\s+([а-яё\-]+)\.?$", text, re.IGNORECASE)
     if m and m.group(2).casefold() in STREET_TYPES:
         return _format_street(m.group(1), STREET_TYPES[m.group(2).casefold()])
@@ -201,7 +172,6 @@ def _extract_street(text: str) -> str:
 def normalize(raw: str) -> NormalizedAddress:
     text = re.sub(r"\s+", " ", (raw or "").replace("\xa0", " ")).strip()
     text = text.replace("кв.", "").strip(" ,")
-    # Номер квартиры в синтетике отсутствует, но в контроле встречается.
     text = re.sub(r",\s*кв\.?\s*[0-9]+\s*$", "", text, flags=re.IGNORECASE)
 
     rest, city, region, settlement = _strip_city(text)

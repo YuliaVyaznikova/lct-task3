@@ -1,4 +1,4 @@
-"""Геокодер: лестница провайдеров и проверка правдоподобия. Без обращений к сети."""
+"""Геокодер: лестница провайдеров и проверка правдоподобия."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ OFFICE_VOSTOK = (55.7006, 37.7623)
 
 
 def test_haversine_known_distance():
-    # Кремль — Останкинская башня, по прямой около 7.5 км.
     assert 7.3 < haversine_km((55.7520, 37.6175), (55.8197, 37.6117)) < 7.8
     assert haversine_km((55.75, 37.61), (55.75, 37.61)) == 0.0
 
@@ -40,12 +39,12 @@ def test_plausible_rejects_far_from_office():
 
 def test_plausible_rejects_outside_region():
     addr = normalize("Город Москва, ул.Окская, д. 32")
-    result = GeoResult(59.93, 30.33, GeocodeQuality.EXACT, "test", "1")  # Петербург
+    result = GeoResult(59.93, 30.33, GeocodeQuality.EXACT, "test", "1")
     assert "вне Московского региона" in (_plausible(result, addr, None, None) or "")
 
 
 def test_district_limit_wider_outside_moscow():
-    """Подмосковный «район» — целый город, точка в 10 км от центра допустима."""
+    """Подмосковный «район» целый город, точка в 10 км от центра допустима."""
     moscow = normalize("Город Москва, ул.Окская, д. 32")
     region = normalize("Домодедово, ул.Ильюшина, д. 20")
     centre = (55.44, 37.75)
@@ -80,7 +79,7 @@ def test_override_wins_over_everything(tmp_path):
     result, _ = geocode_one(
         "Город Москва, ул.Окская, д. 32",
         "Кузьминки",
-        Boom(),  # type: ignore[arg-type]
+        Boom(),
         Districts(tmp_path / "districts.csv"),
         Cache(tmp_path / "geo.json"),
         overrides={"Город Москва, ул.Окская, д. 32": (55.5, 37.5)},
@@ -97,12 +96,9 @@ def test_cached_value_skips_providers(tmp_path):
     cache = Cache(tmp_path / "geo.json")
     cache.put("адрес", GeoResult(55.7, 37.6, GeocodeQuality.EXACT, "dadata", "1"))
     result, _ = geocode_one(
-        "адрес", "Кузьминки", Boom(), Districts(tmp_path / "d.csv"), cache  # type: ignore[arg-type]
+        "адрес", "Кузьминки", Boom(), Districts(tmp_path / "d.csv"), cache
     )
     assert result.provider == "dadata"
-
-
-# -------------------------------------------------- результат на собранных данных
 
 
 @pytest.fixture(scope="module")
@@ -137,7 +133,7 @@ def test_geocoding_quality_is_high(scenarios):
 
 
 def test_moscow_regions_are_compact(scenarios):
-    """Восток и Югоцентр целиком в городе — признак, что геокодинг не разъехался."""
+    """Восток и Югоцентр целиком в городе признак, что геокодинг не разъехался."""
     for region in ("vostok", "yugocentr"):
         scenario = scenarios[region]
         far = [
@@ -149,7 +145,7 @@ def test_moscow_regions_are_compact(scenarios):
 
 
 def test_yugo_vostok_has_distant_orders(scenarios):
-    """У Юго-Востока есть Домодедово, Кашира и Ступино — это влияет на достижимость."""
+    """У Юго-Востока есть Домодедово, Кашира и Ступино это влияет на достижимость."""
     scenario = scenarios["yugo-vostok"]
     far = [o for o in scenario.orders if haversine_km(o.coords, scenario.office.coords) > 25]
     assert len(far) >= 15

@@ -28,7 +28,6 @@ def test_min_to_hhmm_pads():
 
 
 def test_parse_ru_datetime():
-    # Час без ведущего нуля встречается в аварийных заявках Юго-Востока.
     assert parse_ru_datetime("17.08.2026 0:01") == ("2026-08-17", 1)
     assert parse_ru_datetime("17.08.2026 23:59") == ("2026-08-17", 1439)
     assert parse_ru_datetime(" 17.08.2026 10:00 ") == ("2026-08-17", 600)

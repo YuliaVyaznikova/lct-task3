@@ -1,4 +1,4 @@
-"""Оптимизатор на OR-Tools (DESIGN.md §6)."""
+"""Оптимизатор на OR-Tools."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def test_impossible_order_is_dropped_with_a_reason():
 
 
 def test_urgent_orders_are_never_dropped_for_normal_ones():
-    """Штраф за пропуск срочной на порядок выше — она вытесняет обычную."""
+    """Штраф за пропуск срочной на порядок выше она вытесняет обычную."""
     window = ("10:00", "11:00")
     orders = [
         make_order("N1", 1, Skill.LOCAL, window, duration=55),
@@ -87,7 +87,7 @@ def test_urgent_orders_are_never_dropped_for_normal_ones():
 
 
 def test_urgent_order_is_scheduled_early():
-    """Аварию с окном на целые сутки нужно выполнять как можно раньше (Q&A, блок 3)."""
+    """Аварию с окном на целые сутки нужно выполнять как можно раньше."""
     orders = [
         make_order("U", 1, Skill.EMERGENCY, ("00:01", "23:59"), duration=80, priority=Priority.URGENT),
         make_order("N", 2, Skill.LOCAL, ("09:00", "18:00")),
@@ -145,7 +145,7 @@ def test_plan_metadata_is_filled(toy, toy_geo):
 
 
 def test_lunch_break_option_keeps_the_plan_valid(toy, toy_geo):
-    """Обед — необязательная настройка (Q&A, блок 5): план обязан остаться допустимым."""
+    """Обед необязательная настройка: план обязан остаться допустимым."""
     with_lunch = solver.plan(toy, toy_geo, PlanParams(objective="min_engineers", time_limit_s=2, lunch=True))
     _, violations = evaluate(toy_geo, {r.engineer_id: r.order_ids for r in with_lunch.routes})
     assert not violations
@@ -173,9 +173,6 @@ def test_empty_pool_is_handled(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST, order_ids=[])
     assert plan.metrics.assigned == 0
     assert plan.metrics.engineers_used == 0
-
-
-# ------------------------------------------------- на реальных сценариях
 
 
 @pytest.fixture(scope="module")
@@ -207,16 +204,8 @@ def test_beats_baseline_on_real_data(real, region):
     assert ours.metrics.distance_per_order_km < base.metrics.distance_per_order_km
 
 
-# ------------------------------------- очерёдность по ярусам (эксперты, п.15)
-
-
 def test_priority_order_is_emergency_then_connection_then_the_rest():
-    """Авария → Подключение → Ремонт и дозаказ (ответ экспертов, п.15).
-
-    Раньше дозаказ шёл в одном ярусе с подключением, потому что выполняется
-    тем же навыком. Эксперты поставили его к ремонту: при дефиците ресурсов
-    он уступает подключению.
-    """
+    """Авария → Подключение → Ремонт и дозаказ (ответ экспертов, п.15)."""
     from planner.core.solver import _drop_penalty
     from planner.ingest.normatives import classify
 

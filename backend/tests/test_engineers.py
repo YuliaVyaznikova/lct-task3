@@ -1,4 +1,4 @@
-"""Генератор справочника инженеров (DESIGN.md §4.3)."""
+"""Генератор справочника инженеров."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def test_skill_demand_follows_work_minutes(scenarios):
 
 
 def test_skill_demand_floor_protects_rare_skills(scenarios):
-    """У Югоцентра всего одна аварийная заявка — без floor навык остался бы без людей."""
+    """У Югоцентра всего одна аварийная заявка без floor навык остался бы без людей."""
     orders = scenarios["yugocentr"].orders
     assert gen.skill_demand(orders, floor=0.12)[Skill.EMERGENCY] >= 0.10
 
@@ -55,7 +55,7 @@ def test_generated_directory_is_valid(scenarios, region):
     config = gen.load_config(region)
     engineers, seed = gen.generate(config, 42, scenario.orders, scenario.office)
     assert len(engineers) == EXPECTED_COUNT[region]
-    gen.check_invariants(engineers, config)  # не должно бросить
+    gen.check_invariants(engineers, config)
     assert 42 <= seed <= 47, "инварианты должны сходиться за единицы попыток, а не перебором"
 
 
@@ -100,7 +100,7 @@ def test_invariants_reject_broken_directory(scenarios):
 
 
 def test_yugo_vostok_has_more_cars(scenarios):
-    """До Каширы и Домодедова пешком не добраться — автомобилистов должно быть больше."""
+    """До Каширы и Домодедова пешком не добраться автомобилистов должно быть больше."""
     counts = {}
     for region in ("vostok", "yugo-vostok"):
         config = gen.load_config(region)
@@ -112,7 +112,7 @@ def test_yugo_vostok_has_more_cars(scenarios):
 
 @pytest.mark.parametrize("region", REGIONS)
 def test_engineers_start_at_office_unless_they_have_a_remote_base(scenarios, region):
-    """По умолчанию старт — офис участка; исключение задаётся в конфигурации."""
+    """По умолчанию старт офис участка; исключение задаётся в конфигурации."""
     scenario = scenarios[region]
     config = gen.load_config(region)
     engineers, _ = gen.generate(config, 42, scenario.orders, scenario.office)
@@ -124,12 +124,7 @@ def test_engineers_start_at_office_unless_they_have_a_remote_base(scenarios, reg
 
 
 def test_remote_bases_sit_inside_their_clusters(scenarios):
-    """Выездная база должна стоять среди заявок своего кластера, а не у офиса.
-
-    В контрольном распределении Домодедово обслуживает закреплённая бригада,
-    Каширу и Ступино — две. Без этого все инженеры выезжали бы из Бирюлёва
-    и наматывали по 90 км в один конец.
-    """
+    """Выездная база должна стоять среди заявок своего кластера, а не у офиса."""
     from planner.core.travel import haversine_km
 
     scenario = scenarios["yugo-vostok"]
@@ -141,7 +136,6 @@ def test_remote_bases_sit_inside_their_clusters(scenarios):
     assert remote
 
     for engineer in remote:
-        # Каждая база должна быть ближе к «своим» заявкам, чем офис участка.
         district = engineer.name.split("(")[-1].rstrip(")")
         cluster = [
             o for o in scenario.orders if o.district.casefold().startswith(district.casefold())
@@ -215,16 +209,13 @@ def test_saved_scenarios_have_engineers(scenarios):
 def test_config_falls_back_to_defaults():
     config = gen.load_config("vostok")
     assert config.count == 12
-    assert config.min_cars == 2  # из defaults
-    assert gen.load_config("yugo-vostok").min_cars == 5  # переопределено регионом
+    assert config.min_cars == 2
+    assert gen.load_config("yugo-vostok").min_cars == 5
 
 
 def test_unknown_region_is_rejected():
     with pytest.raises(ValueError, match="count"):
         gen.load_config("нет-такого-региона")
-
-
-# ------------------------------------------- число бригад (эксперты, п.12)
 
 
 @pytest.mark.parametrize("region", REGIONS)

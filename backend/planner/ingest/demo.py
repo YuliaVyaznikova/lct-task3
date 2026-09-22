@@ -1,17 +1,4 @@
-"""Демонстрационный сценарий для защиты (ТЗ §4, §6; DESIGN.md §4.6).
-
-ТЗ рекомендует набор на один рабочий день из 10–15 инженеров и не более
-100 заявок, на котором можно проверить все обязательные ограничения:
-в данных должны встречаться все три навыка, разные комбинации навыков,
-все типы транспорта, пересекающиеся окна и «хотя бы один конфликт, при
-котором простое последовательное распределение даёт менее эффективный план».
-
-Организаторы такой набор не выдали — выгрузка содержит только заявки.
-Поэтому собираем его сами из реального региона: адреса, окна и типы работ
-настоящие, синтетические — справочник инженеров и события. Подбор seed
-автоматический: перебираем, пока набор не начнёт удовлетворять всем
-требованиям выше, и фиксируем первый подходящий.
-"""
+"""Демонстрационный сценарий для защиты."""
 
 from __future__ import annotations
 
@@ -33,14 +20,11 @@ from planner.core.validate import Geo
 from planner.ingest import beeline, engineers as engineers_module
 from planner.ingest import equipment as equipment_module
 
-#: Регион-основа: компактный, целиком в городе — на карте читается лучше,
-#: чем Юго-Восток с вылетами в Каширу за 90 км.
 BASE_REGION = "vostok"
 
 DEMO_ID = "demo"
 DEMO_NAME = "Демонстрационный день"
 
-#: Бюджет солвера при подборе seed. На защите лимит больше — план только лучше.
 PROBE_PARAMS = PlanParams(objective="min_engineers", time_limit_s=4)
 
 
@@ -66,13 +50,10 @@ def _max_concurrent(scenario: Scenario) -> int:
 
 
 def check_dataset(scenario: Scenario) -> list[Requirement]:
-    """Требования ТЗ §6 к тестовому набору."""
+    """Требования к демонстрационному набору."""
     skills = {order.skill for order in scenario.orders}
     transports = {engineer.transport for engineer in scenario.engineers}
     combinations = {tuple(engineer.skills) for engineer in scenario.engineers}
-    # Окна считаются пересекающимися по заявкам, а не по различным слотам:
-    # две заявки в одном слоте 10:00–12:00 пересекаются полностью, а соседние
-    # слоты 10–12 и 12–14 лишь соприкасаются.
     peak = _max_concurrent(scenario)
     required_transport = [o for o in scenario.orders if o.required_transport is not None]
 
@@ -107,10 +88,9 @@ def check_conflict(scenario: Scenario, params: PlanParams | None = None) -> Requ
 
 
 def build_events(scenario: Scenario, plan) -> list:
-    """Три заготовки событий — ровно те, что показываются на защите (ТЗ §4)."""
+    """Три заготовки событий ровно те, что показываются на защите."""
     events: list = []
 
-    # 1. Срочная авария в разгар дня, рядом с плотным кластером заявок.
     hotspot = max(
         plan.routes,
         key=lambda route: len(route.stops),
@@ -133,8 +113,6 @@ def build_events(scenario: Scenario, plan) -> list:
     )
     events.append(UrgentOrderEvent(time="12:30", order=urgent))
 
-    # 2. Отмена заявки — берём ту, что и в реальности была отменена,
-    #    и обязательно ещё не начатую к моменту события.
     cancelled = [
         order
         for order in beeline.cancelled_orders(scenario)
@@ -154,7 +132,6 @@ def build_events(scenario: Scenario, plan) -> list:
     if cancelled:
         events.append(CancelOrderEvent(time="11:10", order_id=cancelled[0].id))
 
-    # 3. Недоступность инженера с самым длинным маршрутом — так перестроение заметнее.
     if plan.routes:
         longest = max(plan.routes, key=lambda route: route.distance_km)
         events.append(EngineerUnavailableEvent(time="13:00", engineer_id=longest.engineer_id))
@@ -212,5 +189,5 @@ def build(
         f"из выгрузки, справочник инженеров и события — синтетические "
         f"(seed {chosen.meta.generator_seed})"
     )
-    _ = config  # конфиг читается ради ранней ошибки, если региона нет в engineers.yaml
+    _ = config
     return chosen, report

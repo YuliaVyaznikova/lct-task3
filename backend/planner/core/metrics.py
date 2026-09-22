@@ -1,13 +1,4 @@
-"""Метрики плана и сравнение с базовым вариантом (DESIGN.md §8, ТЗ §2.3).
-
-Две метрики обязательны по ТЗ:
-  * выполнение всех заявок наименьшим количеством персонала — число уникальных
-    исполнителей, которым назначена хотя бы одна заявка;
-  * пробег по маршруту каждого исполнителя — отдельно и суммарно по плану.
-
-Остальные считаем дополнительно: ТЗ §2.3 это прямо разрешает, а диспетчеру
-они нужны, чтобы понять, почему план именно такой.
-"""
+"""Метрики плана и сравнение с базовым вариантом."""
 
 from __future__ import annotations
 
@@ -16,7 +7,6 @@ from dataclasses import dataclass
 from planner.core.models import Metrics, Plan, Priority, Route, Scenario, Unassigned
 from planner.core.timeutil import hhmm_to_min
 
-#: Запас до конца окна, ниже которого визит считаем рискованным по опозданию.
 LATE_RISK_MARGIN_MIN = 15
 
 
@@ -87,7 +77,6 @@ class MetricRow:
     higher_is_better: bool
 
 
-#: Порядок строк в таблице сравнения; первые две — обязательные метрики ТЗ.
 COMPARISON_ROWS: tuple[tuple[str, str, bool], ...] = (
     ("engineers_used", "Задействовано инженеров", False),
     ("distance_total_km", "Суммарный пробег, км", False),
@@ -102,7 +91,7 @@ COMPARISON_ROWS: tuple[tuple[str, str, bool], ...] = (
 
 
 def compare(ours: Metrics, baseline: Metrics) -> list[MetricRow]:
-    """Таблица «наш план / базовый вариант / разница» (ТЗ §4 п.7, §8.1)."""
+    """Таблица «наш план / базовый вариант / разница»."""
     rows: list[MetricRow] = []
     for key, title, higher_is_better in COMPARISON_ROWS:
         a = float(getattr(ours, key))
@@ -141,7 +130,7 @@ def comparison_table(ours: Metrics, baseline: Metrics) -> str:
 
 
 def is_better(ours: Metrics, baseline: Metrics) -> bool:
-    """Лексикографика целевой функции (DESIGN.md §6.1): заявки → инженеры → пробег."""
+    """Лексикографика целевой функции: заявки → инженеры → пробег."""
     if ours.assigned != baseline.assigned:
         return ours.assigned > baseline.assigned
     if ours.engineers_used != baseline.engineers_used:

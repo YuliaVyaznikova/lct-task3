@@ -1,4 +1,4 @@
-"""HTTP API (DESIGN.md §13) — полный путь сценария защиты через сеть."""
+"""HTTP API полный путь сценария защиты через сеть."""
 
 from __future__ import annotations
 
@@ -67,14 +67,10 @@ def test_reference_lists_dictionaries(client):
     assert "км/ч" in body["travel_model"]
 
 
-# ---------------------------------------------------------------- планы
-
-
 def test_plan_returns_both_variants_and_comparison(plan):
     assert plan["optimized"]["kind"] == "optimized"
     assert plan["baseline"]["kind"] == "baseline"
     keys = [row["key"] for row in plan["comparison"]]
-    # Две обязательные метрики ТЗ §2.3 идут первыми.
     assert keys[:2] == ["engineers_used", "distance_total_km"]
 
 
@@ -117,9 +113,6 @@ def test_unknown_plan_gives_readable_error(client):
 def test_unknown_scenario_in_plan_request(client):
     response = client.post("/api/plans", json={"scenario_id": "zzz", "params": FAST})
     assert response.status_code == 404
-
-
-# -------------------------------------------------------------- события
 
 
 def test_cancel_event_produces_diff(client, plan):
@@ -168,12 +161,7 @@ def test_urgent_event_is_scheduled(client, plan):
 
 
 def test_urgent_order_stays_usable_after_replanning(client):
-    """Регрессия: заявка, добавленная событием, должна быть полноценной.
-
-    Индексация точек строится по составу сценария; если переиспользовать
-    ту, что была до события, новая заявка окажется «неизвестной» —
-    ручное переназначение вернёт 404, а проверка плана молча её выбросит.
-    """
+    """Регрессия: заявка, добавленная событием, должна быть полноценной."""
     created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
     plan_id = created["optimized"]["id"]
     anchor = created["scenario"]["orders"][0]
@@ -246,9 +234,6 @@ def test_impossible_event_gives_conflict(client, plan):
     assert "уже выполняется" in response.json()["detail"]
 
 
-# ------------------------------------------------ ручное переназначение
-
-
 def test_manual_move_to_another_engineer(client):
     created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
     plan_id = created["optimized"]["id"]
@@ -316,9 +301,6 @@ def test_manual_unknown_ids(client, plan):
     assert response.status_code == 404
 
 
-# ------------------------------------------------------- объяснения и вывод
-
-
 def test_explain_assigned_and_unassigned(client, plan):
     plan_id = plan["optimized"]["id"]
     assigned_id = next(r for r in plan["optimized"]["routes"] if r["stops"])["stops"][0]["order_id"]
@@ -339,7 +321,7 @@ def test_explain_unknown_order(client, plan):
 
 
 def test_export_matches_the_specification_format(client, plan):
-    """ТЗ §2.4.2 перечисляет, что обязано быть в результате."""
+    """Обязательный состав полей результата."""
     plan_id = plan["optimized"]["id"]
     body = client.get(f"/api/plans/{plan_id}/export").json()
 
@@ -359,9 +341,6 @@ def test_export_matches_the_specification_format(client, plan):
     assert body["объяснение"]
     for item in body["не_назначены"]:
         assert item["причина"]
-
-
-# ------------------------------------------- число бригад (эксперты, п.12)
 
 
 def test_scenarios_report_the_minimum_brigade_count(client):

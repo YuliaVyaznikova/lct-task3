@@ -1,11 +1,4 @@
-"""Командная строка сервиса.
-
-    python -m planner.cli build [--region all|vostok|yugo-vostok|yugocentr]
-    python -m planner.cli show  --region vostok
-
-Остальные команды (geocode, plan, compare, replan, serve) добавляются
-по мере готовности соответствующих модулей.
-"""
+"""Командная строка сервиса."""
 
 from __future__ import annotations
 
@@ -246,12 +239,7 @@ def cmd_control(args: argparse.Namespace) -> int:
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
-    """Сверяет офлайн-модель расстояний с реальной дорожной сетью (OSRM).
-
-    Результат — таблица коэффициентов извилистости по диапазонам длины.
-    Именно по ней подобраны значения DETOUR_CALIBRATION в core/travel.py,
-    и именно этой командой их можно перепроверить.
-    """
+    """Сверяет офлайн-модель расстояний с реальной дорожной сетью (OSRM)."""
     import numpy as np
 
     from planner.core.travel import OsrmTravel, TravelModel, _haversine_matrix

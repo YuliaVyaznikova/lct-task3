@@ -1,4 +1,4 @@
-"""Проверки адаптера выгрузки на реальных файлах из data/raw (DESIGN.md §16, шаг 1)."""
+"""Проверки адаптера выгрузки на реальных файлах из data/raw."""
 
 from __future__ import annotations
 
@@ -67,24 +67,18 @@ def test_ids_are_unique_and_ordered(scenarios):
     for scenario in scenarios.values():
         ids = [o.id for o in scenario.orders]
         assert len(set(ids)) == len(ids)
-        # Порядок строк файла = «порядок поступления» для базового варианта (ТЗ §2.3).
         assert ids == sorted(ids)
 
 
 def test_midnight_window_parsed(scenarios):
-    """Аварии Юго-Востока записаны окном 0:01–23:59 — час без ведущего нуля."""
+    """Аварии Юго-Востока записаны окном 0:01–23:59 час без ведущего нуля."""
     day_long = [o for o in scenarios["yugo-vostok"].orders if o.window_end == "23:59"]
     assert len(day_long) == 11
     assert all(o.priority is Priority.URGENT for o in day_long)
 
 
 def test_incidents_get_an_arrival_time(scenarios):
-    """Суточное окно — это срок обязательства, а не разрешение начать с полуночи.
-
-    Эксперты (п.5): «начало выполнения аварийной заявки определяется временем
-    её фактического поступления». Времени в выгрузке нет, поэтому оно
-    расставляется детерминированно по рабочему дню.
-    """
+    """Суточное окно это срок обязательства, а не разрешение начать с полуночи."""
     incidents = [
         o for o in scenarios["yugo-vostok"].orders if o.attributes.get("reported_at")
     ]
@@ -107,7 +101,7 @@ def test_incident_times_are_reproducible():
 
 
 def test_optional_connection_column(scenarios):
-    """Колонка «Подключение» (FMC/FTTB) есть только у Востока — остальные не должны падать."""
+    """Колонка «Подключение» (FMC/FTTB) есть только у Востока остальные не должны падать."""
     assert any("connection" in o.attributes for o in scenarios["vostok"].orders)
     assert all("connection" not in o.attributes for o in scenarios["yugocentr"].orders)
 
@@ -118,7 +112,7 @@ def test_skill_distribution(scenarios):
 
 
 def test_durations_follow_normatives(scenarios):
-    """Длительность = тех. работы + документы из «Нормативы.xlsx», без компонента дороги."""
+    """Длительность = тех."""
     by_type = {
         ("Подключение", ""): 70,
         ("Дозаказ", ""): 20,

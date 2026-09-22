@@ -1,13 +1,4 @@
-"""Синтетический справочник инженеров (ТЗ §6, DESIGN.md §4.3).
-
-В выгрузке его нет — есть только фамилии бригад в контрольном распределении.
-ТЗ разрешает создать такие данные самостоятельно «по тем же правилам»
-и описать допущения; правила заданы в data/config/engineers.yaml.
-
-Генерация детерминирована: одинаковый seed даёт одинаковый справочник.
-После генерации проверяются инварианты (см. check_invariants); при нарушении
-берётся следующий seed, максимум MAX_ATTEMPTS попыток.
-"""
+"""Синтетический справочник инженеров."""
 
 from __future__ import annotations
 
@@ -77,7 +68,7 @@ def load_config(region_id: str, path: Path | None = None) -> EngineerConfig:
 
 
 def skill_demand(orders: list[Order], floor: float) -> dict[Skill, float]:
-    """Доля навыка в спросе — по рабочим минутам, а не по числу заявок."""
+    """Доля навыка в спросе по рабочим минутам, а не по числу заявок."""
     minutes: dict[Skill, float] = {s: 0.0 for s in Skill}
     for order in orders:
         minutes[order.skill] += order.duration_min
@@ -105,12 +96,7 @@ def _pick_skills(rng: random.Random, demand: dict[Skill, float], how_many: int) 
 
 
 def _quota(weights: dict[Any, float], total: int) -> list[Any]:
-    """Раздаёт `total` мест по долям методом наибольших остатков.
-
-    На 11–12 инженерах независимая выборка слишком шумит: заданные 30 %
-    автомобилистов легко превращаются в 55 %. Квоты дают ровно ту пропорцию,
-    которая записана в конфиге, и не зависят от seed.
-    """
+    """Раздаёт `total` мест по долям методом наибольших остатков."""
     keys = sorted(weights, key=str)
     norm = sum(weights[k] for k in keys) or 1.0
     exact = {k: weights[k] / norm * total for k in keys}
@@ -137,7 +123,7 @@ def _shift_plan(config: EngineerConfig) -> list[Shift]:
 
 
 def check_invariants(engineers: list[Engineer], config: EngineerConfig) -> None:
-    """Справочник должен позволять проверить все три группы ограничений ТЗ §2.2."""
+    """Справочник должен позволять проверить все три группы ограничений."""
     for skill in Skill:
         owners = [e for e in engineers if skill in e.skills]
         if len(owners) < 2:
@@ -165,9 +151,6 @@ def check_invariants(engineers: list[Engineer], config: EngineerConfig) -> None:
     if cars < config.min_cars:
         raise InvariantError(f"автомобилистов {cars}, нужно ≥{config.min_cars}")
 
-    # Требуемый транспорт проставляется заявкам «подключение» (см. assign_required_transport),
-    # поэтому в каждой смене нужен автомобилист именно с этим навыком — иначе такие
-    # заявки невыполнимы в принципе, и ограничение «Ресурс» вырождается в «нет исполнителя».
     for shift in shifts:
         has_car_connection = any(
             e.transport is Transport.CAR
@@ -185,7 +168,7 @@ def check_invariants(engineers: list[Engineer], config: EngineerConfig) -> None:
 
 
 def _district_centroid(orders: list[Order], districts: list[str]) -> Point | None:
-    """Центр тяжести заявок кластера — там и базируется выездная бригада."""
+    """Центр тяжести заявок кластера там и базируется выездная бригада."""
     wanted = {name.strip().casefold() for name in districts}
     points = [
         o for o in orders if o.has_coords and (o.district or "").strip().casefold() in wanted
@@ -194,15 +177,15 @@ def _district_centroid(orders: list[Order], districts: list[str]) -> Point | Non
         return None
     return Point(
         address=f"выездная база: {', '.join(districts)}",
-        lat=sum(o.lat for o in points) / len(points),  # type: ignore[misc]
-        lon=sum(o.lon for o in points) / len(points),  # type: ignore[misc]
+        lat=sum(o.lat for o in points) / len(points),
+        lon=sum(o.lon for o in points) / len(points),
     )
 
 
 def _assign_remote_bases(
     engineers: list[Engineer], config: EngineerConfig, orders: list[Order]
 ) -> int:
-    """Переносит часть автомобилистов на выездные базы (см. engineers.yaml)."""
+    """Переносит часть автомобилистов на выездные базы (см."""
     if not config.remote_bases:
         return 0
 
@@ -230,8 +213,6 @@ def _generate_once(
     sizes = {"one": 1, "two": 2, "three": 3}
     shifts = _shift_plan(config)
 
-    # Транспорт и число навыков — по квотам (точная пропорция), их порядок
-    # перемешивается seed'ом; сами навыки выбираются пропорционально спросу.
     transports = _quota(config.transport_mix, config.count)
     skill_counts = [sizes[k] for k in _quota(config.skills_mix, config.count)]
     rng.shuffle(transports)
@@ -274,11 +255,7 @@ def generate(
 
 
 def assign_required_transport(orders: list[Order], seed: int, share: float) -> int:
-    """Проставляет часть заявок «подключение» требование ехать на автомобиле.
-
-    Легенда: инженер везёт клиенту оборудование, пешком его не доставить.
-    Без такого поля ограничение «Ресурс» из ТЗ §2.2 нечем проверить.
-    """
+    """Проставляет часть заявок «подключение» требование ехать на автомобиле."""
     candidates = [o for o in orders if o.skill is Skill.CONNECTION]
     how_many = int(round(len(candidates) * share))
     if how_many <= 0:
@@ -296,11 +273,7 @@ def populate(
     config_path: Path | None = None,
     region_id: str | None = None,
 ) -> Scenario:
-    """Дополняет сценарий инженерами и требованиями к транспорту (на месте).
-
-    `region_id` нужен, когда сценарий уже переименован (демо-набор), а настройки
-    надо взять от региона-основы.
-    """
+    """Дополняет сценарий инженерами и требованиями к транспорту (на месте)."""
     config = load_config(region_id or scenario.id, config_path)
     engineers, used_seed = generate(config, seed, scenario.orders, scenario.office)
     scenario.engineers = engineers
@@ -312,18 +285,11 @@ def populate(
     return scenario
 
 
-#: Меньше этого числа инварианты не выполнимы: нужны все четыре типа
-#: транспорта, аварийщик в каждой смене и хотя бы один узкий специалист.
 MIN_ENGINEERS = 6
 
 
 def min_count(config: EngineerConfig) -> int:
-    """Наименьший состав региона, при котором квоты транспорта сходятся.
-
-    Общего минимума мало: на Юго-Востоке автомобилистов нужно не меньше пяти
-    (трое начинают день на выездных базах), а при половине машин в квоте это
-    достижимо только с девяти бригад.
-    """
+    """Наименьший состав региона, при котором квоты транспорта сходятся."""
     for count in range(MIN_ENGINEERS, 100):
         quota = _quota(config.transport_mix, count)
         if quota.count(Transport.CAR.value) >= config.min_cars and all(
@@ -340,18 +306,7 @@ def resize(
     config_path: Path | None = None,
     region_id: str | None = None,
 ) -> Scenario:
-    """Пересобирает состав бригад под заданное число (ответ экспертов, п.12).
-
-    Эксперты разрешили определять количество бригад самостоятельно, взяв
-    контрольное распределение лишь как ориентир. Состав именно пересобирается,
-    а не обрезается: если просто отбросить «лишних», можно остаться без
-    аварийщика в вечерней смене или без автомобилиста, и половина заявок
-    станет невыполнимой по формальной причине.
-
-    Заявки не трогаются: требование «только на автомобиле» — свойство заявки,
-    а не состава, иначе планы с разным числом бригад считались бы на разных
-    данных и сравнивать их было бы нельзя.
-    """
+    """Пересобирает состав бригад под заданное число (ответ экспертов, п.12)."""
     base = region_id or scenario.id
     config = load_config(base, config_path)
     minimum = min_count(config)
@@ -389,7 +344,7 @@ def summary(engineers: list[Engineer]) -> str:
 
 
 def latest_finish(scenario: Scenario) -> int:
-    """Самое позднее допустимое окончание работ — для проверки длины смен."""
+    """Самое позднее допустимое окончание работ для проверки длины смен."""
     return max(o.window_end_min + o.duration_min for o in scenario.orders)
 
 

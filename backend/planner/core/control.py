@@ -1,23 +1,4 @@
-"""Справочное сопоставление с фактическим ручным распределением.
-
-Контрольный файл выгрузки — это то, как заявки были распределены между
-бригадами в реальности. Постановщик указал (чат 17.09), что эталоном оно
-не является и повторять его не нужно, а позже уточнил (15.09): обезличенные
-данные «нужно использовать для проверки модели и алгоритма, а также можно
-использовать для демонстрации».
-
-Поэтому расчёт здесь строго справочный и в оптимизации не участвует.
-Он отвечает на естественный вопрос эксперта: «а как это соотносится с тем,
-что было на самом деле?» — и заодно показывает, что ручное распределение
-не укладывается в собственные нормативы компании: часть визитов начиналась
-позже обещанного клиенту окна. Постановщик это подтверждал: «де-факто
-по всем нормативам был overbooking».
-
-Чего мы про реальные бригады не знаем — навыков, транспорта и границ смены.
-Поэтому для расчёта им выдаётся заведомо щедрый профиль: все навыки,
-автомобиль, смена на весь день. Любое нарушение, найденное при таких
-условиях, тем более имело место в действительности.
-"""
+"""Справочное сопоставление с фактическим ручным распределением."""
 
 from __future__ import annotations
 
@@ -39,7 +20,6 @@ from planner.core.validate import Geo, evaluate
 
 CONTROL_ATTRIBUTE = "control_engineer"
 
-#: Профиль, выданный реальным бригадам: заведомо не строже действительности.
 CONTROL_SHIFT = ("06:00", "23:59")
 
 
@@ -83,7 +63,7 @@ def has_control(scenario: Scenario) -> bool:
 
 
 def brigade_engineers(scenario: Scenario, names: list[str]) -> list[Engineer]:
-    """Синтетические профили для реальных бригад — щедрые, чтобы не завышать нарушения."""
+    """Синтетические профили для реальных бригад щедрые, чтобы не завышать нарушения."""
     return [
         Engineer(
             id=f"C{index + 1:02d}",
@@ -114,7 +94,6 @@ def build(scenario: Scenario) -> ControlReference:
     engineers = brigade_engineers(scenario, names)
     by_name = {engineer.name: engineer.id for engineer in engineers}
 
-    # Сценарий с бригадами вместо наших инженеров — только для этого расчёта.
     reference_scenario = scenario.model_copy(update={"engineers": engineers})
     geo = Geo(reference_scenario)
 
@@ -126,7 +105,6 @@ def build(scenario: Scenario) -> ControlReference:
             assignment[by_name[brigade]].append(order.id)
             covered += 1
 
-    # Порядок визитов в выгрузке не задан — восстанавливаем по началу окна.
     for engineer_id, order_ids in assignment.items():
         assignment[engineer_id] = sorted(
             order_ids, key=lambda oid: (geo.orders[oid].window_start_min, oid)
@@ -153,7 +131,7 @@ def build(scenario: Scenario) -> ControlReference:
 
 
 def comparison_rows(ours: Metrics, control: Metrics) -> list[tuple[str, float, float]]:
-    """Три сопоставимых показателя. Остальные метрики для факта не определены."""
+    """Три сопоставимых показателя."""
     return [
         ("Задействовано исполнителей", float(ours.engineers_used), float(control.engineers_used)),
         ("Суммарный пробег, км", ours.distance_total_km, control.distance_total_km),

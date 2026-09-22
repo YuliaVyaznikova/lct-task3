@@ -1,14 +1,4 @@
-"""Объяснения решений для диспетчера (DESIGN.md §10, ТЗ §2.1.7, §2.4.2, §8.1).
-
-ТЗ требует объяснять результат «понятным пользователю языком»: почему заявка
-назначена конкретному инженеру, какие ограничения учтены и почему выбран
-такой маршрут. На сессии вопросов и ответов постановщик отдельно просил
-не разворачивать весь алгоритм по каждой заявке — «портянку читать не будут».
-
-Отсюда два уровня: строка для таблицы и карточка по клику. Всё собирается
-шаблонами из фактов плана, без языковой модели, — значит, воспроизводимо
-и не может соврать про то, чего в плане нет.
-"""
+"""Объяснения решений для диспетчера."""
 
 from __future__ import annotations
 
@@ -28,7 +18,6 @@ from planner.core.reasons import _plural
 from planner.core.timeutil import fmt_minutes, hhmm_to_min
 from planner.core.validate import Geo, StartState, best_insertion, first_blocking_violation
 
-#: Сколько инженеров-альтернатив показывать поимённо.
 MAX_ALTERNATIVES = 3
 
 
@@ -148,12 +137,7 @@ def _alternatives(
     chosen: Engineer,
     starts: dict[str, StartState] | None,
 ) -> tuple[list[str], str]:
-    """Контрфактическая проверка: во что обошлась бы заявка другим инженерам.
-
-    Это и есть ответ на вопрос ТЗ «почему именно этот инженер»: для каждого
-    другого исполнителя ищется самая дешёвая допустимая вставка в его
-    итоговый маршрут, и сравнивается прирост пробега.
-    """
+    """Контрфактическая проверка: во что обошлась бы заявка другим инженерам."""
     routes = {route.engineer_id: route for route in plan.routes}
     cheaper: list[tuple[float, str]] = []
     blocked: list[str] = []
@@ -228,7 +212,7 @@ def explain_route(geo: Geo, route: Route) -> str:
 
 
 def explain_plan(geo: Geo, plan: Plan) -> str:
-    """Сводка по плану целиком — то, что диспетчер читает первым."""
+    """Сводка по плану целиком то, что диспетчер читает первым."""
     m = plan.metrics
     parts = [
         f"Задействовано {m.engineers_used} из {m.engineers_total} инженеров. "
@@ -283,7 +267,7 @@ def attach(geo: Geo, plan: Plan, starts: dict[str, StartState] | None = None) ->
 
 
 def timeline_summary(geo: Geo, route: Route) -> list[str]:
-    """Маршрут строками «кто, куда, во сколько» — для таблицы и печати."""
+    """Маршрут строками «кто, куда, во сколько» для таблицы и печати."""
     lines: list[str] = []
     for stop in route.stops:
         order = geo.orders[stop.order_id]

@@ -1,11 +1,4 @@
-"""Почему заявка не назначена — иерархия причин (DESIGN.md §10.2, ТЗ §2.2).
-
-ТЗ требует показать неназначенные заявки «в явном виде» и назвать причину
-по каждой понятным диспетчеру языком. Причина ищется от самой общей к самой
-частной: сначала «вообще некому», потом «некому в это время», и лишь в конце
-«все заняты» — так диспетчер сразу понимает, нанимать ли человека с навыком
-или просто добавить смену.
-"""
+"""Почему заявка не назначена иерархия причин."""
 
 from __future__ import annotations
 
@@ -31,19 +24,12 @@ def _plural(count: int, one: str, few: str, many: str) -> str:
 
 
 def can_serve_alone(geo: Geo, engineer: Engineer, order: Order) -> ReasonCode | None:
-    """Может ли инженер выполнить заявку, будь она у него единственной.
-
-    Отделяет «физически невозможно» от «не хватило места в расписании»:
-    если и в одиночку не получается, виноваты навык, транспорт, смена
-    или расстояние, а не загрузка.
-    """
+    """Может ли инженер выполнить заявку, будь она у него единственной."""
     if order.skill not in engineer.skills:
         return ReasonCode.NO_SKILL
     if order.required_transport is not None and order.required_transport != engineer.transport:
         return ReasonCode.NO_TRANSPORT
 
-    # Оборудование выдаётся утром на весь день (эксперты, п.4): если заявке
-    # нужно больше, чем бригада вообще берёт с собой, она невыполнима в принципе.
     stock = geo.equipment_stock(engineer.id)
     for kind, count in geo.equipment_needs(order.id).items():
         if count > stock.get(kind, 0):
@@ -54,12 +40,10 @@ def can_serve_alone(geo: Geo, engineer: Engineer, order: Order) -> ReasonCode | 
     latest = min(order.window_end_min, engineer.shift_end_min - order.duration_min)
     if earliest <= latest:
         return None
-    # Смена целиком не пересекается с окном либо работа не успевает завершиться.
     if engineer.shift_end_min - order.duration_min < order.window_start_min:
         return ReasonCode.SHIFT_MISMATCH
     if engineer.shift_start_min >= order.window_end_min:
         return ReasonCode.SHIFT_MISMATCH
-    # Смена пересекается с окном, но дорога съедает остаток.
     if engineer.shift_start_min + travel_min > order.window_end_min:
         return ReasonCode.UNREACHABLE
     return ReasonCode.SHIFT_MISMATCH
@@ -146,7 +130,6 @@ def diagnose(
             ),
         )
 
-    # Навык, транспорт, смена и расстояние позволяют — значит, не хватило места.
     return Unassigned(
         order_id=order.id,
         reason_code=ReasonCode.CAPACITY,
@@ -200,12 +183,7 @@ def diagnose_all(
 
 
 def extra_engineers_needed(geo: Geo, unassigned: list[Unassigned]) -> int:
-    """Сколько инженеров не хватило, чтобы выполнить всё (DESIGN.md §10.3).
-
-    Жадно укладываем неназначенные заявки на виртуальных универсалов
-    с автомобилем и широкой сменой. Постановщик на сессии вопросов и ответов
-    прямо назвал такую формулировку желаемой: «нужно ещё плюс N исполнителей».
-    """
+    """Сколько инженеров не хватило, чтобы выполнить всё."""
     pending = [
         u.order_id
         for u in unassigned

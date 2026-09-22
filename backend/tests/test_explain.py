@@ -1,4 +1,4 @@
-"""Объяснения решений (DESIGN.md §10)."""
+"""Объяснения решений."""
 
 from __future__ import annotations
 
@@ -26,11 +26,7 @@ def test_every_assigned_order_has_a_card(explained):
 
 
 def test_card_confirms_all_mandatory_constraints(explained):
-    """Пять проверок: навык, транспорт, окно, смена и оборудование — все пройдены.
-
-    Оборудование добавилось после ответа экспертов (п.4): исходное ТЗ §2.2
-    относило его к необязательному усложнению, эксперты сделали ограничением.
-    """
+    """Пять проверок: навык, транспорт, окно, смена и оборудование все пройдены."""
     for card in explained.explanations.values():
         assert len(card["checks"]) == 5
         assert all(check["ok"] for check in card["checks"])
@@ -102,9 +98,6 @@ def test_blocking_alternative_names_the_displaced_order():
     assert any("сдвинула бы заявку" in t or "позже конца окна" in t or "км" in t for t in texts)
 
 
-# --------------------------------------------------------- причины отказа
-
-
 def test_no_skill_reason():
     orders = [make_order("C", 1, Skill.CONNECTION, duration=70)]
     plan = baseline.plan(make_scenario(orders, [make_engineer("E01", [Skill.LOCAL])]))
@@ -154,9 +147,6 @@ def test_no_coords_reason(toy_geo):
     assert result.reason_code is ReasonCode.NO_COORDS
 
 
-# ----------------------------------------------------- план и маршруты
-
-
 def test_plan_summary_mentions_key_numbers(explained):
     text = explained.plan_explanation
     m = explained.metrics
@@ -203,9 +193,6 @@ def test_explanations_are_deterministic(toy, toy_geo):
         assert first.explanations == second.explanations
 
 
-# ------------------------------------------------- на реальных данных
-
-
 def test_explanations_on_real_region():
     scenarios = [s for s in store.load_all() if s.id == "vostok"]
     if not scenarios:
@@ -219,6 +206,5 @@ def test_explanations_on_real_region():
     assert len(plan.explanations) == plan.metrics.assigned
     for unassigned in plan.unassigned:
         assert unassigned.reason and unassigned.reason_code
-    # Карточка не должна разрастаться в простыню (Q&A, блок 12).
     for card in plan.explanations.values():
         assert len(card["alternatives"]) <= explain.MAX_ALTERNATIVES + 1

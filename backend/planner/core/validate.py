@@ -1,16 +1,4 @@
-"""Арифметика маршрута и проверка ограничений (DESIGN.md §8).
-
-Единственный источник истины о допустимости плана. Через него проходят
-и солвер, и базовый вариант, и ручное переназначение, и объяснения:
-времена и метрики всегда пересчитываются здесь, а не берутся из солвера.
-Это защищает от расхождения между тем, что показано пользователю,
-и тем, что на самом деле посчитал оптимизатор.
-
-Три группы обязательных ограничений (ТЗ §2.2):
-  Квалификация — требуемый навык заявки входит в навыки инженера;
-  Время       — начало работ попадает в окно, окончание укладывается в смену;
-  Ресурс      — если у заявки задан требуемый транспорт, он совпадает с транспортом инженера.
-"""
+"""Арифметика маршрута и проверка ограничений."""
 
 from __future__ import annotations
 
@@ -31,14 +19,7 @@ from planner.core.travel import build as build_travel
 
 
 class Geo:
-    """Индексация точек сценария и доступ к матрицам расстояний.
-
-    В набор точек входят заявки, офис участка и все стартовые точки инженеров,
-    отличные от офиса: ТЗ §2.4 предусматривает у инженера собственную точку
-    старта, а в данных Юго-Востока есть выездные базы в Домодедове и Кашире.
-    Без отдельного узла такой инженер считался бы выезжающим из офиса,
-    и расчёт занижал бы его маршрут на десятки километров.
-    """
+    """Индексация точек сценария и доступ к матрицам расстояний."""
 
     def __init__(self, scenario: Scenario, travel: TravelModel | None = None) -> None:
         self.scenario = scenario
@@ -55,7 +36,6 @@ class Geo:
         self.office_index = len(points)
         points.append(scenario.office.coords)
 
-        # Уникальные стартовые точки инженеров сверх офиса.
         self._start_index: dict[str, int] = {}
         extra: dict[tuple[float, float], int] = {scenario.office.coords: self.office_index}
         for engineer in scenario.engineers:
@@ -70,8 +50,6 @@ class Geo:
                 extra[coords] = index
             self._start_index[engineer.id] = index
 
-        # build() подключает OSRM, если он задан переменной окружения OSRM_URL
-        # и отвечает; иначе возвращает офлайн-модель (DESIGN.md §5).
         self.travel = travel or build_travel(points)
         self.orders = scenario.orders_by_id
         self.engineers = scenario.engineers_by_id
@@ -81,7 +59,7 @@ class Geo:
         return self.order_index[order_id]
 
     def start_node(self, engineer: Engineer) -> int:
-        """Стартовая точка инженера: его собственная либо офис участка (ТЗ §2.4)."""
+        """Стартовая точка инженера: его собственная либо офис участка."""
         return self._start_index.get(engineer.id, self.office_index)
 
     def leg(self, engineer: Engineer, from_node: int, to_node: int) -> tuple[float, int]:
@@ -92,18 +70,13 @@ class Geo:
         return equipment_module.order_needs(self.orders[order_id], self.equipment)
 
     def equipment_stock(self, engineer_id: str) -> dict[str, int]:
-        """Что бригада взяла в офисе утром — на весь день, без пополнения."""
+        """Что бригада взяла в офисе утром на весь день, без пополнения."""
         return equipment_module.stock_for(engineer_id, self.equipment)
 
 
 @dataclass
 class StartState:
-    """Откуда и когда инженер готов ехать. При обычном планировании — офис и начало смены.
-
-    `closed` означает, что новых заявок инженер не получит (например, стал
-    недоступен), но уже начатые визиты остаются в плане: диспетчер должен
-    видеть, что успели сделать до события.
-    """
+    """Откуда и когда инженер готов ехать."""
 
     node: int
     available_min: int
@@ -144,23 +117,13 @@ def evaluate_route(
     start: StartState | None = None,
     allow_late: bool = False,
 ) -> tuple[Route, list[Violation]]:
-    """Считает времена по порядку посещения и собирает нарушения.
-
-    `allow_late` включается только при перепланировании с разрешённым
-    переносом (эксперты, п.2): начало позже обещанного окна перестаёт быть
-    нарушением, но фиксируется в `Stop.late_min` — такой визит требует
-    звонка клиенту от службы поддержки. Конец смены остаётся жёстким
-    в любом случае: за инженера решать нельзя.
-    """
+    """Считает времена по порядку посещения и собирает нарушения."""
     start = start or StartState(node=geo.start_node(engineer), available_min=engineer.shift_start_min)
     violations: list[Violation] = []
 
     stops: list[Stop] = list(start.locked_stops)
     node = start.node
     clock = start.available_min
-    # Оборудование выдаётся утром на весь день и не пополняется (эксперты, п.4),
-    # поэтому считаем израсходованное нарастающим итогом по всему маршруту,
-    # включая уже выполненные до события визиты.
     stock = geo.equipment_stock(engineer.id)
     used: dict[str, int] = {}
     for locked in start.locked_stops:
@@ -195,7 +158,6 @@ def evaluate_route(
 
         leg_km, leg_min = geo.leg(engineer, node, geo.node(order_id))
         arrival = clock + leg_min
-        # Приехать раньше окна можно, начать работу — нет (Q&A, блок 5).
         begin = max(arrival, order.window_start_min)
         wait = begin - arrival
         finish = begin + order.duration_min
@@ -318,13 +280,10 @@ def evaluate(
     return routes, violations
 
 
-# ------------------------------------------------------------------ вставки
-
-
 def can_append(
     geo: Geo, engineer: Engineer, order_ids: list[str], candidate: str, start: StartState | None = None
 ) -> bool:
-    """Помещается ли заявка в конец маршрута — быстрая проверка для базового варианта."""
+    """Помещается ли заявка в конец маршрута быстрая проверка для базового варианта."""
     _, violations = evaluate_route(geo, engineer, [*order_ids, candidate], start)
     return not violations
 
@@ -336,11 +295,7 @@ def best_insertion(
     candidate: str,
     start: StartState | None = None,
 ) -> tuple[int, float] | None:
-    """Самая дешёвая допустимая позиция вставки: (индекс, прирост пробега в км).
-
-    Используется объяснениями («на сколько дороже было бы у другого инженера»)
-    и ручным переназначением в режиме «вставить в лучшую позицию».
-    """
+    """Самая дешёвая допустимая позиция вставки: (индекс, прирост пробега в км)."""
     if check_static(engineer, geo.orders[candidate]) is not None:
         return None
     base, base_violations = evaluate_route(geo, engineer, order_ids, start)
@@ -366,7 +321,7 @@ def first_blocking_violation(
     candidate: str,
     start: StartState | None = None,
 ) -> Violation | None:
-    """Что именно мешает поставить заявку этому инженеру — для текста причины."""
+    """Что именно мешает поставить заявку этому инженеру для текста причины."""
     static = check_static(engineer, geo.orders[candidate])
     if static is not None:
         return static
@@ -376,8 +331,6 @@ def first_blocking_violation(
         _, violations = evaluate_route(geo, engineer, trial, start)
         if not violations:
             return None
-        # Мешать может как сама заявка, так и соседняя, которую сдвинула бы вставка;
-        # во втором случае это нужно назвать явно, иначе текст вводит в заблуждение.
         own = [v for v in violations if v.order_id == candidate]
         found = own[0] if own else violations[0]
         if not own and found.order_id:

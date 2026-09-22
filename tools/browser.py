@@ -1,12 +1,4 @@
-"""Минимальный драйвер браузера поверх Chrome DevTools Protocol.
-
-Нужен, чтобы проверять интерфейс глазами: открыть страницу, нажать кнопку,
-дождаться результата и снять экран. Playwright тянуть ради этого незачем —
-Chrome уже установлен, а протокол простой.
-
-    python tools/browser.py shot http://127.0.0.1:8000 out.png
-    python tools/browser.py script tools/scenarios/demo_flow.py
-"""
+"""Минимальный драйвер браузера поверх Chrome DevTools Protocol."""
 
 from __future__ import annotations
 
@@ -51,7 +43,7 @@ def free_port() -> int:
 
 
 class Browser:
-    """Одна вкладка headless-браузера. Используется как контекстный менеджер."""
+    """Одна вкладка headless-браузера."""
 
     def __init__(self, width: int = 1680, height: int = 1000, headless: bool = True) -> None:
         self.width, self.height = width, height
@@ -62,7 +54,6 @@ class Browser:
         self.ws: websocket.WebSocket | None = None
         self._id = 0
 
-    # ------------------------------------------------------------ запуск
 
     def __enter__(self) -> "Browser":
         args = [
@@ -75,8 +66,6 @@ class Browser:
             "--disable-extensions",
             "--disable-gpu",
             "--hide-scrollbars",
-            # Без этого свежие сборки Chrome отвергают подключение к протоколу
-            # отладки с ошибкой 403 из-за проверки Origin.
             "--remote-allow-origins=*",
             "about:blank",
         ]
@@ -123,7 +112,6 @@ class Browser:
                     self.process.kill()
             shutil.rmtree(self.profile, ignore_errors=True)
 
-    # ---------------------------------------------------------- протокол
 
     def send(self, method: str, **params) -> dict:
         assert self.ws is not None
@@ -137,7 +125,6 @@ class Browser:
                     raise RuntimeError(f"{method}: {message['error']}")
                 return message.get("result", {})
 
-    # -------------------------------------------------------- действия
 
     def goto(self, url: str, wait_ms: int = 2500) -> None:
         self.send("Page.navigate", url=url)

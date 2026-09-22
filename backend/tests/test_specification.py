@@ -1,9 +1,4 @@
-"""Сверка решения с техническим заданием.
-
-Каждая проверка соответствует конкретному пункту ТЗ и названа так, чтобы
-по списку проваленных тестов было видно, какое требование не выполнено.
-Это же список, по которому эксперты будут смотреть решение (ТЗ §7.2, §8.1).
-"""
+"""Сверка решения с техническим заданием."""
 
 from __future__ import annotations
 
@@ -45,11 +40,8 @@ def demo_plan(demo):
     return plan
 
 
-# ======================================================== ТЗ §2.1 «Что должно уметь решение»
-
-
 def test_2_1_1_loads_prepared_data():
-    """1. Загружать готовые тестовые данные из CSV или JSON либо встроенный набор."""
+    """1."""
     from planner.ingest import beeline
 
     assert callable(beeline.load_region)
@@ -58,25 +50,25 @@ def test_2_1_1_loads_prepared_data():
 
 
 def test_2_1_2_distributes_orders_between_engineers(demo_plan):
-    """2. Распределять заявки между инженерами."""
+    """2."""
     assert demo_plan.metrics.assigned > 0
     assert len({route.engineer_id for route in demo_plan.routes if route.stops}) > 1
 
 
 def test_2_1_3_defines_visit_order(demo_plan):
-    """3. Определять порядок посещения адресов для каждого инженера."""
+    """3."""
     for route in demo_plan.routes:
         assert [stop.seq for stop in route.stops] == list(range(1, len(route.stops) + 1))
 
 
 def test_2_1_4_orders_have_coordinates_for_the_map(demo):
-    """4. Показывать маршруты и точки заявок на карте."""
+    """4."""
     assert demo.office.has_coords
     assert all(order.has_coords for order in demo.orders)
 
 
 def test_2_1_5_plan_says_who_where_when(demo_plan, demo):
-    """5. Отображать краткую информацию по плану: кто, куда и в какое время едет."""
+    """5."""
     geo = Geo(demo)
     for route in demo_plan.routes:
         if not route.stops:
@@ -91,7 +83,7 @@ def test_2_1_5_plan_says_who_where_when(demo_plan, demo):
     "event_type", ["urgent_order", "cancel_order", "engineer_unavailable"]
 )
 def test_2_1_6_replans_after_each_event(demo, demo_plan, event_type):
-    """6. Перестраивать план после события (реализованы все три вида)."""
+    """6."""
     working = demo.model_copy(deep=True)
     geo = Geo(working)
 
@@ -112,9 +104,6 @@ def test_2_1_6_replans_after_each_event(demo, demo_plan, event_type):
 
     new_plan, diff = replan.replan(working, demo_plan, event, geo, FAST)
 
-    # План после события допустим в тех условиях, в которых строился:
-    # с той же индексацией точек и тем же состоянием заморозки. Проверять его
-    # «с нуля» некорректно — часть визитов к моменту события уже выполнена.
     fresh = Geo(working)
     frozen = replan.freeze(fresh, demo_plan, hhmm_to_min(event.time))
     replan.remap_starts(fresh, frozen)
@@ -128,15 +117,12 @@ def test_2_1_6_replans_after_each_event(demo, demo_plan, event_type):
 
 
 def test_2_1_7_explains_every_assignment(demo_plan):
-    """7. Объяснять результат понятным пользователю языком."""
+    """7."""
     assert len(demo_plan.explanations) == demo_plan.metrics.assigned
     for card in demo_plan.explanations.values():
         assert card["checks"], "должны быть перечислены учтённые ограничения"
         assert card["why"], "должно быть сказано, почему выбран этот инженер"
         assert card["travel"]
-
-
-# ======================================================== ТЗ §2.2 «Обязательные ограничения»
 
 
 def test_2_2_qualification_is_enforced(demo, demo_plan):
@@ -149,7 +135,7 @@ def test_2_2_qualification_is_enforced(demo, demo_plan):
 
 
 def test_2_2_time_is_enforced(demo, demo_plan):
-    """Начало работ — в окне; работа с дорогой укладывается в смену."""
+    """Начало работ в окне; работа с дорогой укладывается в смену."""
     engineers = demo.engineers_by_id
     orders = demo.orders_by_id
     for route in demo_plan.routes:
@@ -175,13 +161,10 @@ def test_2_2_resource_is_enforced(demo, demo_plan):
 
 
 def test_2_2_unassigned_orders_are_shown_with_a_reason(demo_plan):
-    """Если выполнить все заявки невозможно — показать их явно и назвать причину."""
+    """Если выполнить все заявки невозможно показать их явно и назвать причину."""
     for item in demo_plan.unassigned:
         assert item.reason_code
         assert len(item.reason) > 20, "причина должна быть фразой, а не кодом"
-
-
-# ======================================================== ТЗ §2.3 «Оптимальный маршрут»
 
 
 def test_2_3_baseline_matches_the_specification_text():
@@ -208,14 +191,11 @@ def test_2_3_second_mandatory_metric_is_per_engineer_and_total(demo_plan):
 
 
 def test_2_3_beats_baseline_on_both_mandatory_metrics(demo, demo_plan):
-    """Сравнение с базовым вариантом — на демо-наборе выигрыш по обеим метрикам."""
+    """Сравнение с базовым вариантом на демо-наборе выигрыш по обеим метрикам."""
     base = baseline.plan(demo, Geo(demo))
     assert demo_plan.metrics.assigned > base.metrics.assigned
     assert demo_plan.metrics.engineers_used <= base.metrics.engineers_used
     assert demo_plan.metrics.distance_total_km <= base.metrics.distance_total_km
-
-
-# ======================================================== ТЗ §2.4 «Формат данных»
 
 
 def test_2_4_order_has_all_minimal_fields(demo):
@@ -280,15 +260,8 @@ def test_2_4_2_result_contains_everything_required(demo, demo_plan):
     assert demo_plan.plan_explanation
 
 
-# ======================================================== ТЗ §3.2 «Программные требования»
-
-
 def test_3_2_solution_runs_without_network(demo, monkeypatch):
-    """Сервис обязан считать план без сети: координаты уже лежат в данных.
-
-    Проверяем поведением, а не чтением исходника: маршрутизатор в модуле
-    есть, но он необязателен и включается только переменной окружения.
-    """
+    """Сервис обязан считать план без сети: координаты уже лежат в данных."""
     import httpx
 
     monkeypatch.delenv("OSRM_URL", raising=False)
@@ -310,9 +283,6 @@ def test_3_2_no_database_required():
     assert "sqlite" not in inspect.getsource(plan_store).lower()
 
 
-# ======================================================== ТЗ §4 «Демонстрация»
-
-
 def test_4_demo_scenario_exists_with_events(demo):
     """Сценарий защиты: набор с заготовленными событиями."""
     assert demo.events, "к демо-набору должны прилагаться события"
@@ -324,9 +294,6 @@ def test_4_7_comparison_table_lists_both_mandatory_metrics_first(demo, demo_plan
     rows = metrics.compare(demo_plan.metrics, base.metrics)
     assert rows[0].key == "engineers_used"
     assert rows[1].key == "distance_total_km"
-
-
-# ======================================================== ТЗ §6 «Ресурсы»
 
 
 def test_6_dataset_size_is_within_recommendation(demo):
@@ -349,9 +316,6 @@ def test_6_assumptions_are_documented():
     text = (ROOT / "docs" / "ASSUMPTIONS.md").read_text(encoding="utf-8")
     for topic in ("норматив", "синтетич", "транспорт", "окно", "контрольн"):
         assert topic in text.lower(), topic
-
-
-# ======================================================== ТЗ §5 «Документация»
 
 
 @pytest.mark.parametrize(
@@ -379,9 +343,6 @@ def test_5_data_documentation_describes_units():
         assert topic in text.lower(), topic
 
 
-# ======================================================== ТЗ §8.1 «На что обратят внимание»
-
-
 def test_8_1_constraints_are_actually_checked_not_just_declared(demo):
     """Валидатор обязан ловить нарушение каждой группы ограничений."""
     geo = Geo(demo)
@@ -395,7 +356,7 @@ def test_8_1_constraints_are_actually_checked_not_just_declared(demo):
 
 
 def test_8_1_result_is_understandable_without_reading_code(demo_plan):
-    """Тексты объяснений — по-русски и без внутренних терминов."""
+    """Тексты объяснений по-русски и без внутренних терминов."""
     blob = " ".join(
         [demo_plan.plan_explanation]
         + list(demo_plan.route_explanations.values())
@@ -443,9 +404,6 @@ def test_8_1_run_is_reproducible_from_readme():
     parser_commands = inspect.getsource(cli.main)
     for command in ("build", "geocode", "engineers", "demo", "plan", "serve"):
         assert f'"{command}"' in parser_commands
-
-
-# ======================================================== целостность плана
 
 
 def test_every_order_is_assigned_or_explained(demo, demo_plan):

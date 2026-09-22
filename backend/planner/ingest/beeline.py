@@ -1,17 +1,4 @@
-"""Адаптер выгрузки билайна: CSV (cp1251, разделитель «;») -> Scenario.
-
-Особенности реальных файлов (DESIGN.md §1.2), все учтены ниже:
-* набор колонок различается между регионами: «Подключение» есть только у Востока,
-  «Статус BK» и «Бригада» — только в контрольном распределении;
-* буква «BK» в заголовках — латиница;
-* после таблицы синтетики идут пустые строки и строка «Адрес Офиса;<адрес>»
-  (в Югоцентре — «Адрес офиса», со строчной «о»);
-* час может быть без ведущего нуля: «17.08.2026 0:01»;
-* два файла контроля названы с двойной точкой перед расширением.
-
-Порядок строк файла сохраняется: он же — «порядок поступления» заявок
-для базового варианта из ТЗ §2.3.
-"""
+"""Адаптер выгрузки билайна: CSV (cp1251, разделитель «;») -> Scenario."""
 
 from __future__ import annotations
 
@@ -34,19 +21,12 @@ from planner.paths import RAW_DIR
 ENCODING = "cp1251"
 DELIMITER = ";"
 
-# Префикс строки с адресом офиса (регистр и окончание различаются между файлами).
 OFFICE_PREFIX = "адрес оф"
 
-# Время события «отмена заявки» в заготовках: за 50 минут до начала окна —
-# клиент успевает отказаться, когда бригада уже в пути.
 CANCEL_LEAD_MIN = 50
 
-#: Окно шире этого считаем «суточным»: в выгрузке аварии стоят как 0:01–23:59.
 FULL_DAY_WINDOW_MIN = 20 * 60
 
-#: В какие часы может возникнуть авария. Эксперты (п.5): «начало выполнения
-#: аварийной заявки определяется временем её фактического поступления»,
-#: то есть авария возникает в течение рабочего дня, а не висит с полуночи.
 INCIDENT_HOURS = (9 * 60, 19 * 60)
 
 
@@ -105,7 +85,7 @@ def _cell(row: list[str], index: int | None) -> str:
 
 
 def _split_orders_and_office(rows: list[list[str]]) -> tuple[list[list[str]], str | None]:
-    """Строки заявок (первая ячейка — число) и адрес офиса из служебной строки."""
+    """Строки заявок (первая ячейка число) и адрес офиса из служебной строки."""
     orders: list[list[str]] = []
     office: str | None = None
     for row in rows:
@@ -124,7 +104,7 @@ def load_region(
     *,
     spec: RegionSpec | None = None,
 ) -> Scenario:
-    """Собирает Scenario без координат и без инженеров — их добавляют следующие шаги."""
+    """Собирает Scenario без координат и без инженеров их добавляют следующие шаги."""
     spec = spec or _guess_spec(synthetic_csv)
     header, rows = _read_rows(synthetic_csv)
     order_rows, office_address = _split_orders_and_office(rows)
@@ -161,7 +141,6 @@ def load_region(
         end_date, window_end = parse_ru_datetime(_cell(row, idx["end"]))
         date = date or start_date
         if end_date != start_date:
-            # В данных такого нет, но окно через полночь сломало бы арифметику смены.
             raise IngestError(f"окно заявки пересекает сутки: строка {number} в {synthetic_csv.name}")
 
         attributes: dict[str, object] = {}
@@ -207,13 +186,7 @@ def load_region(
 
 
 def attach_control(scenario: Scenario, control_csv: Path) -> int:
-    """Переносит «Статус BK» и «Бригада» из контроля в attributes заявок.
-
-    Сопоставление построчное: i-я строка синтетики соответствует i-й строке контроля
-    (файлы совпадают по составу и порядку, синтетика — это контроль без статуса,
-    бригады и номера квартиры). Каждая пара сверяется по типу заявки и окну;
-    при расхождении строка пропускается, и возвращённое число будет меньше.
-    """
+    """Переносит «Статус BK» и «Бригада» из контроля в attributes заявок."""
     header, rows = _read_rows(control_csv)
     control_rows, _ = _split_orders_and_office(rows)
     idx = {
@@ -245,15 +218,7 @@ def attach_control(scenario: Scenario, control_csv: Path) -> int:
 
 
 def assign_incident_times(scenario: Scenario, seed: int = 42) -> int:
-    """Проставляет аварийным заявкам время фактического поступления.
-
-    В выгрузке аварии записаны окном 0:01–23:59: это не значит, что их можно
-    начинать с полуночи, — это суточный срок обязательства перед клиентом.
-    Эксперты уточнили, что авария возникает в течение дня и с этого момента
-    влияет на расписание бригады. Самого времени в данных нет, поэтому оно
-    распределяется по рабочему дню детерминированно — одинаково при каждом
-    запуске, чтобы демонстрация была воспроизводимой.
-    """
+    """Проставляет аварийным заявкам время фактического поступления."""
     import hashlib
 
     low, high = INCIDENT_HOURS
@@ -264,7 +229,7 @@ def assign_incident_times(scenario: Scenario, seed: int = 42) -> int:
             continue
         digest = hashlib.sha256(f"{seed}|{order.id}".encode()).digest()
         reported = low + int.from_bytes(digest[:4], "big") % max(1, high - low)
-        reported -= reported % 5  # ровные пять минут читаются лучше
+        reported -= reported % 5
         order.window_start = min_to_hhmm(reported)
         order.attributes["reported_at"] = order.window_start
         order.attributes["incident_window"] = "сутки от поступления"
@@ -273,12 +238,12 @@ def assign_incident_times(scenario: Scenario, seed: int = 42) -> int:
 
 
 def cancelled_orders(scenario: Scenario) -> list[Order]:
-    """Заявки, отменённые в контрольном распределении, — кандидаты на событие «отмена»."""
+    """Заявки, отменённые в контрольном распределении, кандидаты на событие «отмена»."""
     return [o for o in scenario.orders if o.attributes.get("control_status") == "Отменена"]
 
 
 def control_brigades(scenario: Scenario) -> list[str]:
-    """Бригады из контроля в порядке появления — ориентир для числа инженеров."""
+    """Бригады из контроля в порядке появления ориентир для числа инженеров."""
     seen: list[str] = []
     for order in scenario.orders:
         brigade = order.attributes.get("control_engineer")
@@ -289,7 +254,6 @@ def control_brigades(scenario: Scenario) -> list[str]:
 
 def _guess_spec(path: Path) -> RegionSpec:
     name = path.name.casefold()
-    # «Юго-восток» проверяем раньше «Восток»: иначе подстрока совпадёт не с тем регионом.
     for spec in sorted(REGIONS, key=lambda s: -len(s.name)):
         if spec.name.casefold() in name:
             return spec

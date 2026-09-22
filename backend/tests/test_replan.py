@@ -1,4 +1,4 @@
-"""Перепланирование после события (DESIGN.md §9, ТЗ §2.1.6)."""
+"""Перепланирование после события."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ FAST = PlanParams(objective="min_engineers", time_limit_s=2)
 
 @pytest.fixture
 def day():
-    """Восемь заявок на троих инженеров — хватает места для манёвра."""
+    """Восемь заявок на троих инженеров хватает места для манёвра."""
     orders = [
         make_order("O1", 1, Skill.LOCAL, ("09:00", "11:00")),
         make_order("O2", 2, Skill.LOCAL, ("09:00", "11:00")),
@@ -41,9 +41,6 @@ def day():
 @pytest.fixture
 def day_plan(day):
     return solver.plan(day, Geo(day), FAST)
-
-
-# ------------------------------------------------------------- заморозка
 
 
 def test_freeze_locks_started_visits(day, day_plan):
@@ -91,9 +88,6 @@ def test_unassigned_orders_get_another_chance(day, day_plan):
         assert unassigned.order_id in frozen.pool
 
 
-# ----------------------------------------------------- срочная заявка
-
-
 def test_urgent_order_is_added_and_scheduled(day, day_plan):
     scenario = day.model_copy(deep=True)
     lat, lon = at_km(3)
@@ -111,14 +105,7 @@ def test_urgent_order_is_added_and_scheduled(day, day_plan):
 
 
 def test_urgent_order_does_not_shift_engineers_start_points(day, day_plan):
-    """Регрессия: добавление заявки сдвигает нумерацию узлов.
-
-    Точки сценария идут как «заявки, затем офис, затем выездные базы».
-    Срочная заявка дописывается в конец списка заявок, и офис съезжает
-    на следующий индекс. Состояние заморозки, посчитанное до события,
-    после этого указывало бы на новую заявку: инженер без начатых визитов
-    начинал бы день из точки аварии, а не из офиса.
-    """
+    """Регрессия: добавление заявки сдвигает нумерацию узлов."""
     scenario = day.model_copy(deep=True)
     before = Geo(scenario)
     frozen = replan.freeze(before, day_plan, hhmm_to_min("09:00"))
@@ -162,9 +149,6 @@ def test_urgent_order_keeps_its_priority(day, day_plan):
     assert scenario.order(order.id).priority is Priority.URGENT
 
 
-# ------------------------------------------------------------- отмена
-
-
 def test_cancelled_order_disappears_from_the_plan(day, day_plan):
     target = next(
         stop.order_id
@@ -205,9 +189,6 @@ def test_cancelling_unknown_order_is_refused(day, day_plan):
         replan.replan(
             scenario, day_plan, CancelOrderEvent(time="12:00", order_id="ZZZ"), Geo(scenario), FAST
         )
-
-
-# ------------------------------------------------- недоступность инженера
 
 
 def test_unavailable_engineer_gets_no_new_work(day, day_plan):
@@ -272,9 +253,6 @@ def test_unknown_engineer_is_refused(day, day_plan):
             Geo(scenario),
             FAST,
         )
-
-
-# --------------------------------------------------------------- общее
 
 
 @pytest.mark.parametrize("hour", ["10:00", "12:00", "15:00"])
@@ -360,9 +338,6 @@ def test_replan_is_stable(day, day_plan):
     )
     moved = [c for c in diff.changed if c.from_engineer != c.to_engineer]
     assert len(moved) <= max(2, day_plan.metrics.assigned // 4)
-
-
-# --------------------------------------------------- на реальных данных
 
 
 def test_replan_on_real_region():

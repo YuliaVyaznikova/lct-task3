@@ -1,16 +1,4 @@
-"""Геометрия маршрутов для карты: линии по дорогам вместо прямых.
-
-Чисто оформительская задача. На расчёт плана это не влияет: распределение,
-времена и метрики считаются офлайн-моделью (DESIGN.md §5), а здесь
-запрашивается только ломаная, по которой маршрут рисуется в интерфейсе.
-Поэтому сбой сервиса ничего не ломает — карта просто вернётся к прямым
-отрезкам, и в легенде будет написано, как именно она нарисована.
-
-Публичный демонстрационный сервер OSRM держит загруженным только
-автомобильный профиль: запросы `walking` и `cycling` возвращают ту же
-геометрию, что и `driving`. Поэтому профиль не варьируем и честно
-подписываем линии как «по автомобильной сети».
-"""
+"""Геометрия маршрутов для карты: линии по дорогам вместо прямых."""
 
 from __future__ import annotations
 
@@ -25,14 +13,10 @@ from planner.core.models import Plan
 from planner.core.validate import Geo
 from planner.paths import CACHE_DIR
 
-#: Публичный сервер OSRM. Используется только для рисования и только если
-#: свой экземпляр не задан переменной окружения OSRM_URL.
 PUBLIC_OSRM = "https://router.project-osrm.org"
 
 PROFILE = "driving"
 
-#: Больше точек на запрос публичный сервер принимает плохо, а маршруты
-#: инженеров заведомо короче.
 MAX_WAYPOINTS = 25
 
 TIMEOUT_S = 25.0
@@ -57,7 +41,7 @@ def _cache_path(points: list[tuple[float, float]]) -> Path:
 def fetch_line(
     points: list[tuple[float, float]], base_url: str
 ) -> tuple[list[list[float]] | None, str | None]:
-    """Ломаная по дорогам через заданные точки. Возвращает (линия, ошибка)."""
+    """Ломаная по дорогам через заданные точки."""
     if len(points) < 2:
         return None, None
     if len(points) > MAX_WAYPOINTS:
@@ -68,7 +52,7 @@ def fetch_line(
         try:
             return json.loads(path.read_text(encoding="utf-8")), None
         except Exception:
-            pass  # повреждённый кэш — просто перезапросим
+            pass
 
     import httpx
 
@@ -89,7 +73,6 @@ def fetch_line(
         return None, f"ответ без маршрута ({payload.get('code')})"
 
     try:
-        # OSRM отдаёт пары «долгота, широта» — на карте нужен обратный порядок.
         line = [[lat, lon] for lon, lat in payload["routes"][0]["geometry"]["coordinates"]]
     except Exception as exc:
         return None, f"не разобрали геометрию: {exc}"
@@ -98,7 +81,7 @@ def fetch_line(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(line), encoding="utf-8")
     except OSError:
-        pass  # без кэша тоже работает, просто медленнее
+        pass
 
     return line, None
 
@@ -119,7 +102,7 @@ def route_points(geo: Geo, plan: Plan, engineer_id: str) -> list[tuple[float, fl
 
 
 def build(geo: Geo, plan: Plan, base_url: str | None = None) -> PlanGeometry:
-    """Геометрия всех маршрутов плана. Запросы идут параллельно."""
+    """Геометрия всех маршрутов плана."""
     url = base_url or os.environ.get("OSRM_URL") or PUBLIC_OSRM
     tasks = {
         route.engineer_id: route_points(geo, plan, route.engineer_id)

@@ -1,21 +1,4 @@
-"""Оптимизатор распределения и маршрутов на Google OR-Tools (DESIGN.md §6).
-
-Задача — VRPTW с гетерогенным парком, пропуском узлов и платой за выход
-инженера на смену:
-
-    min  Σ drop(o)·[заявка пропущена]          — выполнить как можно больше заявок
-       + F·|задействованные инженеры|          — затем занять как можно меньше людей
-       + Σ пробег                              — затем сократить километраж
-       + Σ w_u·(насколько поздно начата срочная)
-       + Σ S·[заявка сменила инженера]         — только при перепланировании
-
-Порядок величин подобран так, чтобы критерии были лексикографическими:
-никакая экономия километров не оправдывает лишнего инженера, и никакая
-экономия инженеров не оправдывает пропуска заявки (ТЗ §2.3, Q&A блок 11).
-
-Солвер не выставляет времена в плане: он возвращает только порядок посещения,
-а все времена и метрики пересчитывает валидатор (DESIGN.md §8).
-"""
+"""Оптимизатор распределения и маршрутов на Google OR-Tools."""
 
 from __future__ import annotations
 
@@ -37,30 +20,18 @@ from planner.core.models import (
 from planner.core.timeutil import min_to_hhmm
 from planner.core.validate import Geo, StartState, check_static, evaluate
 
-#: Штраф за пропуск заявки по ярусу приоритета, метры. Больше любого мыслимого
-#: пробега и платы за инженера, поэтому выполнение заявок всегда важнее экономии.
-#: Очерёдность задана экспертами (п.15): авария → подключение → ремонт и дозаказ.
 DROP_PENALTY_BY_TIER = {
-    1: 10_000_000,  # авария
-    2: 2_000_000,   # подключение
-    3: 1_000_000,   # ремонт, дозаказ, информационные выезды
+    1: 10_000_000,
+    2: 2_000_000,
+    3: 1_000_000,
 }
 
-#: Плата за вывод инженера на смену в режиме «меньше инженеров», метры.
 ENGINEER_FIXED_COST = 100_000
 
-#: Цена минуты задержки срочной заявки, метры за минуту.
 URGENT_LATENESS_WEIGHT = 50
 
-#: Цена минуты переноса за пределы обещанного клиенту окна, метры за минуту.
-#: Работает только при `allow_reschedule` (эксперты, п.2). Величина подобрана
-#: так, чтобы перенос был дороже любой перестановки маршрута, но дешевле
-#: отказа от заявки: 200 минут опоздания стоят столько же, сколько невыполнение.
-#: Иначе говоря, сдвинуть время клиенту допустимо только когда альтернатива —
-#: вовсе не приехать.
 RESCHEDULE_WEIGHT = 5_000
 
-#: Верхняя граница горизонта планирования в минутах (сутки с запасом).
 HORIZON_MIN = 1_800
 
 
@@ -92,33 +63,26 @@ def solve(
     order_ids: list[str] | None = None,
     previous: dict[str, str] | None = None,
 ) -> SolveResult:
-    """Строит распределение. `starts` и `previous` используются при перепланировании."""
+    """Строит распределение."""
     geo = geo or Geo(scenario)
     params = params or PlanParams()
     starts = starts or {}
     previous = previous or {}
 
-    # Пустой список — это «планировать нечего», а не «планировать всё»:
-    # при перепланировании пул законно бывает пустым.
     if order_ids is None:
         order_ids = [o.id for o in scenario.orders]
     pool = [geo.orders[order_id] for order_id in order_ids]
-    # Инженеры, помеченные closed (например, ставшие недоступными), новых заявок
-    # не получают, но их уже начатые визиты валидатор всё равно покажет в плане.
     engineers = [
         e
         for e in scenario.engineers
         if not (e.id in starts and starts[e.id].closed)
     ]
 
-    # Заявки, которые не может взять ни один инженер, в модель не попадают:
-    # их причина определяется диагностикой, а не солвером.
     servable = [o for o in pool if _capable(scenario, o)]
     prefiltered = [o.id for o in pool if o not in servable]
     if not servable or not engineers:
         return SolveResult({e.id: [] for e in engineers}, [o.id for o in pool], prefiltered, "EMPTY")
 
-    # ---- узлы модели: заявки, стартовые точки инженеров, фиктивный финиш
     node_of_order = {order.id: i for i, order in enumerate(servable)}
     geo_nodes = [geo.node(order.id) for order in servable]
 
@@ -151,7 +115,6 @@ def solve(
     )
     routing = pywrapcp.RoutingModel(manager)
 
-    # ---- стоимость дуг: пробег плюс штраф за смену исполнителя при перепланировании
     stability = params.stability_weight_m
     previous_vehicle = {
         node_of_order[order_id]: engineer_id
@@ -191,14 +154,13 @@ def solve(
 
     routing.AddDimensionWithVehicleTransits(
         time_callback_indices,
-        HORIZON_MIN,  # ожидание перед окном
         HORIZON_MIN,
-        False,  # начало смены задаётся явно, а не нулём
+        HORIZON_MIN,
+        False,
         "Time",
     )
     time_dim = routing.GetDimensionOrDie("Time")
 
-    # ---- временные окна заявок: cumul в узле = время НАЧАЛА работ
     earliest_shift = min(
         (starts[e.id].available_min if e.id in starts else e.shift_start_min) for e in engineers
     )
@@ -206,9 +168,6 @@ def solve(
     for order in servable:
         index = manager.NodeToIndex(node_of_order[order.id])
         if allow_reschedule:
-            # Перенос разрешён: верхняя граница отодвигается до конца смены,
-            # а выход за обещанное окно штрафуется (эксперты, п.2 — время
-            # можно скорректировать, клиента предупредит служба поддержки).
             latest = max(order.window_end_min, max(e.shift_end_min for e in engineers))
             time_dim.CumulVar(index).SetRange(order.window_start_min, latest)
             time_dim.SetCumulVarSoftUpperBound(
@@ -217,11 +176,9 @@ def solve(
         else:
             time_dim.CumulVar(index).SetRange(order.window_start_min, order.window_end_min)
         if order.priority is Priority.URGENT:
-            # «Аварию нужно выполнить как можно раньше» (Q&A, блок 3).
             bound = max(order.window_start_min, earliest_shift)
             time_dim.SetCumulVarSoftUpperBound(index, bound, URGENT_LATENESS_WEIGHT)
 
-    # ---- смены инженеров
     for vehicle, engineer in enumerate(engineers):
         state = starts.get(engineer.id)
         available = state.available_min if state else engineer.shift_start_min
@@ -229,10 +186,6 @@ def solve(
         time_dim.CumulVar(start_index).SetRange(available, available)
         time_dim.CumulVar(routing.End(vehicle)).SetMax(engineer.shift_end_min)
 
-    # ---- квалификация и транспорт: список допустимых исполнителей по заявке.
-    # Задаём через VehicleVar, а не SetAllowedVehiclesForIndex: в ortools 9.15
-    # обёртка последнего не принимает списки Python. Значение -1 оставляет
-    # заявке возможность остаться невыполненной (её цену задаёт дизъюнкция).
     for order in servable:
         allowed = [
             vehicle
@@ -243,11 +196,6 @@ def solve(
         routing.VehicleVar(index).SetValues([-1, *allowed])
         routing.AddDisjunction([index], _drop_penalty(order))
 
-    # ---- оборудование: то, что взято утром, нельзя израсходовать дважды
-    # (ответ экспертов, п.4). Для модели это обычная вместимость: у каждого
-    # вида оборудования своя размерность, потребности заявок складываются
-    # вдоль маршрута и не могут превысить утренний запас инженера. При
-    # перепланировании запас уменьшается на уже израсходованное до события.
     for kind in geo.equipment.kinds:
         demand = np.zeros(total_nodes, dtype=np.int64)
         for order in servable:
@@ -274,7 +222,7 @@ def solve(
             routing.RegisterUnaryTransitCallback(make_demand_callback(demand)),
             0,
             capacities,
-            True,  # запас считается с нуля на старте маршрута
+            True,
             f"Equipment:{kind}",
         )
 
@@ -336,7 +284,7 @@ def _initial_routes(
 
 
 def _add_lunch_breaks(routing, manager, time_dim, engineers, service_min, starts) -> None:
-    """Необязательный обед: 45 минут в окне 13:00–15:00 (Q&A, блок 5)."""
+    """Необязательный обед: 45 минут в окне 13:00–15:00."""
     node_visit = [int(service_min[manager.IndexToNode(i)]) if i < len(service_min) else 0
                   for i in range(routing.Size())]
     solver = routing.solver()
@@ -358,13 +306,7 @@ def plan(
     order_ids: list[str] | None = None,
     previous: dict[str, str] | None = None,
 ) -> Plan:
-    """Полный план: решение солвера, пересчитанное валидатором и объяснённое.
-
-    В режиме «auto» задача решается дважды — с платой за выход инженера и без
-    неё — и выбирается лучший результат по лексикографической цели. Когда штат
-    сократить нельзя, плата за инженера становится константой, но сбивает
-    направленный поиск, и вариант без неё даёт заметно более короткие маршруты.
-    """
+    """Полный план: решение солвера, пересчитанное валидатором и объяснённое."""
     geo = geo or Geo(scenario)
     params = params or PlanParams()
 
@@ -384,7 +326,6 @@ def plan(
             if best is None or metrics_module.is_better(attempt.metrics, best.metrics):
                 best = attempt
         assert best is not None
-        # В плане остаётся победивший режим и исходный бюджет времени.
         best.params = best.params.model_copy(update={"time_limit_s": params.time_limit_s})
         return best
 
@@ -408,9 +349,6 @@ def plan(
         id=plan_id,
         scenario_id=scenario.id,
         kind="optimized",
-        # Фиксируем, какая модель движения фактически использовалась:
-        # при недоступном OSRM сервис молча работает на офлайн-оценке,
-        # и это должно быть видно в плане, а не только в логе.
         params=params.model_copy(update={"travel_model": geo.travel.name}),
         planned_from=planned_from,
         routes=routes,

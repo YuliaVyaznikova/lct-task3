@@ -1,4 +1,4 @@
-"""Базовый вариант из ТЗ §2.3 и метрики сравнения."""
+"""Базовый вариант и метрики сравнения."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from tests.conftest import make_engineer, make_order, make_scenario
 
 
 def test_assigns_to_first_suitable_engineer_in_order():
-    """ТЗ §2.3: первый по порядку во входных данных подходящий инженер."""
+    """Первый по порядку во входных данных подходящий инженер."""
     orders = [make_order("A", 1), make_order("B", 2)]
     engineers = [make_engineer("E01"), make_engineer("E02")]
     plan = baseline.plan(make_scenario(orders, engineers))
@@ -69,9 +69,6 @@ def test_every_order_is_either_assigned_or_explained(toy):
     assert covered == {o.id for o in toy.orders}
 
 
-# --------------------------------------------------------------- метрики
-
-
 def test_metrics_count_only_used_engineers(toy):
     plan = baseline.plan(toy)
     used = {r.engineer_id for r in plan.routes if r.stops}
@@ -94,9 +91,9 @@ def test_compare_marks_direction_correctly():
     a = metrics.Metrics(engineers_used=8, distance_total_km=70.0, assigned=58, unassigned=3)
     b = metrics.Metrics(engineers_used=11, distance_total_km=96.0, assigned=55, unassigned=6)
     rows = {row.key: row for row in metrics.compare(a, b)}
-    assert rows["engineers_used"].better is True  # меньше — лучше
+    assert rows["engineers_used"].better is True
     assert rows["distance_total_km"].better is True
-    assert rows["assigned"].better is True  # больше — лучше
+    assert rows["assigned"].better is True
     assert rows["unassigned"].better is True
 
     worse = {row.key: row for row in metrics.compare(b, a)}
@@ -124,9 +121,6 @@ def test_is_better_follows_lexicographic_objective():
     fewer_people = metrics.Metrics(assigned=60, engineers_used=8, distance_total_km=300.0)
     shorter = metrics.Metrics(assigned=60, engineers_used=9, distance_total_km=100.0)
     assert metrics.is_better(fewer_people, shorter), "инженеры важнее пробега"
-
-
-# ------------------------------------------------- на реальных сценариях
 
 
 @pytest.fixture(scope="module")

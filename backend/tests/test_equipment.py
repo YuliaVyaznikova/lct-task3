@@ -1,9 +1,4 @@
-"""Оборудование как ограничение (ответ экспертов, п.4).
-
-Исходное ТЗ §2.2 относило учёт оборудования к необязательному усложнению.
-Эксперты сделали его ограничением: бригада получает оборудование в офисе
-на весь день, и назначать ей можно только те заявки, на которые запаса хватает.
-"""
+"""Оборудование как ограничение (ответ экспертов, п.4)."""
 
 from __future__ import annotations
 
@@ -23,9 +18,6 @@ def with_equipment(order_id: str, east_km: float, items: dict[str, int], **kwarg
     order = make_order(order_id, east_km, **kwargs)
     order.attributes["equipment"] = items
     return order
-
-
-# ------------------------------------------------------------ справочник
 
 
 def test_connection_needs_a_router():
@@ -57,11 +49,8 @@ def test_describe_needs_is_readable():
     assert equipment.describe_needs({}) == "оборудование не требуется"
 
 
-# ----------------------------------------------------- ограничение маршрута
-
-
 def test_route_cannot_exceed_the_morning_stock():
-    """Запас выдаётся утром и не пополняется — пятая заявка с роутером не влезет."""
+    """Запас выдаётся утром и не пополняется пятая заявка с роутером не влезет."""
     stock = equipment.load().stock["router"]
     orders = [
         with_equipment(f"O{i}", i * 0.5, {"router": 1}, skill=Skill.CONNECTION, duration=30)
@@ -122,9 +111,6 @@ def test_order_beyond_any_stock_is_explained():
     assert result.reason_code is ReasonCode.NO_EQUIPMENT
     assert "роутер" in result.reason
     assert "запас" in result.reason
-
-
-# ------------------------------------------------- на реальных данных
 
 
 @pytest.fixture(scope="module")

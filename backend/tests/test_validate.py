@@ -1,4 +1,4 @@
-"""Валидатор — единственный источник истины о допустимости плана (DESIGN.md §8)."""
+"""Валидатор единственный источник истины о допустимости плана."""
 
 from __future__ import annotations
 
@@ -23,21 +23,16 @@ def codes(violations):
     return sorted(v.code for v in violations)
 
 
-# ------------------------------------------------------- арифметика маршрута
-
-
 def test_times_are_chained(toy_geo):
     engineer = toy_geo.engineers["E03"]
     route, violations = evaluate_route(toy_geo, engineer, ["A", "B"])
     assert not violations
     assert [s.order_id for s in route.stops] == ["A", "B"]
     assert [s.seq for s in route.stops] == [1, 2]
-    # Первая заявка: выезд в 09:00, но начать раньше окна нельзя.
     first, second = route.stops
     assert first.start == "10:00"
     assert first.wait_min > 0
     assert first.finish == "10:30"
-    # Вторая начинается не раньше, чем закончилась первая плюс дорога.
     assert hhmm_to_min(second.arrival) == hhmm_to_min(first.finish) + second.travel_min
     assert route.end_time == second.finish
 
@@ -51,7 +46,7 @@ def test_totals_match_stops(toy_geo):
 
 
 def test_arriving_early_waits_and_never_starts_before_window(toy_geo):
-    """Приехать раньше окна можно, начать работу — нет (Q&A, блок 5)."""
+    """Приехать раньше окна можно, начать работу нет."""
     route, violations = evaluate_route(toy_geo, toy_geo.engineers["E03"], ["A"])
     assert not violations
     stop = route.stops[0]
@@ -61,15 +56,12 @@ def test_arriving_early_waits_and_never_starts_before_window(toy_geo):
 
 
 def test_finish_may_leave_the_window(toy_geo):
-    """Обязательство — начать внутри окна; окончание за его пределами допустимо."""
+    """Обязательство начать внутри окна; окончание за его пределами допустимо."""
     order = make_order("X", 1, Skill.LOCAL, ("10:00", "10:30"), duration=120)
     scenario = make_scenario([order], [make_engineer("E01", [Skill.LOCAL])])
     route, violations = evaluate_route(Geo(scenario), scenario.engineers[0], ["X"])
     assert not violations
     assert route.stops[0].finish == "12:00"
-
-
-# ------------------------------------------------------------- нарушения
 
 
 def test_missing_skill_is_reported(toy_geo):
@@ -78,7 +70,7 @@ def test_missing_skill_is_reported(toy_geo):
 
 
 def test_wrong_transport_is_reported(toy_geo):
-    """У заявки F требуется автомобиль, у E01 — пешком."""
+    """У заявки F требуется автомобиль, у E01 пешком."""
     _, violations = evaluate_route(toy_geo, toy_geo.engineers["E01"], ["F"])
     assert "NO_TRANSPORT" in codes(violations)
 
@@ -119,13 +111,10 @@ def test_routes_are_ordered_like_the_directory(toy_geo):
     assert [r.engineer_id for r in routes] == ["E01", "E03"]
 
 
-# --------------------------------------------------------------- вставки
-
-
 def test_can_append_respects_constraints(toy_geo):
     assert can_append(toy_geo, toy_geo.engineers["E03"], [], "A")
-    assert not can_append(toy_geo, toy_geo.engineers["E03"], [], "C")  # нет навыка
-    assert not can_append(toy_geo, toy_geo.engineers["E01"], [], "F")  # не тот транспорт
+    assert not can_append(toy_geo, toy_geo.engineers["E03"], [], "C")
+    assert not can_append(toy_geo, toy_geo.engineers["E01"], [], "F")
 
 
 def test_best_insertion_finds_cheapest_position(toy_geo):
@@ -149,9 +138,6 @@ def test_first_blocking_violation_explains_the_obstacle(toy_geo):
     assert blocking is not None and blocking.code == "NO_TRANSPORT"
 
     assert first_blocking_violation(toy_geo, toy_geo.engineers["E03"], [], "A") is None
-
-
-# ------------------------------------------------------- старт не из офиса
 
 
 def test_start_state_shifts_the_whole_route(toy_geo):
@@ -180,9 +166,6 @@ def test_locked_stops_are_preserved(toy_geo):
     assert route.work_min == base.work_min + 30
 
 
-# --------------------------------------------------------------- прочее
-
-
 def test_geo_requires_coordinates():
     order = make_order("X", 1)
     order.lat = order.lon = None
@@ -209,7 +192,6 @@ def test_personal_start_point_gets_its_own_node(toy):
     assert geo.start_node(remote) != geo.office_index
     assert geo.start_node(scenario.engineers[0]) == geo.office_index
 
-    # Расстояние до первой заявки считается от базы, а не от офиса.
     from_base = geo.leg(remote, geo.start_node(remote), geo.node("A"))[0]
     from_office = geo.leg(remote, geo.office_index, geo.node("A"))[0]
     assert from_base != pytest.approx(from_office)

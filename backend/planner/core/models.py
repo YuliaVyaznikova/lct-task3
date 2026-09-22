@@ -1,14 +1,4 @@
-"""Канонические модели предметной области (DESIGN.md §3).
-
-Всё ядро работает только с этими типами. Адаптеры (ingest/) переводят
-в них внешние форматы; API отдаёт их же как JSON-схемы.
-
-Соглашения:
-* время — строки "HH:MM" (московское), внутри алгоритмов — минуты от полуночи;
-* длительности — минуты (int);
-* расстояния — километры (float) наружу, метры (int) внутри солвера;
-* координаты — WGS84.
-"""
+"""Канонические модели предметной области."""
 
 from __future__ import annotations
 
@@ -23,7 +13,7 @@ HHMM = Annotated[str, Field(pattern=r"^\d{1,2}:\d{2}$")]
 
 
 class Skill(StrEnum):
-    """Справочник навыков (ТЗ §2.4.1). Заявка требует ровно один, инженер имеет 1–3."""
+    """Справочник навыков."""
 
     LOCAL = "local"
     CONNECTION = "connection"
@@ -31,7 +21,7 @@ class Skill(StrEnum):
 
 
 class Transport(StrEnum):
-    """Справочник типов транспорта (ТЗ §2.4.1). У инженера ровно один."""
+    """Справочник типов транспорта."""
 
     CAR = "car"
     FOOT = "foot"
@@ -40,7 +30,7 @@ class Transport(StrEnum):
 
 
 class Priority(StrEnum):
-    """Приоритет заявки (ТЗ §2.4.1)."""
+    """Приоритет заявки."""
 
     NORMAL = "normal"
     URGENT = "urgent"
@@ -55,7 +45,7 @@ class GeocodeQuality(StrEnum):
 
 
 class ReasonCode(StrEnum):
-    """Причины, по которым заявка не назначена (DESIGN.md §10.2)."""
+    """Причины, по которым заявка не назначена."""
 
     NO_SKILL = "NO_SKILL"
     NO_TRANSPORT = "NO_TRANSPORT"
@@ -109,7 +99,7 @@ class Point(Base):
 
 
 class Order(Base):
-    """Заявка на выезд (ТЗ §2.4 «Минимальные поля»)."""
+    """Заявка на выезд."""
 
     id: str
     external_id: str = ""
@@ -121,14 +111,12 @@ class Order(Base):
     geocode_quality: GeocodeQuality = GeocodeQuality.NONE
 
     skill: Skill
-    work_type: str = ""  # «Тип заявки BK» как в выгрузке
-    description: str = ""  # «Тип заявки HD» как в выгрузке
+    work_type: str = ""
+    description: str = ""
     duration_min: int = Field(gt=0)
     window_start: HHMM
     window_end: HHMM
     priority: Priority = Priority.NORMAL
-    #: Очерёдность при нехватке ресурсов (ответ экспертов, п.15):
-    #: 1 — авария, 2 — подключение, 3 — ремонт и дозаказ.
     priority_tier: int = 3
     required_transport: Transport | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
@@ -157,7 +145,7 @@ class Order(Base):
 
 
 class Engineer(Base):
-    """Исполнитель. В терминах заказчика — «бригада», но это один человек (Q&A блок 1)."""
+    """Исполнитель."""
 
     id: str
     name: str
@@ -263,9 +251,6 @@ class Stop(Base):
     start: HHMM
     finish: HHMM
     locked: bool = False
-    #: На сколько минут визит начат позже обещанного клиенту окна.
-    #: Отлично от нуля только при перепланировании с разрешённым переносом;
-    #: такой визит требует звонка от службы поддержки.
     late_min: int = 0
 
 
@@ -298,9 +283,6 @@ class Metrics(Base):
     engineers_total: int = 0
     engineers_used: int = 0
     distance_total_km: float = 0.0
-    # Пробег на одну выполненную заявку. Без него сравнение с базовым вариантом
-    # вводит в заблуждение: план, который везёт на 28 заявок больше, неизбежно
-    # накатывает больше километров, хотя работает эффективнее.
     distance_per_order_km: float = 0.0
     distance_by_engineer: dict[str, float] = Field(default_factory=dict)
     travel_min_total: int = 0
@@ -309,28 +291,15 @@ class Metrics(Base):
     utilization_by_engineer: dict[str, float] = Field(default_factory=dict)
     extra_engineers_needed: int = 0
     late_risk: int = 0
-    #: Сколько визитов перенесено за пределы обещанного окна (эксперты, п.2).
     rescheduled: int = 0
 
 
 class PlanParams(Base):
-    # «auto» — посчитать обоими способами и выбрать лучший по лексикографике
-    # (заявки → инженеры → пробег). Нужен потому, что плата за выход инженера
-    # на смену бесполезно искажает поиск, когда сократить штат всё равно нельзя.
     objective: Literal["auto", "min_engineers", "min_distance"] = "auto"
-    # Режим «auto» делит бюджет пополам между двумя прогонами, поэтому
-    # значение ниже 20 с означает менее 10 с на попытку. На самом крупном
-    # участке (Юго-Восток, 83 заявки и три удалённых кластера) этого мало:
-    # при 7 с получается 8.1 км на заявку, при 10 с — 5.9. Замер — в README.
     time_limit_s: int = 20
     seed: int = 42
     stability_weight_m: int = 0
     lunch: bool = False
-    #: Разрешить при перепланировании сдвинуть обещанное клиенту время.
-    #: Эксперты (п.2): «при изменении расписания ранее озвученное клиенту
-    #: время может быть скорректировано; коммуникация с клиентом в этом
-    #: случае осуществляется службой поддержки». Применяется только к
-    #: перепланированию: при первичном расчёте окно всегда жёсткое.
     allow_reschedule: bool = False
     travel_model: str = "haversine"
 
@@ -361,7 +330,7 @@ class Plan(Base):
 
 
 class Violation(Base):
-    """Нарушение ограничения, найденное валидатором (DESIGN.md §8)."""
+    """Нарушение ограничения, найденное валидатором."""
 
     engineer_id: str | None
     order_id: str | None

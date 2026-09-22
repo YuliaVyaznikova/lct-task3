@@ -1,9 +1,4 @@
-"""Геометрия маршрутов для карты (core/geometry.py).
-
-Тесты не ходят в сеть: проверяются подготовка точек, кэш и поведение
-при недоступном сервисе. Рисование — оформление, и сбой маршрутизатора
-не должен ни ломать план, ни валить интерфейс.
-"""
+"""Геометрия маршрутов для карты (core/geometry.py)."""
 
 from __future__ import annotations
 
@@ -26,7 +21,7 @@ def plan(toy, toy_geo):
 
 
 def test_route_points_start_from_the_engineers_own_point(toy, toy_geo, plan):
-    """Линия начинается там же, где начинается маршрут, — у инженера, не у офиса."""
+    """Линия начинается там же, где начинается маршрут, у инженера, не у офиса."""
     route = next(r for r in plan.routes if r.stops)
     points = geometry.route_points(toy_geo, plan, route.engineer_id)
 
@@ -100,12 +95,12 @@ def test_broken_cache_does_not_crash(monkeypatch, tmp_path):
     path.write_text("не json", encoding="utf-8")
     monkeypatch.setattr(geometry, "_cache_path", lambda _points: path)
     line, error = geometry.fetch_line([(55.70, 37.60), (55.71, 37.62)], UNREACHABLE)
-    assert line is None  # ушли в сеть и там не смогли
+    assert line is None
     assert error
 
 
 def test_build_degrades_gracefully(toy_geo, plan):
-    """Недоступный маршрутизатор — это прямые линии на карте, а не ошибка."""
+    """Недоступный маршрутизатор это прямые линии на карте, а не ошибка."""
     result = geometry.build(toy_geo, plan, UNREACHABLE)
     assert result.available is False
     assert result.routes == {}

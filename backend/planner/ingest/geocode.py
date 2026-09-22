@@ -1,12 +1,4 @@
-"""Геокодирование адресов выгрузки — офлайн-предобработка (DESIGN.md §4.4).
-
-Лестница провайдеров: первая ступень, давшая правдоподобный ответ, побеждает.
-Ключи необязательны: без них работают Nominatim и Photon, последней ступенью —
-центроид района. Ручных правок не требуется.
-
-Результат кладётся в data/cache/geocode.json и коммитится вместе со сценариями;
-в рантайме сервис к геокодерам не обращается.
-"""
+"""Геокодирование адресов выгрузки офлайн-предобработка."""
 
 from __future__ import annotations
 
@@ -25,17 +17,14 @@ from planner.paths import CACHE_DIR, CONFIG_DIR, read_secret
 
 USER_AGENT = "lct2026-task3-routing/0.1 (hackathon prototype)"
 
-# Проверка правдоподобия ответа (DESIGN.md §4.4).
 MAX_KM_FROM_OFFICE_MOSCOW = 25.0
 MAX_KM_FROM_OFFICE_REGION = 120.0
-# Московский район компактен, а подмосковный «район» выгрузки — это целый город
-# с окрестностями (Домодедово, Кашира, Ступино), поэтому пределы разные.
 MAX_KM_FROM_DISTRICT_MOSCOW = 5.0
 MAX_KM_FROM_DISTRICT_REGION = 25.0
 
-MOSCOW_BBOX = (54.2, 35.1, 56.95, 40.3)  # lat_min, lon_min, lat_max, lon_max
+MOSCOW_BBOX = (54.2, 35.1, 56.95, 40.3)
 
-NOMINATIM_DELAY_S = 1.05  # лимит сервиса — 1 запрос в секунду
+NOMINATIM_DELAY_S = 1.05
 DISTRICT_JITTER_M = 300.0
 
 
@@ -90,11 +79,8 @@ class Cache:
         )
 
 
-# ---------------------------------------------------------------- провайдеры
-
-
 class Providers:
-    """Обёртки над HTTP-геокодерами. Каждая возвращает GeoResult или None."""
+    """Обёртки над HTTP-геокодерами."""
 
     def __init__(self, client: httpx.Client | None = None) -> None:
         self.client = client or httpx.Client(
@@ -106,7 +92,6 @@ class Providers:
         self._last_nominatim = 0.0
         self.errors: list[str] = []
 
-    # DaData Suggest: координаты у 97 % домов Москвы, явный код точности qc_geo.
     def dadata(self, addr: NormalizedAddress) -> GeoResult | None:
         if not self.dadata_key:
             return None
@@ -122,7 +107,7 @@ class Providers:
             )
             response.raise_for_status()
             suggestions = response.json().get("suggestions") or []
-        except Exception as exc:  # сеть или лимит — переходим к следующей ступени
+        except Exception as exc:
             self.errors.append(f"dadata: {type(exc).__name__}: {exc}")
             return None
         if not suggestions:
@@ -264,11 +249,8 @@ class Providers:
         )
 
 
-# ---------------------------------------------------------------- центроиды районов
-
-
 class Districts:
-    """Центроиды районов — последняя ступень лестницы и проверка правдоподобия."""
+    """Центроиды районов последняя ступень лестницы и проверка правдоподобия."""
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or CONFIG_DIR / "districts.csv"
@@ -314,9 +296,6 @@ def _jitter(lat: float, lon: float, key: str) -> tuple[float, float]:
     return lat + dlat, lon + dlon
 
 
-# ---------------------------------------------------------------- лестница
-
-
 def _plausible(
     result: GeoResult,
     addr: NormalizedAddress,
@@ -355,7 +334,7 @@ def geocode_one(
     office: tuple[float, float] | None = None,
     overrides: dict[str, tuple[float, float]] | None = None,
 ) -> tuple[GeoResult, list[str]]:
-    """Прогоняет один адрес по лестнице. Возвращает результат и журнал отбраковок."""
+    """Прогоняет один адрес по лестнице."""
     log: list[str] = []
     addr = normalize(raw_address)
 
@@ -412,7 +391,6 @@ def resolve_districts(
             if districts.get(district) is not None:
                 continue
             addr = normalize(order.address)
-            # «GPON Даниловский» — техническое имя, ищем по содержательной части.
             query_name = district.replace("GPON", "").strip()
             city = addr.city if addr.city != "Москва" else "Москва"
             for attempt in (

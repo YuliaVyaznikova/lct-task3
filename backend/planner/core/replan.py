@@ -1,18 +1,4 @@
-"""Перепланирование после события (DESIGN.md §9, ТЗ §2.1.6).
-
-ТЗ требует перестроить план после одного события на выбор: появилась срочная
-заявка, заявка отменена, инженер стал недоступен. Реализованы все три.
-
-Схема — «заморозить прошлое, пересчитать будущее». На момент события t всё,
-что инженер уже начал или выполнил, остаётся в плане неприкосновенным: диспетчер
-не может отменить визит, который уже идёт. Инженер продолжает маршрут из точки,
-где он находится, а все ещё не начатые заявки возвращаются в общий пул
-и распределяются заново — вместе с теми, что в прошлом плане не поместились.
-
-Чтобы план не «рассыпался» ради нескольких сэкономленных километров, за смену
-исполнителя назначается штраф (stability_weight_m): переставлять заявки можно,
-но только если это даёт заметный выигрыш.
-"""
+"""Перепланирование после события."""
 
 from __future__ import annotations
 
@@ -37,11 +23,6 @@ from planner.core.models import (
 from planner.core.timeutil import hhmm_to_min, min_to_hhmm
 from planner.core.validate import Geo, StartState
 
-#: Штраф за перевод заявки к другому инженеру при перепланировании, метры.
-#: Подобран по данным: при 500 м одно событие перетасовывало 11 заявок и удлиняло
-#: маршруты, при 3000 м план остаётся узнаваемым и выходит короче. Величина
-#: сопоставима с типичным переездом внутри района, то есть переставлять заявку
-#: имеет смысл только ради заметного выигрыша.
 DEFAULT_STABILITY_M = 3000
 
 
@@ -67,7 +48,6 @@ def freeze(geo: Geo, plan: Plan, at_min: int) -> Frozen:
         locked: list[Stop] = []
         if route is not None:
             for stop in route.stops:
-                # Инженер уже на адресе (едет — ещё нет): работа считается начатой.
                 if hhmm_to_min(stop.arrival) <= at_min:
                     locked.append(stop.model_copy(update={"locked": True, "seq": len(locked) + 1}))
                 else:
@@ -97,13 +77,7 @@ def freeze(geo: Geo, plan: Plan, at_min: int) -> Frozen:
 
 
 def remap_starts(geo: Geo, frozen: Frozen) -> None:
-    """Переводит стартовые узлы заморозки в индексацию переданного `geo`.
-
-    Узлы заявок устойчивы (новые заявки дописываются в конец), а офис
-    и выездные базы идут после них, поэтому добавление хотя бы одной заявки
-    сдвигает их индексы. Место инженера задаётся не числом, а смыслом:
-    точка последнего выполненного визита либо его собственная стартовая точка.
-    """
+    """Переводит стартовые узлы заморозки в индексацию переданного `geo`."""
     for engineer_id, state in frozen.starts.items():
         if state.locked_stops:
             state.node = geo.node(state.locked_stops[-1].order_id)
@@ -114,7 +88,7 @@ def remap_starts(geo: Geo, frozen: Frozen) -> None:
 def apply_event(
     scenario: Scenario, geo: Geo, frozen: Frozen, event: Event, at_min: int
 ) -> tuple[Geo, list[str], str]:
-    """Меняет сценарий по событию. Возвращает (geo, пул, подпись события)."""
+    """Меняет сценарий по событию."""
     pool = list(frozen.pool)
 
     if isinstance(event, UrgentOrderEvent):
@@ -127,7 +101,7 @@ def apply_event(
         if any(o.id == order.id for o in scenario.orders):
             raise ReplanError(f"заявка {order.id} уже есть в сценарии")
         scenario.orders.append(order)
-        geo = Geo(scenario)  # индексы точек изменились — матрицу надо пересобрать
+        geo = Geo(scenario)
         pool.append(order.id)
         return geo, pool, f"срочная заявка {order.id} ({order.address})"
 
@@ -148,9 +122,6 @@ def apply_event(
     if isinstance(event, EngineerUnavailableEvent):
         if event.engineer_id not in geo.engineers:
             raise ReplanError(f"в сценарии нет инженера {event.engineer_id}")
-        # Начатую заявку инженер доводит до конца, всё остальное уже в пуле.
-        # Инженер остаётся в плане как «закрытый»: новых заявок не получит,
-        # но выполненные визиты обязаны остаться видимыми диспетчеру.
         state = frozen.starts.get(event.engineer_id)
         if state is not None:
             state.closed = True
@@ -168,7 +139,7 @@ def replan(
     params: PlanParams | None = None,
     plan_id: str | None = None,
 ) -> tuple[Plan, Diff]:
-    """Пересчитывает план после события. Сценарий может быть дополнен новой заявкой."""
+    """Пересчитывает план после события."""
     geo = geo or Geo(scenario)
     params = (params or plan.params).model_copy(
         update={"stability_weight_m": DEFAULT_STABILITY_M}
@@ -177,9 +148,6 @@ def replan(
 
     frozen = freeze(geo, plan, at_min)
     geo, pool, caption = apply_event(scenario, geo, frozen, event, at_min)
-    # Срочная заявка добавляет сценарию точку, и нумерация узлов сдвигается:
-    # индекс офиса, вычисленный при заморозке, после этого указывал бы
-    # на новую заявку. Пересчитываем стартовые узлы по свежей индексации.
     remap_starts(geo, frozen)
 
     previous = plan.assignment
@@ -203,7 +171,7 @@ def replan(
 
 
 def build_diff(before: Plan, after: Plan, event: Event, locked: int, caption: str) -> Diff:
-    """Что именно изменилось — ТЗ §2.4.2 требует показать это наглядно."""
+    """Что именно изменилось."""
     before_assignment = before.assignment
     after_assignment = after.assignment
     before_stops = {s.order_id: s for r in before.routes for s in r.stops}

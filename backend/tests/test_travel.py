@@ -1,4 +1,4 @@
-"""Модель времени в пути (DESIGN.md §5)."""
+"""Модель времени в пути."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def test_haversine_symmetric_and_zero_on_diagonal():
 
 
 def test_matrix_applies_detour_factor():
-    points = [(55.700, 37.700), (55.700, 37.7159)]  # примерно 1 км по долготе
+    points = [(55.700, 37.700), (55.700, 37.7159)]
     model = TravelModel(points)
     straight = haversine_km(*points[0], *points[1])
     expected = straight * float(detour_factor(straight))
@@ -35,7 +35,6 @@ def test_detour_factor_is_calibrated_by_distance():
     for (km, factor) in DETOUR_CALIBRATION:
         assert float(detour_factor(km)) == pytest.approx(factor, abs=1e-9)
     assert float(detour_factor(0.5)) > float(detour_factor(6.0)) > float(detour_factor(60.0))
-    # За пределами таблицы значение не экстраполируется, а фиксируется.
     assert float(detour_factor(0.05)) == pytest.approx(DETOUR_CALIBRATION[0][1])
     assert float(detour_factor(500)) == pytest.approx(DETOUR_CALIBRATION[-1][1])
 
@@ -67,7 +66,7 @@ def test_profiles_are_monotonic():
 
 
 def test_car_matches_the_official_travel_norm():
-    """Норматив «дорога до клиента» — 20 мин; типичный переезд внутри района 3–5 км."""
+    """Норматив «дорога до клиента» 20 мин; типичный переезд внутри района 3–5 км."""
     car = PROFILES[Transport.CAR]
     assert 12 <= car.minutes(3) <= 20
     assert 15 <= car.minutes(5) <= 25
@@ -86,7 +85,7 @@ def test_public_transport_is_slower_than_car_but_reaches_far():
 
 
 def test_walking_far_is_effectively_impossible():
-    """Пешеход до Каширы идёт двадцать часов — такие заявки честно станут недостижимыми."""
+    """Пешеход до Каширы идёт двадцать часов такие заявки честно станут недостижимыми."""
     assert PROFILES[Transport.FOOT].minutes(91) > 12 * 60
 
 
@@ -102,7 +101,7 @@ def test_zero_distance_costs_nothing():
 
 
 def test_travel_returns_km_and_minutes():
-    model = TravelModel([(55.700, 37.700), (55.700, 37.7794)])  # около 5 км
+    model = TravelModel([(55.700, 37.700), (55.700, 37.7794)])
     km, minutes = model.travel(Transport.CAR, 0, 1)
     assert 5.5 < km < 7.5
     assert 15 <= minutes <= 25
@@ -114,7 +113,7 @@ def test_time_matrix_is_cached():
 
 
 def test_matrix_build_is_fast_enough_to_skip_caching():
-    """Обоснование отказа от кэша матриц на диске (DESIGN.md §5)."""
+    """Обоснование отказа от кэша матриц на диске."""
     import time
 
     points = [(55.5 + i * 0.004, 37.5 + i * 0.006) for i in range(85)]
@@ -132,9 +131,6 @@ def test_describe_mentions_every_transport():
         assert transport.value in text
 
 
-# ------------------------------------------------------ OSRM (без сети)
-
-
 def test_osrm_falls_back_when_service_is_unreachable():
     """Недоступный маршрутизатор не должен срывать построение плана."""
     from planner.core.travel import OsrmTravel
@@ -144,7 +140,6 @@ def test_osrm_falls_back_when_service_is_unreachable():
     assert model.connected is False
     assert model.errors
     assert "недоступен" in model.name
-    # Расстояния всё равно посчитаны офлайн-моделью.
     assert model.distance_km(0, 1) > 0
 
 
@@ -182,8 +177,6 @@ def test_osrm_uses_our_speed_profiles_not_free_flow_times(tmp_path):
 
     points = [(55.70, 37.70), (55.75, 37.78)]
     model = OsrmTravel(points, "http://127.0.0.1:1", timeout_s=0.5, cache_dir=tmp_path)
-    # Подменяем расстояния так, будто сервис ответил, и проверяем, что время
-    # пересчитано профилем, а не взято извне.
     model._apply(np.array([[0.0, 10.0], [10.0, 0.0]]))
     expected = round(PROFILES[Transport.CAR].minutes(10.0))
     assert model.time_min(Transport.CAR)[0, 1] == expected

@@ -68,7 +68,7 @@ def test_brigade_profiles_are_deliberately_generous(scenarios):
 
 
 def test_manual_distribution_misses_windows(scenarios):
-    """Факт не укладывается в собственные нормативы — постановщик это подтверждал."""
+    """Факт не укладывается в собственные нормативы постановщик это подтверждал."""
     total_late = sum(control.build(scenarios[r]).late_starts for r in REGIONS)
     assert total_late > 0
 
@@ -97,18 +97,7 @@ def test_compact_regions_beat_the_manual_plan_on_mileage(scenarios, region):
 
 
 def test_yugo_vostok_pays_for_stricter_constraints(scenarios):
-    """На Юго-Востоке мы проигрываем факту по километрам — и это осознанная цена.
-
-    Наша модель строже фактического распределения сразу в трёх местах:
-    запас оборудования ограничен утренней выдачей (эксперты, п.4), аварии
-    возникают в течение дня и требуют отклонения от маршрута (п.5), а окно,
-    обещанное клиенту, не нарушается ни разу. Ручное распределение этих
-    ограничений не соблюдало: только нарушений окна там десяток.
-
-    Тест фиксирует и проигрыш, и его величину: если разрыв вырастет
-    существенно, это будет означать, что сломался оптимизатор, а не что
-    ограничения дорого стоят.
-    """
+    """На Юго-Востоке мы проигрываем факту по километрам и это осознанная цена."""
     scenario = scenarios["yugo-vostok"]
     geo = Geo(scenario)
     ours = solver.plan(scenario, geo, PlanParams(time_limit_s=25))

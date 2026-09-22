@@ -1,11 +1,4 @@
-"""Прогон сценария защиты из ТЗ §4 через интерфейс со снимками экрана.
-
-    python tools/demo_flow.py [каталог-для-снимков]
-
-Проверяет ровно то, что будет показано комиссии: загрузка набора, расчёт,
-карта и таймлайн, объяснение назначения, причина отказа, событие
-и перестроение плана, сравнение с базовым вариантом.
-"""
+"""Прогон демонстрационного сценария через интерфейс со снимками экрана."""
 
 from __future__ import annotations
 
@@ -14,9 +7,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+sys.stdout.reconfigure(encoding="utf-8")
 
-from browser import Browser  # noqa: E402
+from browser import Browser
 
 URL = os.environ.get("PLANNER_URL", "http://127.0.0.1:8000")
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "screenshots")
@@ -49,8 +42,6 @@ def run() -> int:
             "document.body.innerText.includes('Задействовано')", timeout_s=120
         )
         check(ready, "план посчитан")
-        # Тайлы OpenStreetMap приходят медленно (секунды на плитку), а без них
-        # снимок выглядит пустым, хотя маршруты уже нарисованы.
         browser.wait_for(
             "[...document.querySelectorAll('img.leaflet-tile')]"
             ".filter(i => i.complete && i.naturalWidth > 0).length >= 12",
@@ -67,8 +58,6 @@ def run() -> int:
             browser.eval("document.querySelectorAll('.leaflet-container').length === 1"),
             "карта на экране",
         )
-        # Карта включена в режиме canvas (preferCanvas), поэтому точки и линии
-        # не являются элементами DOM — проверяем сам холст и подложку.
         check(
             browser.eval("document.querySelectorAll('.leaflet-container canvas').length >= 1"),
             "слой маршрутов на карте создан",
@@ -116,7 +105,6 @@ def run() -> int:
         check("Сравнение с базовым вариантом" in metrics, "таблица сравнения на месте")
         check("Задействовано инженеров" in metrics, "первая обязательная метрика ТЗ")
         check("Суммарный пробег" in metrics, "вторая обязательная метрика ТЗ")
-        # Таблица должна быть именно видна, а не уехать под открытую карточку.
         check(
             browser.eval(
                 "(() => { const t = [...document.querySelectorAll('h2')]"

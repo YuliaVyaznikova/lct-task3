@@ -1,8 +1,4 @@
-"""HTTP API сервиса планирования (DESIGN.md §13).
-
-Все тексты ошибок — по-русски: их показывает диспетчеру интерфейс,
-а не разработчик читает в логе.
-"""
+"""HTTP API сервиса планирования."""
 
 from __future__ import annotations
 
@@ -54,16 +50,12 @@ app.add_middleware(
 )
 
 
-# ----------------------------------------------------------------- схемы
-
-
 class ScenarioBrief(BaseModel):
     id: str
     name: str
     date: str
     orders: int
     engineers: int
-    #: Наименьшее число бригад, которое можно запросить для этого сценария.
     engineers_min: int
     events: int
     office: str
@@ -72,9 +64,6 @@ class ScenarioBrief(BaseModel):
 class PlanRequest(BaseModel):
     scenario_id: str
     params: PlanParams = Field(default_factory=PlanParams)
-    #: Сколько бригад вывести на смену. Эксперты (п.12) разрешили определять
-    #: это самостоятельно, взяв контроль лишь как ориентир. None — оставить
-    #: состав сценария (по числу бригад в контрольном распределении).
     engineer_count: int | None = None
 
 
@@ -118,9 +107,6 @@ class ManualRequest(BaseModel):
     position: int | Literal["best"] = "best"
 
 
-# ------------------------------------------------------------ вспомогательное
-
-
 def _comparison(ours: Plan, base: Plan) -> list[MetricRowOut]:
     return [
         MetricRowOut(
@@ -136,7 +122,7 @@ def _comparison(ours: Plan, base: Plan) -> list[MetricRowOut]:
 
 
 def _control(scenario: Scenario, plan: Plan) -> ControlReferenceOut:
-    """Как эти же заявки распределили вручную. Строго справочно, в оптимизации не участвует."""
+    """Как эти же заявки распределили вручную."""
     if not control_module.has_control(scenario):
         return ControlReferenceOut(available=False)
     reference = control_module.build(scenario)
@@ -155,7 +141,6 @@ def _control(scenario: Scenario, plan: Plan) -> ControlReferenceOut:
     )
 
 
-#: У демо-набора нет собственной записи в engineers.yaml — он собран из Востока.
 def _config_region(scenario_id: str) -> str:
     return scenario_id if scenario_id in {"vostok", "yugo-vostok", "yugocentr"} else "vostok"
 
@@ -176,9 +161,6 @@ def _load_scenario(scenario_id: str) -> Scenario:
             f"Сценарий «{scenario_id}» не найден. Доступные: "
             + ", ".join(s.id for s in scenario_store.load_all()),
         ) from None
-
-
-# ----------------------------------------------------------------- сценарии
 
 
 @app.get("/api/health")
@@ -203,7 +185,6 @@ def list_scenarios() -> list[ScenarioBrief]:
         )
         for s in scenario_store.load_all()
     ]
-    # Демонстрационный сценарий первым — с него начинается защита.
     briefs.sort(key=lambda b: (b.id != "demo", b.name))
     return briefs
 
@@ -215,7 +196,7 @@ def get_scenario(scenario_id: str) -> Scenario:
 
 @app.get("/api/reference")
 def reference() -> dict:
-    """Справочники и допущения — чтобы интерфейс не хранил их копию."""
+    """Справочники и допущения чтобы интерфейс не хранил их копию."""
     return {
         "skills": {key.value: value for key, value in SKILL_RU.items()},
         "transports": {key.value: value for key, value in TRANSPORT_RU.items()},
@@ -275,9 +256,6 @@ async def upload_scenario(
     )
     scenario_store.save(scenario)
     return scenario
-
-
-# -------------------------------------------------------------------- планы
 
 
 @app.post("/api/plans", response_model=PlanResponse)
@@ -346,11 +324,7 @@ def apply_event(plan_id: str, event: Annotated[Event, Body()]) -> ReplanResponse
 
 @app.post("/api/plans/{plan_id}/manual", response_model=PlanResponse)
 def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
-    """Ручное переназначение заявки (DESIGN.md §11).
-
-    Постановщик на сессии вопросов и ответов отдельно просил заложить
-    возможность править распределение руками.
-    """
+    """Ручное переназначение заявки."""
     record = _record(plan_id)
     geo = record.geo
     if request.order_id not in geo.orders:
@@ -440,11 +414,7 @@ def explain_order(plan_id: str, order_id: str) -> dict:
 
 @app.get("/api/plans/{plan_id}/geometry")
 def plan_geometry(plan_id: str) -> dict:
-    """Ломаные маршрутов по дорогам — только для отрисовки на карте.
-
-    На расчёт не влияет: план уже построен офлайн-моделью. Если сервис
-    маршрутизации недоступен, интерфейс рисует прямые отрезки.
-    """
+    """Ломаные маршрутов по дорогам только для отрисовки на карте."""
     record = _record(plan_id)
     geometry = geometry_module.build(record.geo, record.plan)
     return {
@@ -458,7 +428,7 @@ def plan_geometry(plan_id: str) -> dict:
 
 @app.get("/api/plans/{plan_id}/export")
 def export_plan(plan_id: str) -> dict:
-    """Результат в терминах ТЗ §2.4.2."""
+    """Результат планирования в формате выгрузки."""
     record = _record(plan_id)
     plan, geo = record.plan, record.geo
     base = record.baseline
@@ -522,11 +492,6 @@ def export_plan(plan_id: str) -> dict:
     }
 
 
-# --------------------------------------------------------------- фронтенд
-
-# На Windows таблица типов берётся из реестра, где «.js» нередко записан как
-# text/plain. Браузер отказывается исполнять модуль с таким типом — страница
-# открывается пустой, причём без ошибки в консоли. Задаём типы явно.
 for _extension, _mime in {
     ".js": "text/javascript",
     ".mjs": "text/javascript",
@@ -547,8 +512,6 @@ if _FRONTEND.is_dir():
 
     @app.get("/{path:path}")
     def spa(path: str) -> FileResponse:
-        # Неизвестные адреса под /api должны оставаться ошибкой API, иначе
-        # опечатка в запросе вернёт фронтенду страницу вместо понятного 404.
         if path == "api" or path.startswith("api/"):
             raise HTTPException(404, f"Нет такого метода API: /{path}")
         candidate = (_FRONTEND / path).resolve()
