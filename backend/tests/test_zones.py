@@ -5,7 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from planner.core import zones
+from planner.core import solver, zones
+from planner.core.models import PlanParams
 from planner.core.validate import Geo
 from planner.ingest import store
 
@@ -53,6 +54,28 @@ def test_compact_regions_have_a_single_zone(scenarios):
     for region in ("vostok", "yugocentr"):
         geo = Geo(scenarios[region])
         assert set(geo.zones) == {zones.BASE_ZONE}
+
+
+def zone_sequence(geo, scenario, route) -> list[int]:
+    engineer = scenario.engineers_by_id[route.engineer_id]
+    visited = [geo.zone(geo.start_node(engineer))]
+    visited += [geo.zone(geo.node(stop.order_id)) for stop in route.stops]
+    return [zone for index, zone in enumerate(visited) if index == 0 or zone != visited[index - 1]]
+
+
+def test_no_engineer_shuttles_back_and_forth_between_zones(scenarios):
+    """Кочевание вида «Москва, Домодедово, Москва» эксперты назвали нежелательным."""
+    scenario = scenarios["yugo-vostok"]
+    geo = Geo(scenario)
+    plan = solver.plan(scenario, geo, PlanParams(time_limit_s=20))
+
+    for route in plan.routes:
+        if not route.stops:
+            continue
+        sequence = zone_sequence(geo, scenario, route)
+        assert len(sequence) == len(set(sequence)), (
+            f"{route.engineer_id} возвращается в зону, которую уже покидал: {sequence}"
+        )
 
 
 def test_yugo_vostok_separates_the_remote_towns(scenarios):

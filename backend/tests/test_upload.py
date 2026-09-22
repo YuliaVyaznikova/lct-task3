@@ -1,0 +1,109 @@
+"""Загрузка своих данных через api: csv выгрузки и готовый json-сценарий."""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+from fastapi.testclient import TestClient
+
+from planner.api.app import app
+from planner.ingest import store as scenario_store
+from planner.paths import ROOT, SCENARIOS_DIR
+
+RAW_EXPORT = ROOT / "data" / "raw" / "Восток Синтетические данные.csv"
+
+
+@pytest.fixture
+def isolated_store(tmp_path, monkeypatch):
+    monkeypatch.setattr(scenario_store, "SCENARIOS_DIR", tmp_path)
+    return tmp_path
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+@pytest.fixture
+def small_scenario():
+    if not (SCENARIOS_DIR / "demo.json").is_file():
+        pytest.skip("демо-сценарий ещё не собран")
+    source = scenario_store.load("demo", directory=SCENARIOS_DIR)
+    trimmed = source.model_copy(deep=True)
+    trimmed.id = "uploaded"
+    trimmed.name = "Загруженный набор"
+    trimmed.orders = trimmed.orders[:12]
+    trimmed.engineers = trimmed.engineers[:4]
+    trimmed.events = []
+    return trimmed
+
+
+def upload(client, name: str, payload: bytes, content_type: str):
+    return client.post(
+        "/api/scenarios/upload",
+        files={"synthetic": (name, payload, content_type)},
+    )
+
+
+def test_json_scenario_is_accepted(client, isolated_store, small_scenario):
+    body = small_scenario.model_dump_json().encode("utf-8")
+    response = upload(client, "scenario.json", body, "application/json")
+
+    assert response.status_code == 200, response.text
+    loaded = response.json()
+    assert loaded["id"] == "uploaded"
+    assert len(loaded["orders"]) == 12
+
+
+def test_uploaded_scenario_can_be_planned(client, isolated_store, small_scenario):
+    body = small_scenario.model_dump_json().encode("utf-8")
+    assert upload(client, "scenario.json", body, "application/json").status_code == 200
+
+    response = client.post(
+        "/api/plans",
+        json={"scenario_id": "uploaded", "params": {"time_limit_s": 3}},
+    )
+
+    assert response.status_code == 200, response.text
+    plan = response.json()["optimized"]
+    assigned = sum(len(route["stops"]) for route in plan["routes"])
+    assert assigned + len(plan["unassigned"]) == 12
+
+
+def test_broken_json_is_refused_in_russian(client, isolated_store):
+    response = upload(client, "scenario.json", b"{\"id\": ", "application/json")
+
+    assert response.status_code == 422
+    assert "JSON" in response.json()["detail"]
+
+
+@pytest.mark.skipif(not RAW_EXPORT.is_file(), reason="нет data/raw с выгрузкой")
+def test_beeline_export_is_read_from_csv(client, isolated_store):
+    response = upload(client, RAW_EXPORT.name, RAW_EXPORT.read_bytes(), "text/csv")
+
+    assert response.status_code == 200, response.text
+    scenario = response.json()
+    assert len(scenario["orders"]) == 66
+    assert scenario["office"]["address"]
+    assert scenario["engineers"], "инженеры достраиваются при загрузке"
+    assert all(order["lat"] and order["lon"] for order in scenario["orders"])
+
+
+def test_broken_csv_is_refused_in_russian(client, isolated_store):
+    response = upload(client, "export.csv", "не;таблица;совсем\n".encode("cp1251"), "text/csv")
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail
+    assert any(word in detail.lower() for word in ("выгрузк", "координат", "формат"))
+
+
+def test_upload_does_not_touch_the_repository(client, isolated_store, small_scenario):
+    body = small_scenario.model_dump_json().encode("utf-8")
+    assert upload(client, "scenario.json", body, "application/json").status_code == 200
+
+    written = {path.name for path in isolated_store.glob("*.json")}
+    assert written == {"uploaded.json"}
+    saved = json.loads((isolated_store / "uploaded.json").read_text(encoding="utf-8"))
+    assert saved["id"] == "uploaded"

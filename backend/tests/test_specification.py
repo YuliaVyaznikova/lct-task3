@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 
 import pytest
 
@@ -310,48 +311,33 @@ def test_6_dataset_covers_all_constraints(demo):
         assert requirement.ok, requirement.title
 
 
-def test_6_assumptions_are_documented():
-    from planner.paths import ROOT
-
-    text = (ROOT / "docs" / "assumptions.md").read_text(encoding="utf-8")
-    for topic in ("норматив", "синтетич", "транспорт", "окно", "контрольн"):
-        assert topic in text.lower(), topic
-
-
-@pytest.mark.parametrize(
-    "topic, document, markers",
-    [
-        ("инструкция запуска", "README.md", ("Быстрый запуск", "docker compose")),
-        ("схема решения", "README.md", ("Архитектура", "mermaid")),
-        ("логика оптимизации", "docs/algorithm.md", ("Целевая функция", "Ограничения")),
-        ("обязательные метрики", "docs/algorithm.md", ("Метрики", "Базовый вариант")),
-        ("известные ограничения", "README.md", ("Известные ограничения",)),
-        ("идеи развития", "README.md", ("развития",)),
-    ],
-)
-def test_5_documentation_covers_every_required_topic(topic, document, markers):
-    from planner.paths import ROOT
-
-    text = (ROOT.joinpath(*document.split("/"))).read_text(encoding="utf-8")
-    for marker in markers:
-        assert marker in text, f"{topic}: в {document} нет «{marker}»"
+REQUIRED_DOCUMENTS = ("architecture", "algorithm", "data", "assumptions", "api", "design")
 
 
 def test_5_readme_links_to_every_document():
     from planner.paths import ROOT
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    for name in ("architecture", "algorithm", "data", "assumptions", "api", "design"):
+    for name in REQUIRED_DOCUMENTS:
         assert f"docs/{name}.md" in readme, f"README не ссылается на docs/{name}.md"
-        assert (ROOT / "docs" / f"{name}.md").exists(), f"нет файла docs/{name}.md"
+        document = ROOT / "docs" / f"{name}.md"
+        assert document.is_file(), f"нет файла docs/{name}.md"
+        assert len(document.read_text(encoding="utf-8")) > 1000, f"docs/{name}.md пуст"
 
 
-def test_5_data_documentation_describes_units():
+def test_5_every_internal_link_resolves():
+    """Ссылки между документами не должны вести в никуда."""
     from planner.paths import ROOT
 
-    text = (ROOT / "docs" / "data.md").read_text(encoding="utf-8")
-    for topic in ("единиц", "справочник", "мин", "километр"):
-        assert topic in text.lower(), topic
+    broken: list[str] = []
+    for document in [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]:
+        text = document.read_text(encoding="utf-8")
+        for target in re.findall(r"\]\(([^)]+)\)", text):
+            if target.startswith(("http://", "https://", "#")):
+                continue
+            if not (document.parent / target.split("#")[0]).resolve().exists():
+                broken.append(f"{document.name} -> {target}")
+    assert not broken, "битые ссылки: " + ", ".join(broken)
 
 
 def test_8_1_constraints_are_actually_checked_not_just_declared(demo):

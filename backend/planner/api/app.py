@@ -219,9 +219,11 @@ async def upload_scenario(
 
     if name.lower().endswith(".json"):
         try:
-            return Scenario.model_validate_json(raw.decode("utf-8"))
+            scenario = Scenario.model_validate_json(raw.decode("utf-8"))
         except Exception as exc:
             raise HTTPException(422, f"Не удалось разобрать JSON-сценарий: {exc}") from None
+        scenario_store.save(scenario)
+        return scenario
 
     with tempfile.TemporaryDirectory() as tmp:
         synthetic_path = Path(tmp) / name
