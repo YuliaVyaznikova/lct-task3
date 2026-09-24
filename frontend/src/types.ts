@@ -90,6 +90,11 @@ export interface Metrics {
   late_risk: number
   /** Сколько визитов перенесено за пределы обещанного окна. */
   rescheduled: number
+  /** По скольким авариям известен момент поступления и можно измерить реакцию. */
+  response_measured: number
+  response_median_min: number
+  response_max_min: number
+  response_over_norm: number
 }
 
 export interface Check {

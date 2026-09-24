@@ -300,6 +300,10 @@ class Metrics(Base):
     extra_engineers_needed: int = 0
     late_risk: int = 0
     rescheduled: int = 0
+    response_measured: int = 0
+    response_median_min: int = 0
+    response_max_min: int = 0
+    response_over_norm: int = 0
 
 
 class PlanParams(Base):

@@ -38,6 +38,17 @@ export const api = {
 
   workTypes: () => request<{ work_types: WorkType[] }>('/reference').then((r) => r.work_types),
 
+  upload: async (file: File): Promise<Scenario> => {
+    const form = new FormData()
+    form.append('synthetic', file)
+    const response = await fetch(`${BASE}/scenarios/upload`, { method: 'POST', body: form })
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      throw new Error(body?.detail ?? `Не удалось загрузить файл (${response.status})`)
+    }
+    return response.json()
+  },
+
   plan: (
     scenarioId: string,
     objective: Objective,

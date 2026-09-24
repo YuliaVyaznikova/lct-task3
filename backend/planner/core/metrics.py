@@ -9,6 +9,22 @@ from planner.core.timeutil import hhmm_to_min
 
 LATE_RISK_MARGIN_MIN = 15
 
+RESPONSE_NORM_MIN = 120
+
+
+def response_times(scenario: Scenario, routes: list[Route]) -> dict[str, int]:
+    """Сколько прошло от момента, когда авария стала известна, до начала работ по ней."""
+    started = {stop.order_id: hhmm_to_min(stop.start) for route in routes for stop in route.stops}
+    measured: dict[str, int] = {}
+    for order in scenario.orders:
+        if order.priority is not Priority.URGENT or order.id not in started:
+            continue
+        reported = order.attributes.get("reported_at")
+        if not reported:
+            continue
+        measured[order.id] = started[order.id] - hhmm_to_min(str(reported))
+    return measured
+
 
 def compute(
     scenario: Scenario,
@@ -42,6 +58,7 @@ def compute(
 
     rescheduled = sum(1 for route in routes for stop in route.stops if stop.late_min > 0)
     urgent = [o for o in scenario.orders if o.priority is Priority.URGENT]
+    response = sorted(response_times(scenario, routes).values())
     total_km = sum(route.distance_km for route in used)
     per_order = round(total_km / len(assigned_ids), 2) if assigned_ids else 0.0
 
@@ -63,6 +80,10 @@ def compute(
         extra_engineers_needed=extra_engineers_needed,
         late_risk=late_risk,
         rescheduled=rescheduled,
+        response_measured=len(response),
+        response_median_min=response[len(response) // 2] if response else 0,
+        response_max_min=response[-1] if response else 0,
+        response_over_norm=sum(1 for value in response if value > RESPONSE_NORM_MIN),
     )
 
 

@@ -72,6 +72,25 @@ export default function App() {
     setSelectedEngineer(null)
   }, [scenarioId])
 
+  const upload = useCallback(async (file: File) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const loaded = await api.upload(file)
+      const list = await api.scenarios()
+      setScenarios(list)
+      setScenarioId(loaded.id)
+      setPlan(null)
+      setDiff(null)
+      setComparison([])
+      setControl(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось загрузить файл')
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+
   const run = useCallback(async () => {
     setBusy(true)
     setError(null)
@@ -182,6 +201,24 @@ export default function App() {
               офис: {brief.office}
             </p>
           )}
+
+          <div className="field">
+            <label>Свой набор данных</label>
+            <input
+              type="file"
+              accept=".csv,.json"
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) upload(file)
+              }}
+            />
+            <p className="small muted" style={{ marginTop: 4, marginBottom: 0 }}>
+              Выгрузка в CSV или готовый сценарий в JSON. Адреса геокодируются при
+              загрузке, справочник инженеров достраивается.
+            </p>
+          </div>
 
           <div className="field">
             <label>Что важнее</label>

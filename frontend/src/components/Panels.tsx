@@ -229,6 +229,24 @@ export function MetricsPanel({
         </p>
       )}
 
+      {m.response_measured > 0 && (
+        <p className="small" style={{ marginTop: -6 }}>
+          Реакция на аварию: медиана {m.response_median_min} мин, максимум{' '}
+          {m.response_max_min} мин по {m.response_measured}{' '}
+          {m.response_measured % 10 === 1 && m.response_measured % 100 !== 11
+            ? 'аварии'
+            : 'авариям'}{' '}
+          с известным временем поступления.{' '}
+          {m.response_over_norm > 0 ? (
+            <span style={{ color: 'var(--bad)' }}>
+              Дольше двух часов: {m.response_over_norm}.
+            </span>
+          ) : (
+            <span>Все укладываются в два часа.</span>
+          )}
+        </p>
+      )}
+
       <h2 style={{ fontSize: 12, color: 'var(--muted)' }}>Сравнение с базовым вариантом</h2>
       <p className="small muted" style={{ marginTop: -4 }}>
         Базовый вариант задан в ТЗ §2.3: заявки в порядке поступления — первому подходящему

@@ -112,6 +112,8 @@ def apply_event(
             )
         if any(o.id == order.id for o in scenario.orders):
             raise ReplanError(f"заявка {order.id} уже есть в сценарии")
+        if order.priority is Priority.URGENT and not order.attributes.get("reported_at"):
+            order.attributes["reported_at"] = event.time
         scenario.orders.append(order)
         geo = Geo(scenario)
         pool.append(order.id)
