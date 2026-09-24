@@ -1,14 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import type { PlanEvent, Scenario, Plan } from '../types'
+import { api } from '../api'
+import type { PlanEvent, Scenario, Plan, WorkType } from '../types'
 
-type Kind = 'urgent_order' | 'cancel_order' | 'engineer_unavailable'
+type Kind = 'urgent_order' | 'new_order' | 'cancel_order' | 'engineer_unavailable'
 
 const TITLE: Record<Kind, string> = {
-  urgent_order: 'Срочная заявка',
+  urgent_order: 'Авария',
+  new_order: 'Новая заявка',
   cancel_order: 'Отмена заявки',
   engineer_unavailable: 'Инженер недоступен',
 }
+
+const WINDOWS = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00']
 
 interface Props {
   scenario: Scenario
@@ -23,9 +27,26 @@ export function EventPanel({ scenario, plan, busy, onApply }: Props) {
   const [kind, setKind] = useState<Kind>('urgent_order')
   const [time, setTime] = useState('12:30')
 
-  // Срочная заявка
+  // Адрес берём у существующей заявки, это общее для аварии и новой заявки
   const [anchor, setAnchor] = useState(scenario.orders[0]?.id ?? '')
   const [duration, setDuration] = useState(80)
+
+  // Новая обычная заявка
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([])
+  const [workType, setWorkType] = useState('')
+  const [windowStart, setWindowStart] = useState('16:00')
+  const chosen = workTypes.find((item) => item.work_type === workType)
+
+  useEffect(() => {
+    api
+      .workTypes()
+      .then((items) => {
+        const regular = items.filter((item) => item.priority === 'normal')
+        setWorkTypes(regular)
+        setWorkType((current) => current || regular[0]?.work_type || '')
+      })
+      .catch(() => setWorkTypes([]))
+  }, [])
 
   // Отмена: только те, что ещё не начаты к моменту события
   const cancellable = plan.routes
@@ -40,9 +61,11 @@ export function EventPanel({ scenario, plan, busy, onApply }: Props) {
   const ready =
     kind === 'urgent_order'
       ? Boolean(anchor)
-      : kind === 'cancel_order'
-        ? Boolean(cancelId || cancellable[0])
-        : Boolean(engineerId)
+      : kind === 'new_order'
+        ? Boolean(anchor && chosen)
+        : kind === 'cancel_order'
+          ? Boolean(cancelId || cancellable[0])
+          : Boolean(engineerId)
 
   function apply() {
     if (kind === 'urgent_order') {
@@ -65,6 +88,28 @@ export function EventPanel({ scenario, plan, busy, onApply }: Props) {
           window_start: time,
           window_end: '23:59',
           priority: 'urgent',
+        } as never,
+      })
+    } else if (kind === 'new_order') {
+      const base = scenario.orders.find((o) => o.id === anchor)
+      if (!base || !chosen) return
+      const windowEnd = `${String(Number(windowStart.slice(0, 2)) + 2).padStart(2, '0')}:00`
+      onApply({
+        type: 'new_order',
+        time,
+        order: {
+          id: `NEW-${Math.floor(Math.random() * 900 + 100)}`,
+          address: base.address,
+          district: base.district,
+          lat: base.lat,
+          lon: base.lon,
+          skill: chosen.skill,
+          work_type: chosen.work_type,
+          description: chosen.normative,
+          duration_min: chosen.duration_min,
+          window_start: windowStart,
+          window_end: windowEnd,
+          priority: 'normal',
         } as never,
       })
     } else if (kind === 'cancel_order') {
@@ -117,6 +162,45 @@ export function EventPanel({ scenario, plan, busy, onApply }: Props) {
               onChange={(e) => setDuration(Number(e.target.value))}
             />
           </div>
+        </>
+      )}
+
+      {kind === 'new_order' && (
+        <>
+          <div className="field">
+            <label>Тип работ</label>
+            <select value={workType} onChange={(e) => setWorkType(e.target.value)}>
+              {workTypes.map((item) => (
+                <option key={item.work_type} value={item.work_type}>
+                  {item.work_type}, {item.duration_min} мин
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Адрес (берём у существующей заявки)</label>
+            <select value={anchor} onChange={(e) => setAnchor(e.target.value)}>
+              {scenario.orders.slice(0, 200).map((order) => (
+                <option key={order.id} value={order.id}>
+                  {order.district}, {order.address}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Окно, обещанное клиенту</label>
+            <select value={windowStart} onChange={(e) => setWindowStart(e.target.value)}>
+              {WINDOWS.map((start) => (
+                <option key={start} value={start}>
+                  {start}–{String(Number(start.slice(0, 2)) + 2).padStart(2, '0')}:00
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="small muted" style={{ marginBottom: 10 }}>
+            Обычная заявка встраивается в свободное время и не перестраивает уже
+            составленный план. Длительность берётся из нормативов.
+          </p>
         </>
       )}
 

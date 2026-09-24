@@ -12,6 +12,7 @@ from planner.core.models import (
     Diff,
     EngineerUnavailableEvent,
     Event,
+    NewOrderEvent,
     Order,
     Plan,
     PlanParams,
@@ -24,6 +25,15 @@ from planner.core.timeutil import hhmm_to_min, min_to_hhmm
 from planner.core.validate import Geo, StartState
 
 DEFAULT_STABILITY_M = 3000
+
+QUIET_STABILITY_M = 30_000
+
+
+def _stability_for(event: Event) -> int:
+    """Обычная заявка вписывается в свободное время, аварии позволено перестроить остаток дня."""
+    if isinstance(event, NewOrderEvent) and event.order.priority is not Priority.URGENT:
+        return QUIET_STABILITY_M
+    return DEFAULT_STABILITY_M
 
 
 class ReplanError(RuntimeError):
@@ -91,8 +101,10 @@ def apply_event(
     """Меняет сценарий по событию."""
     pool = list(frozen.pool)
 
-    if isinstance(event, UrgentOrderEvent):
-        order = event.order.model_copy(update={"priority": Priority.URGENT})
+    if isinstance(event, (UrgentOrderEvent, NewOrderEvent)):
+        order = event.order
+        if isinstance(event, UrgentOrderEvent):
+            order = order.model_copy(update={"priority": Priority.URGENT})
         if order.window_end_min < at_min:
             raise ReplanError(
                 f"окно заявки {order.window_start}–{order.window_end} уже закрылось "
@@ -103,7 +115,8 @@ def apply_event(
         scenario.orders.append(order)
         geo = Geo(scenario)
         pool.append(order.id)
-        return geo, pool, f"срочная заявка {order.id} ({order.address})"
+        kind = "срочная заявка" if order.priority is Priority.URGENT else "новая заявка"
+        return geo, pool, f"{kind} {order.id} ({order.address})"
 
     if isinstance(event, CancelOrderEvent):
         if event.order_id not in geo.orders:
@@ -142,7 +155,7 @@ def replan(
     """Пересчитывает план после события."""
     geo = geo or Geo(scenario)
     params = (params or plan.params).model_copy(
-        update={"stability_weight_m": DEFAULT_STABILITY_M}
+        update={"stability_weight_m": _stability_for(event)}
     )
     at_min = hhmm_to_min(event.time)
 

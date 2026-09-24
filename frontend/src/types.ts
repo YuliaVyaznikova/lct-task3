@@ -109,8 +109,17 @@ export interface OrderExplanation {
 
 export type PlanEvent =
   | { type: 'urgent_order'; time: string; order: Partial<Order> & { id: string } }
+  | { type: 'new_order'; time: string; order: Partial<Order> & { id: string } }
   | { type: 'cancel_order'; time: string; order_id: string }
   | { type: 'engineer_unavailable'; time: string; engineer_id: string }
+
+export interface WorkType {
+  work_type: string
+  skill: Skill
+  duration_min: number
+  priority: 'normal' | 'urgent'
+  normative: string
+}
 
 export interface Plan {
   id: string

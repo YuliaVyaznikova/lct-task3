@@ -7,6 +7,7 @@ import type {
   ReplanResponse,
   Scenario,
   ScenarioBrief,
+  WorkType,
 } from './types'
 
 const BASE = '/api'
@@ -34,6 +35,8 @@ export const api = {
   scenarios: () => request<ScenarioBrief[]>('/scenarios'),
 
   scenario: (id: string) => request<Scenario>(`/scenarios/${id}`),
+
+  workTypes: () => request<{ work_types: WorkType[] }>('/reference').then((r) => r.work_types),
 
   plan: (
     scenarioId: string,

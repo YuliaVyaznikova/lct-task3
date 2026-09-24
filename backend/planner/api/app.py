@@ -34,6 +34,7 @@ from planner.core.reasons import diagnose
 from planner.core.validate import Geo, StartState, best_insertion, evaluate, first_blocking_violation
 from planner.ingest import beeline
 from planner.ingest import engineers as engineers_module
+from planner.ingest import normatives
 from planner.ingest import store as scenario_store
 from planner.paths import ROOT
 
@@ -201,6 +202,7 @@ def reference() -> dict:
         "skills": {key.value: value for key, value in SKILL_RU.items()},
         "transports": {key.value: value for key, value in TRANSPORT_RU.items()},
         "reason_codes": [code.value for code in ReasonCode],
+        "work_types": normatives.work_types(),
         "travel_model": travel.describe(),
     }
 

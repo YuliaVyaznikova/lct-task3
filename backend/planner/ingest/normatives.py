@@ -69,3 +69,22 @@ def classify(work_type: str, hd_type: str, path: Path | None = None) -> Norm:
             continue
         return rule.norm
     raise ValueError(f"нет правила для ({work_type!r}, {hd_type!r}) — в справочнике должна быть строка *;*")
+
+
+def work_types(path: Path | None = None) -> list[dict]:
+    """Типы работ, которые диспетчер может выбрать для новой заявки."""
+    seen: dict[str, dict] = {}
+    for rule in load_rules(path):
+        if rule.work_type == "*":
+            continue
+        title = rule.work_type.capitalize()
+        if title in seen:
+            continue
+        seen[title] = {
+            "work_type": title,
+            "skill": rule.norm.skill.value,
+            "duration_min": rule.norm.duration_min,
+            "priority": rule.norm.priority.value,
+            "normative": rule.norm.name,
+        }
+    return list(seen.values())

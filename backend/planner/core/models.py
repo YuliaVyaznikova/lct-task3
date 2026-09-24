@@ -187,6 +187,14 @@ class CancelOrderEvent(Base):
     order_id: str
 
 
+class NewOrderEvent(Base):
+    """Заявка, поступившая в течение дня. Приоритет берётся из самой заявки."""
+
+    type: Literal["new_order"] = "new_order"
+    time: HHMM
+    order: Order
+
+
 class EngineerUnavailableEvent(Base):
     type: Literal["engineer_unavailable"] = "engineer_unavailable"
     time: HHMM
@@ -194,7 +202,7 @@ class EngineerUnavailableEvent(Base):
 
 
 Event = Annotated[
-    UrgentOrderEvent | CancelOrderEvent | EngineerUnavailableEvent,
+    UrgentOrderEvent | NewOrderEvent | CancelOrderEvent | EngineerUnavailableEvent,
     Field(discriminator="type"),
 ]
 
