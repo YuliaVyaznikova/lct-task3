@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from planner.core.models import Plan
+from planner.core.travel import haversine_km
 from planner.core.validate import Geo
 from planner.paths import CACHE_DIR
 
@@ -27,6 +28,7 @@ class PlanGeometry:
     available: bool
     source: str = ""
     routes: dict[str, list[list[float]]] = field(default_factory=dict)
+    legs: dict[str, list[list[list[float]]]] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
 
 
@@ -101,6 +103,41 @@ def route_points(geo: Geo, plan: Plan, engineer_id: str) -> list[tuple[float, fl
     return points
 
 
+def split_legs(
+    points: list[tuple[float, float]], line: list[list[float]] | None
+) -> list[list[list[float]]]:
+    """Делит дорожную линию по визитам; ненадёжные участки заменяет прямыми."""
+    direct = [
+        [[*start], [*finish]] for start, finish in zip(points, points[1:])
+    ]
+    if not line or len(line) < 2:
+        return direct
+
+    cuts = [0]
+    for point in points[1:-1]:
+        prior = cuts[-1]
+        cut = min(
+            range(prior, len(line)),
+            key=lambda index: haversine_km(*point, *line[index]),
+        )
+        cuts.append(cut)
+    cuts.append(len(line) - 1)
+
+    legs = []
+    for index, (start, finish) in enumerate(zip(points, points[1:])):
+        left, right = cuts[index : index + 2]
+        if (
+            right <= left
+            or haversine_km(*start, *line[left]) > 0.5
+            or haversine_km(*finish, *line[right]) > 0.5
+        ):
+            legs.append(direct[index])
+            continue
+        leg = [[*start], *line[left + 1 : right], [*finish]]
+        legs.append(leg)
+    return legs
+
+
 def build(geo: Geo, plan: Plan, base_url: str | None = None) -> PlanGeometry:
     """Геометрия всех маршрутов плана."""
     url = base_url or os.environ.get("OSRM_URL") or PUBLIC_OSRM
@@ -123,6 +160,7 @@ def build(geo: Geo, plan: Plan, base_url: str | None = None) -> PlanGeometry:
         )
 
     for engineer_id, (line, error) in fetched.items():
+        result.legs[engineer_id] = split_legs(tasks[engineer_id], line)
         if line:
             result.routes[engineer_id] = line
         elif error:

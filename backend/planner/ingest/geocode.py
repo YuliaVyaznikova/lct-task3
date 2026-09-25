@@ -296,6 +296,11 @@ def _jitter(lat: float, lon: float, key: str) -> tuple[float, float]:
     return lat + dlat, lon + dlon
 
 
+def _in_moscow_region(lat: float, lon: float) -> bool:
+    lat_min, lon_min, lat_max, lon_max = MOSCOW_BBOX
+    return lat_min <= lat <= lat_max and lon_min <= lon <= lon_max
+
+
 def _plausible(
     result: GeoResult,
     addr: NormalizedAddress,
@@ -303,8 +308,7 @@ def _plausible(
     district_point: tuple[float, float] | None,
 ) -> str | None:
     """Возвращает причину отбраковки или None, если ответ правдоподобен."""
-    lat_min, lon_min, lat_max, lon_max = MOSCOW_BBOX
-    if not (lat_min <= result.lat <= lat_max and lon_min <= result.lon <= lon_max):
+    if not _in_moscow_region(result.lat, result.lon):
         return "вне Московского региона"
     if office is not None:
         limit = (
@@ -325,6 +329,33 @@ def _plausible(
     return None
 
 
+def _first_plausible_provider_result(
+    address: NormalizedAddress,
+    providers: Providers,
+    office: tuple[float, float] | None,
+    district_point: tuple[float, float] | None,
+) -> tuple[GeoResult | None, list[str]]:
+    rejected: list[str] = []
+    sources: tuple[tuple[str, Callable[[NormalizedAddress], GeoResult | None]], ...] = (
+        ("dadata", providers.dadata),
+        ("yandex", providers.yandex),
+        ("nominatim/дом", providers.nominatim_structured),
+        ("nominatim/без корпуса", providers.nominatim_no_korpus),
+        ("photon", providers.photon),
+        ("nominatim/улица", providers.nominatim_street_only),
+    )
+    for name, geocode in sources:
+        result = geocode(address)
+        if result is None:
+            continue
+        reason = _plausible(result, address, office, district_point)
+        if reason:
+            rejected.append(f"{name}: отброшен ({reason})")
+            continue
+        return result, rejected
+    return None, rejected
+
+
 def geocode_one(
     raw_address: str,
     district: str,
@@ -335,45 +366,43 @@ def geocode_one(
     overrides: dict[str, tuple[float, float]] | None = None,
 ) -> tuple[GeoResult, list[str]]:
     """Прогоняет один адрес по лестнице."""
-    log: list[str] = []
-    addr = normalize(raw_address)
+    address = normalize(raw_address)
 
     key = raw_address.strip()
     if overrides and key in overrides:
         lat, lon = overrides[key]
-        return GeoResult(lat, lon, GeocodeQuality.MANUAL, "override", "0"), log
+        return GeoResult(lat, lon, GeocodeQuality.MANUAL, "override", "0"), []
 
     cached = cache.get(key)
     if cached is not None:
-        return cached, log
+        return cached, []
 
     district_point = districts.get(district)
-    ladder: list[tuple[str, Callable[[NormalizedAddress], GeoResult | None]]] = [
-        ("dadata", providers.dadata),
-        ("yandex", providers.yandex),
-        ("nominatim/дом", providers.nominatim_structured),
-        ("nominatim/без корпуса", providers.nominatim_no_korpus),
-        ("photon", providers.photon),
-        ("nominatim/улица", providers.nominatim_street_only),
-    ]
-    for name, call in ladder:
-        result = call(addr)
-        if result is None:
-            continue
-        reason = _plausible(result, addr, office, district_point)
-        if reason:
-            log.append(f"{name}: отброшен ({reason})")
-            continue
-        cache.put(key, result)
-        return result, log
-
-    if district_point is not None:
+    result, rejected = _first_plausible_provider_result(
+        address, providers, office, district_point
+    )
+    if result is None and district_point is not None:
         lat, lon = _jitter(district_point[0], district_point[1], key)
         result = GeoResult(lat, lon, GeocodeQuality.DISTRICT, "district", "7", district)
-        cache.put(key, result)
-        return result, log
+    if result is None:
+        raise RuntimeError(f"не удалось определить координаты и нет центроида района: {raw_address!r}")
+    cache.put(key, result)
+    return result, rejected
 
-    raise RuntimeError(f"не удалось определить координаты и нет центроида района: {raw_address!r}")
+
+def _find_district_point(
+    district: str, address: str, providers: Providers
+) -> tuple[float, float] | None:
+    city = normalize(address).city
+    query_name = district.replace("GPON", "").strip()
+    for query in (
+        {"q": f"{query_name}, {city}, Россия"},
+        {"q": f"{query_name}, Россия"},
+    ):
+        found = providers._nominatim(query, "district", GeocodeQuality.DISTRICT)
+        if found is not None and _in_moscow_region(found.lat, found.lon):
+            return found.lat, found.lon
+    return None
 
 
 def resolve_districts(
@@ -390,20 +419,9 @@ def resolve_districts(
             names[key] = district
             if districts.get(district) is not None:
                 continue
-            addr = normalize(order.address)
-            query_name = district.replace("GPON", "").strip()
-            city = addr.city if addr.city != "Москва" else "Москва"
-            for attempt in (
-                {"q": f"{query_name}, {city}, Россия"},
-                {"q": f"{query_name}, Россия"},
-            ):
-                found = providers._nominatim(attempt, "district", GeocodeQuality.DISTRICT)
-                if found is None:
-                    continue
-                lat_min, lon_min, lat_max, lon_max = MOSCOW_BBOX
-                if lat_min <= found.lat <= lat_max and lon_min <= found.lon <= lon_max:
-                    districts.put(district, (found.lat, found.lon))
-                    break
+            point = _find_district_point(district, order.address, providers)
+            if point is not None:
+                districts.put(district, point)
     return names
 
 

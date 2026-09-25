@@ -85,6 +85,7 @@ def work_types(path: Path | None = None) -> list[dict]:
             "skill": rule.norm.skill.value,
             "duration_min": rule.norm.duration_min,
             "priority": rule.norm.priority.value,
+            "priority_tier": rule.norm.priority_tier,
             "normative": rule.norm.name,
         }
     return list(seen.values())

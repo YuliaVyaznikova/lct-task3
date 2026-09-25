@@ -28,6 +28,8 @@ class PlanRecord:
     scenario: Scenario
     baseline: Plan | None = None
     diff: Diff | None = None
+    variants: list[dict] = field(default_factory=list)
+    selected_plan_id: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
     _geo: Geo | None = field(default=None, repr=False)
     _geo_key: tuple[str, ...] = field(default=(), repr=False)
@@ -67,6 +69,18 @@ class PlanStore:
     def all(self) -> list[PlanRecord]:
         return sorted(self._records.values(), key=lambda r: r.created_at, reverse=True)
 
+    def select(self, plan_id: str) -> PlanRecord:
+        record = self.get(plan_id)
+        related = {item["plan_id"] for item in record.variants}
+        for variant_id in related:
+            if variant_id in self._records:
+                self._records[variant_id].selected_plan_id = plan_id
+                self._dump(self._records[variant_id])
+        record.selected_plan_id = plan_id
+        if not related:
+            self._dump(record)
+        return record
+
     def _dump(self, record: PlanRecord) -> None:
         try:
             PLANS_DIR.mkdir(parents=True, exist_ok=True)
@@ -74,6 +88,8 @@ class PlanStore:
                 "plan": record.plan.model_dump(mode="json"),
                 "baseline": record.baseline.model_dump(mode="json") if record.baseline else None,
                 "diff": record.diff.model_dump(mode="json") if record.diff else None,
+                "variants": record.variants,
+                "selected_plan_id": record.selected_plan_id,
                 "created_at": record.created_at,
             }
             (PLANS_DIR / f"{record.id}.json").write_text(

@@ -13,6 +13,16 @@ def scenario_path(scenario_id: str, directory: Path | None = None) -> Path:
     return (directory or SCENARIOS_DIR) / f"{scenario_id}.json"
 
 
+def free_id(scenario_id: str, directory: Path | None = None) -> str:
+    """Id, под которым сценарий не затрёт уже сохранённый: при совпадении добавляется номер."""
+    if not scenario_path(scenario_id, directory).exists():
+        return scenario_id
+    number = 2
+    while scenario_path(f"{scenario_id}-{number}", directory).exists():
+        number += 1
+    return f"{scenario_id}-{number}"
+
+
 def save(scenario: Scenario, directory: Path | None = None) -> Path:
     path = scenario_path(scenario.id, directory)
     path.parent.mkdir(parents=True, exist_ok=True)

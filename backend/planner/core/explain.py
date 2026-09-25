@@ -16,7 +16,13 @@ from planner.core.models import (
 )
 from planner.core.reasons import _plural
 from planner.core.timeutil import fmt_minutes, hhmm_to_min
-from planner.core.validate import Geo, StartState, best_insertion, first_blocking_violation
+from planner.core.validate import (
+    Geo,
+    StartState,
+    best_insertion,
+    evaluate_route,
+    first_blocking_violation,
+)
 
 MAX_ALTERNATIVES = 3
 
@@ -41,12 +47,37 @@ class OrderExplanation:
         return asdict(self)
 
 
-def _previous_point(geo: Geo, route: Route, stop: Stop) -> str:
+def _previous_point(geo: Geo, route: Route, stop: Stop, start: StartState | None = None) -> str:
     position = route.stops.index(stop)
-    if position == 0:
-        return f"от стартовой точки ({geo.scenario.office.address})"
-    previous = geo.orders[route.stops[position - 1].order_id]
-    return f"от предыдущей точки ({previous.id}, {previous.address})"
+    if position > 0:
+        previous = geo.orders[route.stops[position - 1].order_id]
+        return f"от предыдущей точки ({previous.id}, {previous.address})"
+
+    engineer = geo.engineers[route.engineer_id]
+    home_node = geo.start_node(engineer)
+    if start is not None and start.node != home_node:
+        return "от точки, где инженер был на момент события"
+    if home_node == geo.office_index:
+        return f"от офиса участка ({geo.scenario.office.address})"
+    return f"от стартовой точки инженера ({engineer.start.address})"
+
+
+def _equipment_check(geo: Geo, route: Route, stop: Stop) -> str:
+    from planner.ingest.equipment import describe_needs
+
+    needs = geo.equipment_needs(stop.order_id)
+    taken: dict[str, int] = {}
+    for earlier in route.stops[: route.stops.index(stop) + 1]:
+        for kind, count in geo.equipment_needs(earlier.order_id).items():
+            taken[kind] = taken.get(kind, 0) + count
+    stock = geo.equipment_stock(route.engineer_id)
+    if not needs:
+        return "Оборудование — не требуется"
+    spent = ", ".join(
+        f"{geo.equipment.title(kind)} {taken.get(kind, 0)} из {stock.get(kind, 0)}"
+        for kind in sorted(needs)
+    )
+    return f"Оборудование: нужен {describe_needs(needs, geo.equipment)}; израсходовано {spent}"
 
 
 def explain_order(
@@ -60,25 +91,6 @@ def explain_order(
     stop = next(s for s in route.stops if s.order_id == order_id)
     order = geo.orders[order_id]
     engineer = geo.engineers[route.engineer_id]
-
-    from planner.ingest.equipment import describe_needs
-
-    needs = geo.equipment_needs(order_id)
-    position = route.stops.index(stop)
-    taken: dict[str, int] = {}
-    for earlier in route.stops[: position + 1]:
-        for kind, count in geo.equipment_needs(earlier.order_id).items():
-            taken[kind] = taken.get(kind, 0) + count
-    stock = geo.equipment_stock(engineer.id)
-
-    if needs:
-        spent = ", ".join(
-            f"{geo.equipment.title(kind)} {taken.get(kind, 0)} из {stock.get(kind, 0)}"
-            for kind in sorted(needs)
-        )
-        equipment_text = f"Оборудование: нужен {describe_needs(needs, geo.equipment)}; израсходовано {spent}"
-    else:
-        equipment_text = "Оборудование — не требуется"
 
     checks = [
         Check(True, f"Навык «{SKILL_RU[order.skill]}» — есть (навыки инженера: {engineer.skills_ru})"),
@@ -97,15 +109,16 @@ def explain_order(
             f"Смена {engineer.shift_start}–{engineer.shift_end}: "
             f"маршрут завершается в {route.end_time}",
         ),
-        Check(True, equipment_text),
+        Check(True, _equipment_check(geo, route, stop)),
     ]
 
     headline = (
         f"{engineer.name} ({TRANSPORT_RU[engineer.transport]}) · "
         f"прибытие {stop.arrival}, работа {stop.start}–{stop.finish}"
     )
+    start = (starts or {}).get(engineer.id)
     travel = (
-        f"Переезд {_previous_point(geo, route, stop)}: "
+        f"Переезд {_previous_point(geo, route, stop, start)}: "
         f"{stop.travel_km:.1f} км, {fmt_minutes(stop.travel_min)}"
     )
 
@@ -139,6 +152,7 @@ def _alternatives(
 ) -> tuple[list[str], str]:
     """Контрфактическая проверка: во что обошлась бы заявка другим инженерам."""
     routes = {route.engineer_id: route for route in plan.routes}
+    start_states = starts or {}
     cheaper: list[tuple[float, str]] = []
     blocked: list[str] = []
     no_skill = 0
@@ -154,7 +168,7 @@ def _alternatives(
 
         current = routes.get(engineer.id)
         order_ids = [o for o in (current.order_ids if current else []) if o != order.id]
-        start = (starts or {}).get(engineer.id)
+        start = start_states.get(engineer.id)
         found = best_insertion(geo, engineer, order_ids, order.id, start)
         if found is None:
             violation = first_blocking_violation(geo, engineer, order_ids, order.id, start)
@@ -170,17 +184,65 @@ def _alternatives(
         word = _plural(no_skill, "инженер", "инженера", "инженеров")
         lines.append(f"ещё {no_skill} {word} — не подходят по навыку или транспорту")
 
+    why = _alternative_reason(
+        geo, chosen, order.id, routes.get(chosen.id), start_states.get(chosen.id),
+        cheaper, blocked,
+    )
+    return lines, why
+
+
+def _alternative_reason(
+    geo: Geo,
+    chosen: Engineer,
+    order_id: str,
+    chosen_route: Route | None,
+    start: StartState | None,
+    cheaper: list[tuple[float, str]],
+    blocked: list[str],
+) -> str:
     if cheaper:
         best_delta = cheaper[0][0]
-        why = (
-            f"Выбран как исполнитель с наименьшим приростом маршрута: "
-            f"ближайшая альтернатива добавила бы {best_delta:.1f} км."
+        own = _own_increment(geo, chosen_route, chosen, order_id, start)
+        if own is not None and own <= best_delta + 0.05:
+            return (
+                f"В маршруте {chosen.name} заявка добавляет {own:.1f} км — не больше, "
+                f"чем у проверенных альтернатив (лучшая добавила бы {best_delta:.1f} км)."
+            )
+        if own is not None:
+            return (
+                f"В маршруте {chosen.name} заявка добавляет {own:.1f} км, у другого инженера "
+                f"вставка стоила бы {best_delta:.1f} км. План выбирается целиком: сначала "
+                f"число выполненных заявок, затем число инженеров, затем общий пробег, "
+                f"поэтому отдельная заявка не обязательно стоит у самого дешёвого исполнителя."
+            )
+        return (
+            f"Другие подходящие инженеры тоже могли бы её взять; "
+            f"лучшая альтернатива добавила бы {best_delta:.1f} км."
         )
-    elif blocked:
-        why = "Выбран как единственный, кто успевает к заявке без нарушения окна и смены."
-    else:
-        why = "Единственный инженер с нужным навыком и транспортом."
-    return lines, why
+    if blocked:
+        return (
+            "Из подходящих инженеров только у него заявка встаёт в текущий маршрут "
+            "без нарушения окна и смены."
+        )
+    return "Единственный инженер с нужным навыком и транспортом."
+
+
+def _own_increment(
+    geo: Geo,
+    route: Route | None,
+    engineer: Engineer,
+    order_id: str,
+    start: StartState | None,
+) -> float | None:
+    """На сколько километров заявка удлиняет маршрут, в котором стоит."""
+    if route is None or order_id not in route.order_ids:
+        return None
+    locked = {s.order_id for s in (start.locked_stops if start else [])}
+    if order_id in locked:
+        return None
+    free = [o for o in route.order_ids if o not in locked]
+    without, _ = evaluate_route(geo, engineer, [o for o in free if o != order_id], start)
+    return route.distance_km - without.distance_km
 
 
 def explain_route(geo: Geo, route: Route) -> str:

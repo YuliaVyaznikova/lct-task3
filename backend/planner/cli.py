@@ -6,6 +6,7 @@ import argparse
 import collections
 import sys
 
+from planner.core.models import Scenario
 from planner.ingest import beeline, equipment, store
 from planner.paths import CACHE_DIR, RAW_DIR, ensure_dirs
 
@@ -86,29 +87,38 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def _show_scenario_ids(region: str) -> list[str]:
+    if region == "demo":
+        return ["demo"]
+    return [spec.id for spec in _specs(region)]
+
+
+def _print_scenario_summary(scenario: Scenario) -> None:
+    print(f"\n=== {scenario.name} ({scenario.id}), {scenario.date} ===")
+    print(f"офис: {scenario.office.address}")
+    print(f"заявок: {len(scenario.orders)}, инженеров: {len(scenario.engineers)}")
+
+    by_skill = collections.Counter(o.skill.value for o in scenario.orders)
+    by_priority = collections.Counter(o.priority.value for o in scenario.orders)
+    by_window = collections.Counter(
+        f"{o.window_start}–{o.window_end}" for o in scenario.orders
+    )
+    by_duration = collections.Counter(o.duration_min for o in scenario.orders)
+    no_coords = sum(1 for o in scenario.orders if not o.has_coords)
+
+    print("навыки:     ", dict(by_skill))
+    print("приоритеты: ", dict(by_priority))
+    print("длительности:", dict(sorted(by_duration.items())))
+    print("окна:       ", dict(sorted(by_window.items())))
+    print("районов:    ", len({o.district for o in scenario.orders}))
+    print("без координат:", no_coords)
+    if scenario.events:
+        print(f"заготовок событий: {len(scenario.events)}")
+
+
 def cmd_show(args: argparse.Namespace) -> int:
-    for spec in _specs(args.region):
-        scenario = store.load(spec.id)
-        print(f"\n=== {scenario.name} ({scenario.id}), {scenario.date} ===")
-        print(f"офис: {scenario.office.address}")
-        print(f"заявок: {len(scenario.orders)}, инженеров: {len(scenario.engineers)}")
-
-        by_skill = collections.Counter(o.skill.value for o in scenario.orders)
-        by_priority = collections.Counter(o.priority.value for o in scenario.orders)
-        by_window = collections.Counter(
-            f"{o.window_start}–{o.window_end}" for o in scenario.orders
-        )
-        by_duration = collections.Counter(o.duration_min for o in scenario.orders)
-        no_coords = sum(1 for o in scenario.orders if not o.has_coords)
-
-        print("навыки:     ", dict(by_skill))
-        print("приоритеты: ", dict(by_priority))
-        print("длительности:", dict(sorted(by_duration.items())))
-        print("окна:       ", dict(sorted(by_window.items())))
-        print("районов:    ", len({o.district for o in scenario.orders}))
-        print("без координат:", no_coords)
-        if scenario.events:
-            print(f"заготовок событий: {len(scenario.events)}")
+    for scenario_id in _show_scenario_ids(args.region):
+        _print_scenario_summary(store.load(scenario_id))
     return 0
 
 
@@ -120,8 +130,11 @@ def cmd_geocode(args: argparse.Namespace) -> int:
     scenarios = [store.load(spec.id) for spec in specs]
 
     providers = geocode.Providers()
-    keys = [name for name, key in
-            (("DaData", providers.dadata_key), ("Яндекс", providers.yandex_key)) if key]
+    keys = [
+        name
+        for name, key in (("DaData", providers.dadata_key), ("Яндекс", providers.yandex_key))
+        if key
+    ]
     print(f"ключи: {', '.join(keys) if keys else 'нет (работаем на Nominatim/Photon)'}")
 
     districts = geocode.Districts()
@@ -175,13 +188,18 @@ def cmd_geocode(args: argparse.Namespace) -> int:
     return 0
 
 
+def _plan_scenario_ids(region: str) -> list[str]:
+    if region != "all":
+        return [region]
+    return [spec.id for spec in beeline.REGIONS] + ["demo"]
+
+
 def cmd_plan(args: argparse.Namespace) -> int:
     from planner.core import baseline, explain, metrics, solver
     from planner.core.models import PlanParams
     from planner.core.validate import Geo
 
-    for spec_id in ([args.region] if args.region != "all" else
-                    [s.id for s in beeline.REGIONS] + ["demo"]):
+    for spec_id in _plan_scenario_ids(args.region):
         try:
             scenario = store.load(spec_id)
         except FileNotFoundError:
@@ -299,9 +317,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="planner", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    build = sub.add_parser("build", help="собрать сценарии из выгрузки билайна")
-    build.add_argument("--region", default="all")
-    build.set_defaults(func=cmd_build)
+    build_cmd = sub.add_parser("build", help="собрать сценарии из выгрузки билайна")
+    build_cmd.add_argument("--region", default="all")
+    build_cmd.set_defaults(func=cmd_build)
 
     geocode_cmd = sub.add_parser("geocode", help="проставить координаты заявкам и офисам")
     geocode_cmd.add_argument("--region", default="all")
@@ -319,9 +337,9 @@ def main(argv: list[str] | None = None) -> int:
     demo_cmd.add_argument("--verbose", action="store_true")
     demo_cmd.set_defaults(func=cmd_demo)
 
-    show = sub.add_parser("show", help="сводка по собранному сценарию")
-    show.add_argument("--region", default="all")
-    show.set_defaults(func=cmd_show)
+    show_cmd = sub.add_parser("show", help="сводка по собранному сценарию")
+    show_cmd.add_argument("--region", default="all")
+    show_cmd.set_defaults(func=cmd_show)
 
     plan_cmd = sub.add_parser("plan", help="построить план и сравнить с базовым вариантом")
     plan_cmd.add_argument("--region", default="demo")
@@ -338,18 +356,18 @@ def main(argv: list[str] | None = None) -> int:
     control_cmd.add_argument("--time-limit", type=int, default=20, dest="time_limit")
     control_cmd.set_defaults(func=cmd_control)
 
-    calibrate = sub.add_parser(
+    calibrate_cmd = sub.add_parser(
         "calibrate", help="сверить модель расстояний с реальной дорожной сетью"
     )
-    calibrate.add_argument("--region", default="all")
-    calibrate.add_argument("--osrm", default="https://router.project-osrm.org")
-    calibrate.set_defaults(func=cmd_calibrate)
+    calibrate_cmd.add_argument("--region", default="all")
+    calibrate_cmd.add_argument("--osrm", default="https://router.project-osrm.org")
+    calibrate_cmd.set_defaults(func=cmd_calibrate)
 
-    serve = sub.add_parser("serve", help="запустить веб-сервис")
-    serve.add_argument("--host", default="127.0.0.1")
-    serve.add_argument("--port", type=int, default=8000)
-    serve.add_argument("--reload", action="store_true")
-    serve.set_defaults(func=cmd_serve)
+    serve_cmd = sub.add_parser("serve", help="запустить веб-сервис")
+    serve_cmd.add_argument("--host", default="127.0.0.1")
+    serve_cmd.add_argument("--port", type=int, default=8000)
+    serve_cmd.add_argument("--reload", action="store_true")
+    serve_cmd.set_defaults(func=cmd_serve)
 
     args = parser.parse_args(argv)
     return args.func(args)

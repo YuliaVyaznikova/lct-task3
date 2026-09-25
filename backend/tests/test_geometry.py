@@ -105,6 +105,34 @@ def test_build_degrades_gracefully(toy_geo, plan):
     assert result.available is False
     assert result.routes == {}
     assert result.errors
+    for route in plan.routes:
+        if route.stops:
+            assert len(result.legs[route.engineer_id]) == len(route.stops)
+            points = geometry.route_points(toy_geo, plan, route.engineer_id)
+            assert result.legs[route.engineer_id][0][0] == list(points[0])
+            assert result.legs[route.engineer_id][-1][-1] == list(points[-1])
+
+
+def test_split_legs_keeps_road_bends_and_stop_boundaries():
+    points = [(55.7, 37.7), (55.7, 37.702), (55.7, 37.704)]
+    line = [
+        [55.7, 37.7], [55.701, 37.701], [55.7, 37.702],
+        [55.702, 37.703], [55.7, 37.704],
+    ]
+    legs = geometry.split_legs(points, line)
+
+    assert len(legs) == 2
+    assert legs[0] == [[55.7, 37.7], [55.701, 37.701], [55.7, 37.702]]
+    assert legs[1] == [[55.7, 37.702], [55.702, 37.703], [55.7, 37.704]]
+
+
+def test_split_legs_falls_back_for_off_route_stop():
+    points = [(55.7, 37.7), (56.0, 38.0), (55.7, 37.704)]
+    line = [[55.7, 37.7], [55.701, 37.701], [55.7, 37.704]]
+    legs = geometry.split_legs(points, line)
+
+    assert legs[0] == [[55.7, 37.7], [56.0, 38.0]]
+    assert legs[1] == [[56.0, 38.0], [55.7, 37.704]]
 
 
 def test_build_reports_nothing_to_draw(toy, toy_geo):

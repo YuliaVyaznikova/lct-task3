@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from planner.core.models import Skill, Transport
+from planner.core.models import LunchBreak, PlanParams, Skill, Transport
 from planner.core.timeutil import hhmm_to_min
 from planner.core.validate import (
     Geo,
@@ -213,3 +213,65 @@ def test_engineer_cannot_leave_before_shift(toy_geo):
     scenario = make_scenario(list(toy_geo.scenario.orders), [engineer])
     route, _ = evaluate_route(Geo(scenario), engineer, ["A"])
     assert hhmm_to_min(route.stops[0].arrival) >= hhmm_to_min("14:00")
+
+
+def test_lunch_uses_waiting_time_without_delaying_work():
+    orders = [
+        make_order("A", 0, window=("12:00", "12:00")),
+        make_order("B", 0, window=("14:00", "15:00")),
+    ]
+    scenario = make_scenario(orders, [make_engineer("E01")])
+    route, violations = evaluate_route(Geo(scenario), scenario.engineers[0], ["A", "B"], lunch=True)
+
+    assert not violations
+    assert route.lunch_break == LunchBreak(start="13:00", finish="13:45")
+    assert route.model_dump(by_alias=True)["break"] == {"start": "13:00", "finish": "13:45"}
+    assert route.stops[1].start == "14:00"
+    assert route.stops[1].wait_min == 45
+
+
+def test_lunch_during_travel_delays_arrival_and_records_departure():
+    order = make_order("A", 5, window=("15:00", "16:00"))
+    engineer = make_engineer("E01", transport=Transport.FOOT, shift=("12:45", "18:00"))
+    scenario = make_scenario([order], [engineer])
+    route, violations = evaluate_route(Geo(scenario), engineer, ["A"], lunch=True)
+
+    assert not violations
+    stop = route.stops[0]
+    assert route.lunch_break is not None
+    assert route.lunch_break.start == "13:00"
+    assert stop.departure == "12:45"
+    assert hhmm_to_min(stop.arrival) - hhmm_to_min(stop.departure) == stop.travel_min + 45
+    assert stop.start >= stop.arrival
+
+
+def test_completed_lunch_is_reused_after_freeze():
+    order = make_order("A", 0, window=("14:00", "16:00"))
+    engineer = make_engineer("E01")
+    scenario = make_scenario([order], [engineer])
+    lunch_break = LunchBreak(start="13:00", finish="13:45")
+    state = StartState(node=0, available_min=13 * 60 + 45, lunch_break=lunch_break)
+    route, violations = evaluate_route(Geo(scenario), engineer, ["A"], state, lunch=True)
+
+    assert not violations
+    assert route.lunch_break == lunch_break
+    assert route.stops[0].start == "14:00"
+
+
+def test_solver_lunch_is_shown_in_validated_route():
+    from planner.core import solver
+
+    orders = [
+        make_order("A", 0, window=("12:00", "12:00")),
+        make_order("B", 0, window=("14:00", "15:00")),
+    ]
+    scenario = make_scenario(orders, [make_engineer("E01")])
+    plan = solver.plan(
+        scenario, Geo(scenario), PlanParams(objective="min_engineers", time_limit_s=1, lunch=True)
+    )
+
+    route = plan.routes[0]
+    assert route.order_ids == ["A", "B"]
+    assert route.lunch_break == LunchBreak(start="13:00", finish="13:45")
+    assert route.stops[0].finish <= route.lunch_break.start
+    assert route.lunch_break.finish <= route.stops[1].start

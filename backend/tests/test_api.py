@@ -121,7 +121,7 @@ def test_cancel_event_produces_diff(client, plan):
         s["order_id"]
         for r in plan["optimized"]["routes"]
         for s in r["stops"]
-        if s["arrival"] > "11:10"
+        if s["departure"] > "11:10"
     )
     response = client.post(
         f"/api/plans/{plan_id}/events",
@@ -215,7 +215,7 @@ def test_engineer_unavailable_event(client, plan):
     body = response.json()
     route = next((r for r in body["plan"]["routes"] if r["engineer_id"] == victim), None)
     if route:
-        assert all(stop["arrival"] <= "13:00" for stop in route["stops"])
+        assert all(stop["departure"] <= "13:00" for stop in route["stops"])
 
 
 def test_impossible_event_gives_conflict(client, plan):
@@ -257,6 +257,43 @@ def test_manual_move_to_another_engineer(client):
     )
     assert response.status_code == 200, response.text
     assert response.json()["optimized"]["metrics"]["assigned"] >= 1
+
+
+def test_candidates_endpoint_returns_ordered_rows(client, plan):
+    plan_id = plan["optimized"]["id"]
+    order_id = next(iter(plan["optimized"]["explanations"]))
+    response = client.get(f"/api/plans/{plan_id}/candidates/{order_id}")
+    assert response.status_code == 200, response.text
+    rows = response.json()
+    assert len(rows) == len(plan["scenario"]["engineers"])
+    assert all("preview_routes" in row and "shifted" in row for row in rows)
+    feasible = [row for row in rows if row["feasible"]]
+    assert feasible
+    assert [row["total_delta_km"] for row in feasible] == sorted(
+        row["total_delta_km"] for row in feasible
+    )
+
+
+def test_planning_job_stream_and_variant_selection(client):
+    response = client.post(
+        "/api/plans/jobs",
+        json={"scenario_id": "demo", "params": {"objective": "auto", "time_limit_s": 1}},
+    )
+    assert response.status_code == 200, response.text
+    job_id = response.json()["job_id"]
+    with client.stream("GET", f"/api/plans/jobs/{job_id}/events") as stream:
+        lines = list(stream.iter_lines())
+    assert any(line == "event: progress" for line in lines)
+    assert "event: done" in lines
+    import json
+
+    done_index = lines.index("event: done")
+    done = json.loads(lines[done_index + 1].removeprefix("data: "))
+    assert len(done["variants"]) == 3
+    selected_id = done["variants"][1]["plan_id"]
+    selected = client.post(f"/api/plans/{selected_id}/select")
+    assert selected.status_code == 200, selected.text
+    assert selected.json()["optimized"]["id"] == selected_id
 
 
 def test_manual_move_to_unsuitable_engineer_is_refused(client, plan):

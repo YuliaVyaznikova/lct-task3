@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import mimetypes
+import re
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from planner.api.store import PlanRecord, next_plan_id, store
+from planner.api import candidates as candidates_module
+from planner.api.jobs import jobs
 from planner.core import baseline as baseline_module
 from planner.core import control as control_module
 from planner.core import explain as explain_module
@@ -26,11 +29,13 @@ from planner.core.models import (
     Event,
     Plan,
     PlanParams,
+    Metrics,
     ReasonCode,
+    Route,
     Scenario,
     Unassigned,
 )
-from planner.core.reasons import diagnose
+from planner.core.reasons import diagnose, extra_engineers_needed
 from planner.core.validate import Geo, StartState, best_insertion, evaluate, first_blocking_violation
 from planner.ingest import beeline
 from planner.ingest import engineers as engineers_module
@@ -88,12 +93,20 @@ class ControlReferenceOut(BaseModel):
     rows: list[dict] = Field(default_factory=list)
 
 
+class VariantOut(BaseModel):
+    key: Literal["min_engineers", "min_distance", "balanced"]
+    title: str
+    plan_id: str
+    metrics: Metrics
+
+
 class PlanResponse(BaseModel):
     optimized: Plan
     baseline: Plan
     comparison: list[MetricRowOut]
     control: ControlReferenceOut
     scenario: Scenario
+    variants: list[VariantOut] = Field(default_factory=list)
 
 
 class ReplanResponse(BaseModel):
@@ -143,7 +156,19 @@ def _control(scenario: Scenario, plan: Plan) -> ControlReferenceOut:
 
 
 def _config_region(scenario_id: str) -> str:
-    return scenario_id if scenario_id in {"vostok", "yugo-vostok", "yugocentr"} else "vostok"
+    base_region_id = re.sub(r"-\d+$", "", scenario_id)
+    if base_region_id in {"vostok", "yugo-vostok", "yugocentr"}:
+        return base_region_id
+    return "vostok"
+
+
+def _save_upload(scenario: Scenario) -> None:
+    """Загруженный набор никогда не затирает сохранённый сценарий, при совпадении id получает новый."""
+    free = scenario_store.free_id(scenario.id)
+    if free != scenario.id:
+        scenario.id = free
+        scenario.name = f"{scenario.name} ({free.rsplit('-', 1)[1]})"
+    scenario_store.save(scenario)
 
 
 def _record(plan_id: str) -> PlanRecord:
@@ -151,6 +176,18 @@ def _record(plan_id: str) -> PlanRecord:
         return store.get(plan_id)
     except KeyError:
         raise HTTPException(404, f"План {plan_id} не найден. Постройте план заново.") from None
+
+
+def _plan_response(record: PlanRecord) -> PlanResponse:
+    baseline = record.baseline or baseline_module.plan(record.scenario, record.geo)
+    return PlanResponse(
+        optimized=record.plan,
+        baseline=baseline,
+        comparison=_comparison(record.plan, baseline),
+        control=_control(record.scenario, record.plan),
+        scenario=record.scenario,
+        variants=[VariantOut.model_validate(item) for item in record.variants],
+    )
 
 
 def _load_scenario(scenario_id: str) -> Scenario:
@@ -224,7 +261,7 @@ async def upload_scenario(
             scenario = Scenario.model_validate_json(raw.decode("utf-8"))
         except Exception as exc:
             raise HTTPException(422, f"Не удалось разобрать JSON-сценарий: {exc}") from None
-        scenario_store.save(scenario)
+        _save_upload(scenario)
         return scenario
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -258,12 +295,11 @@ async def upload_scenario(
     engineers_module.populate(
         scenario, seed=seed, region_id=scenario.id if scenario.id in {"vostok", "yugo-vostok", "yugocentr"} else "vostok"
     )
-    scenario_store.save(scenario)
+    _save_upload(scenario)
     return scenario
 
 
-@app.post("/api/plans", response_model=PlanResponse)
-def create_plan(request: PlanRequest) -> PlanResponse:
+def _create_plan(request: PlanRequest, on_progress=None) -> PlanResponse:
     source = _load_scenario(request.scenario_id)
     working = source.model_copy(deep=True)
 
@@ -279,43 +315,91 @@ def create_plan(request: PlanRequest) -> PlanResponse:
 
     geo = Geo(working)
 
-    plan_id = next_plan_id()
-    optimized = solver.plan(working, geo, request.params, plan_id=plan_id)
-    explain_module.attach(geo, optimized)
-    base = baseline_module.plan(working, geo, plan_id=f"{plan_id}-base")
+    if request.params.objective == "auto":
+        keys = ("min_engineers", "min_distance", "balanced")
+        attempts = solver.parallel_plans(
+            working, request.params, keys, next_plan_id(), on_progress=on_progress
+        )
+        best = attempts[0]
+        if metrics_module.is_better(attempts[1].metrics, best.metrics):
+            best = attempts[1]
+    else:
+        keys = (request.params.objective,)
+        attempts = [solver.plan(
+            working, geo, request.params, plan_id=next_plan_id(), on_progress=on_progress
+        )]
+        best = attempts[0]
 
-    store.put(PlanRecord(plan=optimized, scenario=working, baseline=base))
+    titles = {
+        "min_engineers": "Меньше инженеров",
+        "min_distance": "Меньший пробег",
+        "balanced": "Ровная загрузка",
+    }
+    for attempt in attempts:
+        attempt.id = next_plan_id()
+        explain_module.attach(geo, attempt)
+    variants = [
+        VariantOut(key=key, title=titles[key], plan_id=attempt.id, metrics=attempt.metrics)
+        for key, attempt in zip(keys, attempts)
+    ]
+    base = baseline_module.plan(working, geo, plan_id=f"{best.id}-base")
+    encoded_variants = [variant.model_dump(mode="json") for variant in variants]
+    for attempt in attempts:
+        store.put(PlanRecord(
+            plan=attempt, scenario=working, baseline=base, variants=encoded_variants,
+            selected_plan_id=best.id,
+        ))
     return PlanResponse(
-        optimized=optimized,
+        optimized=best,
         baseline=base,
-        comparison=_comparison(optimized, base),
-        control=_control(working, optimized),
+        comparison=_comparison(best, base),
+        control=_control(working, best),
         scenario=working,
+        variants=variants,
     )
+
+
+@app.post("/api/plans", response_model=PlanResponse)
+def create_plan(request: PlanRequest) -> PlanResponse:
+    return _create_plan(request)
+
+
+@app.post("/api/plans/jobs")
+def create_plan_job(request: PlanRequest) -> dict[str, str]:
+    _load_scenario(request.scenario_id)
+    return {"job_id": jobs.submit(lambda progress: _create_plan(request, progress))}
+
+
+@app.get("/api/plans/jobs/{job_id}/events")
+def plan_job_events(job_id: str) -> StreamingResponse:
+    try:
+        job = jobs.get(job_id)
+    except KeyError:
+        raise HTTPException(404, f"Расчёт {job_id} не найден") from None
+    return StreamingResponse(job.stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/plans/{plan_id}", response_model=PlanResponse)
 def get_plan(plan_id: str) -> PlanResponse:
-    record = _record(plan_id)
-    base = record.baseline or baseline_module.plan(record.scenario, record.geo)
-    return PlanResponse(
-        optimized=record.plan,
-        baseline=base,
-        comparison=_comparison(record.plan, base),
-        control=_control(record.scenario, record.plan),
-        scenario=record.scenario,
-    )
+    return _plan_response(_record(plan_id))
 
 
-@app.post("/api/plans/{plan_id}/events", response_model=ReplanResponse)
-def apply_event(plan_id: str, event: Annotated[Event, Body()]) -> ReplanResponse:
+@app.post("/api/plans/{plan_id}/select", response_model=PlanResponse)
+def select_plan(plan_id: str) -> PlanResponse:
+    _record(plan_id)
+    store.select(plan_id)
+    return get_plan(plan_id)
+
+
+def _apply_event(plan_id: str, event: Event, on_progress=None) -> ReplanResponse:
     record = _record(plan_id)
     working = record.scenario.model_copy(deep=True)
     geo = Geo(working)
     new_id = next_plan_id()
     try:
         new_plan, diff = replan_module.replan(
-            working, record.plan, event, geo, record.plan.params, plan_id=new_id
+            working, record.plan, event, geo, plan_id=new_id,
+            on_progress=on_progress,
         )
     except replan_module.ReplanError as exc:
         raise HTTPException(409, str(exc)) from None
@@ -326,10 +410,18 @@ def apply_event(plan_id: str, event: Annotated[Event, Body()]) -> ReplanResponse
     return ReplanResponse(plan=new_plan, diff=diff, scenario=working)
 
 
-@app.post("/api/plans/{plan_id}/manual", response_model=PlanResponse)
-def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
-    """Ручное переназначение заявки."""
-    record = _record(plan_id)
+@app.post("/api/plans/{plan_id}/events", response_model=ReplanResponse)
+def apply_event(plan_id: str, event: Annotated[Event, Body()]) -> ReplanResponse:
+    return _apply_event(plan_id, event)
+
+
+@app.post("/api/plans/{plan_id}/events/jobs")
+def apply_event_job(plan_id: str, event: Annotated[Event, Body()]) -> dict[str, str]:
+    _record(plan_id)
+    return {"job_id": jobs.submit(lambda progress: _apply_event(plan_id, event, progress))}
+
+
+def _manual_assignment(record: PlanRecord, request: ManualRequest) -> dict[str, list[str]]:
     geo = record.geo
     if request.order_id not in geo.orders:
         raise HTTPException(404, f"Заявки {request.order_id} нет в сценарии")
@@ -346,9 +438,13 @@ def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
         current = assignment.setdefault(request.engineer_id, [])
 
         if request.position == "best":
-            found = best_insertion(geo, engineer, current, request.order_id)
+            found = best_insertion(
+                geo, engineer, current, request.order_id, lunch=record.plan.params.lunch
+            )
             if found is None:
-                blocking = first_blocking_violation(geo, engineer, current, request.order_id)
+                blocking = first_blocking_violation(
+                    geo, engineer, current, request.order_id, lunch=record.plan.params.lunch
+                )
                 raise HTTPException(
                     422,
                     blocking.text if blocking else
@@ -359,10 +455,13 @@ def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
             position = max(0, min(int(request.position), len(current)))
             current.insert(position, request.order_id)
 
-    routes, violations = evaluate(geo, assignment)
-    if violations:
-        raise HTTPException(422, "; ".join(v.text for v in violations[:3]))
+    return assignment
 
+
+def _manual_unassigned(
+    record: PlanRecord, request: ManualRequest, routes: list[Route]
+) -> list[Unassigned]:
+    geo = record.geo
     assigned = {stop.order_id for route in routes for stop in route.stops}
     unassigned: list[Unassigned] = []
     for order in record.scenario.orders:
@@ -378,9 +477,20 @@ def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
             )
         else:
             unassigned.append(diagnose(geo, order, routes))
+    return unassigned
 
-    from planner.core.reasons import extra_engineers_needed
 
+@app.post("/api/plans/{plan_id}/manual", response_model=PlanResponse)
+def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
+    """Ручное переназначение заявки."""
+    record = _record(plan_id)
+    geo = record.geo
+    assignment = _manual_assignment(record, request)
+    routes, violations = evaluate(geo, assignment, lunch=record.plan.params.lunch)
+    if violations:
+        raise HTTPException(422, "; ".join(v.text for v in violations[:3]))
+
+    unassigned = _manual_unassigned(record, request, routes)
     record.plan.routes = routes
     record.plan.unassigned = unassigned
     record.plan.metrics = metrics_module.compute(
@@ -389,14 +499,16 @@ def manual_assign(plan_id: str, request: ManualRequest) -> PlanResponse:
     explain_module.attach(geo, record.plan)
     store.put(record)
 
-    base = record.baseline or baseline_module.plan(record.scenario, geo)
-    return PlanResponse(
-        optimized=record.plan,
-        baseline=base,
-        comparison=_comparison(record.plan, base),
-        control=_control(record.scenario, record.plan),
-        scenario=record.scenario,
-    )
+    return _plan_response(record)
+
+
+@app.get("/api/plans/{plan_id}/candidates/{order_id}")
+def get_candidates(plan_id: str, order_id: str) -> list[dict]:
+    """Допустимые перестановки заявки и их влияние на два маршрута."""
+    record = _record(plan_id)
+    if order_id not in record.geo.orders:
+        raise HTTPException(404, f"Заявки {order_id} нет в сценарии")
+    return candidates_module.list_candidates(record.geo, record.plan, order_id)
 
 
 @app.get("/api/plans/{plan_id}/explain/{order_id}")
@@ -426,6 +538,7 @@ def plan_geometry(plan_id: str) -> dict:
         "source": geometry.source,
         "profile": geometry_module.PROFILE,
         "routes": geometry.routes,
+        "legs": geometry.legs,
         "errors": geometry.errors[:5],
     }
 

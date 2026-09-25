@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from .timeutil import hhmm_to_min
 
@@ -201,8 +201,19 @@ class EngineerUnavailableEvent(Base):
     engineer_id: str
 
 
+class EngineerDelayedEvent(Base):
+    type: Literal["engineer_delayed"] = "engineer_delayed"
+    time: HHMM
+    engineer_id: str
+    minutes: int = Field(ge=0)
+
+
 Event = Annotated[
-    UrgentOrderEvent | NewOrderEvent | CancelOrderEvent | EngineerUnavailableEvent,
+    UrgentOrderEvent
+    | NewOrderEvent
+    | CancelOrderEvent
+    | EngineerUnavailableEvent
+    | EngineerDelayedEvent,
     Field(discriminator="type"),
 ]
 
@@ -255,11 +266,17 @@ class Stop(Base):
     travel_km: float
     travel_min: int
     arrival: HHMM
+    departure: HHMM | None = None
     wait_min: int
     start: HHMM
     finish: HHMM
     locked: bool = False
     late_min: int = 0
+
+
+class LunchBreak(Base):
+    start: HHMM
+    finish: HHMM
 
 
 class Route(Base):
@@ -270,6 +287,11 @@ class Route(Base):
     work_min: int = 0
     wait_min: int = 0
     end_time: HHMM = "00:00"
+    lunch_break: LunchBreak | None = Field(
+        default=None,
+        validation_alias=AliasChoices("lunch_break", "break"),
+        serialization_alias="break",
+    )
 
     @property
     def order_ids(self) -> list[str]:
@@ -307,8 +329,9 @@ class Metrics(Base):
 
 
 class PlanParams(Base):
-    objective: Literal["auto", "min_engineers", "min_distance"] = "auto"
+    objective: Literal["auto", "min_engineers", "min_distance", "balanced"] = "auto"
     time_limit_s: int = 20
+    no_improve_s: int = Field(default=6, gt=0)
     seed: int = 42
     stability_weight_m: int = 0
     lunch: bool = False

@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 from planner.core import baseline, explain, reasons, solver
-from planner.core.models import PlanParams, ReasonCode, Skill, Transport
+from planner.core.models import PlanParams, Point, ReasonCode, Skill, Transport
 from planner.core.validate import Geo
 from planner.ingest import store
-from tests.conftest import make_engineer, make_order, make_scenario
+from tests.conftest import at_km, make_engineer, make_order, make_scenario
 
 FAST = PlanParams(objective="min_engineers", time_limit_s=2)
 
@@ -138,7 +138,8 @@ def test_capacity_reason_uses_singular_for_one_engineer():
     ]
     plan = baseline.plan(make_scenario(orders, [make_engineer("E01")]))
     assert plan.unassigned[0].reason_code is ReasonCode.CAPACITY
-    assert plan.unassigned[0].reason.startswith("единственный инженер")
+    assert plan.unassigned[0].reason.startswith("не удалось разместить в этом расчёте")
+    assert "единственного инженера" in plan.unassigned[0].reason
 
 
 def test_no_coords_reason(toy_geo):
@@ -208,3 +209,37 @@ def test_explanations_on_real_region():
         assert unassigned.reason and unassigned.reason_code
     for card in plan.explanations.values():
         assert len(card["alternatives"]) <= explain.MAX_ALTERNATIVES + 1
+
+
+def test_first_leg_names_the_engineers_remote_base():
+    """Первый переезд описан от выездной базы инженера, а не от офиса участка."""
+    lat, lon = at_km(30)
+    remote = make_engineer("E01").model_copy(
+        update={"start": Point(address="база в Кашире", lat=lat, lon=lon)}
+    )
+    scenario = make_scenario([make_order("X", 31)], [remote])
+    geo = Geo(scenario)
+    plan = baseline.plan(scenario, geo)
+    card = explain.explain_order(geo, plan, "X")
+    assert "стартовой точки инженера (база в Кашире)" in card.travel
+    assert "офиса" not in card.travel
+
+
+def test_first_leg_names_the_office_for_office_based_engineer():
+    scenario = make_scenario([make_order("X", 5)], [make_engineer("E01")])
+    geo = Geo(scenario)
+    plan = baseline.plan(scenario, geo)
+    card = explain.explain_order(geo, plan, "X")
+    assert "от офиса участка" in card.travel
+
+
+def test_rationale_claims_cheapest_only_when_it_is():
+    """Фраза о дешёвом выборе подкреплена расчётом прироста выбранного маршрута."""
+    orders = [make_order("A", 2), make_order("B", 20)]
+    engineers = [make_engineer("E01"), make_engineer("E02")]
+    scenario = make_scenario(orders, engineers)
+    geo = Geo(scenario)
+    plan = solver.plan(scenario, geo, FAST)
+    explain.attach(geo, plan)
+    for card in plan.explanations.values():
+        assert "наименьшим приростом" not in card["why"]

@@ -122,6 +122,17 @@ def _shift_plan(config: EngineerConfig) -> list[Shift]:
     return plan[: config.count]
 
 
+def _profile_plan(
+    config: EngineerConfig, rng: random.Random
+) -> tuple[list[str], list[int]]:
+    skill_sizes = {"one": 1, "two": 2, "three": 3}
+    transports = _quota(config.transport_mix, config.count)
+    skills_per_engineer = [skill_sizes[size] for size in _quota(config.skills_mix, config.count)]
+    rng.shuffle(transports)
+    rng.shuffle(skills_per_engineer)
+    return transports, skills_per_engineer
+
+
 def check_invariants(engineers: list[Engineer], config: EngineerConfig) -> None:
     """Справочник должен позволять проверить все три группы ограничений."""
     for skill in Skill:
@@ -184,25 +195,22 @@ def _district_centroid(orders: list[Order], districts: list[str]) -> Point | Non
 
 def _assign_remote_bases(
     engineers: list[Engineer], config: EngineerConfig, orders: list[Order]
-) -> int:
+) -> None:
     """Переносит часть автомобилистов на выездные базы."""
     if not config.remote_bases:
-        return 0
+        return
 
-    candidates = [e for e in engineers if e.transport is Transport.CAR]
-    moved = 0
+    available_drivers = [e for e in engineers if e.transport is Transport.CAR]
     for base in config.remote_bases:
         point = _district_centroid(orders, base.districts)
         if point is None:
             continue
         for _ in range(base.engineers):
-            if not candidates:
+            if not available_drivers:
                 break
-            engineer = candidates.pop(0)
+            engineer = available_drivers.pop(0)
             engineer.start = point.model_copy()
             engineer.name = f"{engineer.name} ({base.districts[0]})"
-            moved += 1
-    return moved
 
 
 def _generate_once(
@@ -210,13 +218,8 @@ def _generate_once(
 ) -> list[Engineer]:
     rng = random.Random(seed)
     demand = skill_demand(orders, config.skill_demand_floor)
-    sizes = {"one": 1, "two": 2, "three": 3}
     shifts = _shift_plan(config)
-
-    transports = _quota(config.transport_mix, config.count)
-    skill_counts = [sizes[k] for k in _quota(config.skills_mix, config.count)]
-    rng.shuffle(transports)
-    rng.shuffle(skill_counts)
+    transports, skills_per_engineer = _profile_plan(config, rng)
 
     engineers: list[Engineer] = []
     for index in range(config.count):
@@ -225,7 +228,7 @@ def _generate_once(
             Engineer(
                 id=f"E{index + 1:02d}",
                 name=f"Инженер {index + 1:02d}",
-                skills=_pick_skills(rng, demand, skill_counts[index]),
+                skills=_pick_skills(rng, demand, skills_per_engineer[index]),
                 transport=Transport(transports[index]),
                 shift_start=shift.start,
                 shift_end=shift.end,

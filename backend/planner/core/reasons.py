@@ -49,6 +49,80 @@ def can_serve_alone(geo: Geo, engineer: Engineer, order: Order) -> ReasonCode | 
     return ReasonCode.SHIFT_MISMATCH
 
 
+def _no_capable_reason(
+    geo: Geo, order: Order, verdicts: dict[str, ReasonCode | None]
+) -> Unassigned:
+    engineers = geo.scenario.engineers
+    skill_ru = SKILL_RU[order.skill]
+    with_skill = [engineer for engineer in engineers if order.skill in engineer.skills]
+    if not with_skill:
+        return Unassigned(
+            order_id=order.id,
+            reason_code=ReasonCode.NO_SKILL,
+            reason=f"ни у одного инженера нет навыка «{skill_ru}»",
+        )
+
+    blocked = [verdicts[engineer.id] for engineer in with_skill]
+    if all(code is ReasonCode.NO_EQUIPMENT for code in blocked):
+        from planner.ingest.equipment import describe_needs
+
+        return Unassigned(
+            order_id=order.id,
+            reason_code=ReasonCode.NO_EQUIPMENT,
+            reason=(
+                f"для заявки нужно {describe_needs(geo.equipment_needs(order.id), geo.equipment)}, "
+                "а бригады столько с собой не берут — нужно увеличить утренний запас"
+            ),
+        )
+
+    if all(code is ReasonCode.NO_TRANSPORT for code in blocked):
+        required = TRANSPORT_RU[order.required_transport] if order.required_transport else "—"
+        have = ", ".join(sorted({TRANSPORT_RU[engineer.transport] for engineer in with_skill}))
+        return Unassigned(
+            order_id=order.id,
+            reason_code=ReasonCode.NO_TRANSPORT,
+            reason=(
+                f"заявке нужен транспорт «{required}», "
+                f"а инженеры с навыком «{skill_ru}» передвигаются так: {have}"
+            ),
+        )
+
+    suitable = [
+        engineer for engineer in with_skill
+        if verdicts[engineer.id] is not ReasonCode.NO_TRANSPORT
+    ]
+    if suitable and all(verdicts[engineer.id] is ReasonCode.UNREACHABLE for engineer in suitable):
+        nearest = min(
+            suitable,
+            key=lambda engineer: geo.leg(
+                engineer, geo.start_node(engineer), geo.node(order.id)
+            )[1],
+        )
+        km, minutes = geo.leg(nearest, geo.start_node(nearest), geo.node(order.id))
+        return Unassigned(
+            order_id=order.id,
+            reason_code=ReasonCode.UNREACHABLE,
+            reason=(
+                f"до адреса {km:.0f} км: даже самый быстрый инженер с навыком «{skill_ru}» "
+                f"({TRANSPORT_RU[nearest.transport]}) доедет за {minutes} мин "
+                f"и не успеет к концу окна {order.window_end}"
+            ),
+        )
+
+    shifts = sorted({
+        f"{engineer.shift_start}–{engineer.shift_end}"
+        for engineer in suitable or with_skill
+    })
+    return Unassigned(
+        order_id=order.id,
+        reason_code=ReasonCode.SHIFT_MISMATCH,
+        reason=(
+            f"окно {order.window_start}–{order.window_end} и {order.duration_min} мин работы "
+            f"не помещаются в смены инженеров с навыком «{skill_ru}» ({', '.join(shifts)})"
+        ),
+    )
+
+
 def diagnose(
     geo: Geo,
     order: Order,
@@ -63,72 +137,14 @@ def diagnose(
             reason="не удалось определить координаты адреса — заявку нужно уточнить вручную",
         )
 
-    engineers = geo.scenario.engineers
-    skill_ru = SKILL_RU[order.skill]
-
-    verdicts = {e.id: can_serve_alone(geo, e, order) for e in engineers}
-    capable = [e for e in engineers if verdicts[e.id] is None]
+    verdicts = {
+        engineer.id: can_serve_alone(geo, engineer, order)
+        for engineer in geo.scenario.engineers
+    }
+    capable = [engineer for engineer in geo.scenario.engineers if verdicts[engineer.id] is None]
 
     if not capable:
-        with_skill = [e for e in engineers if order.skill in e.skills]
-        if not with_skill:
-            return Unassigned(
-                order_id=order.id,
-                reason_code=ReasonCode.NO_SKILL,
-                reason=f"ни у одного инженера нет навыка «{skill_ru}»",
-            )
-
-        blocked = [verdicts[e.id] for e in with_skill]
-        if all(code is ReasonCode.NO_EQUIPMENT for code in blocked):
-            from planner.ingest.equipment import describe_needs
-
-            return Unassigned(
-                order_id=order.id,
-                reason_code=ReasonCode.NO_EQUIPMENT,
-                reason=(
-                    f"для заявки нужно {describe_needs(geo.equipment_needs(order.id), geo.equipment)}, "
-                    "а бригады столько с собой не берут — нужно увеличить утренний запас"
-                ),
-            )
-
-        if all(code is ReasonCode.NO_TRANSPORT for code in blocked):
-            required = TRANSPORT_RU[order.required_transport] if order.required_transport else "—"
-            have = ", ".join(sorted({TRANSPORT_RU[e.transport] for e in with_skill}))
-            return Unassigned(
-                order_id=order.id,
-                reason_code=ReasonCode.NO_TRANSPORT,
-                reason=(
-                    f"заявке нужен транспорт «{required}», "
-                    f"а инженеры с навыком «{skill_ru}» передвигаются так: {have}"
-                ),
-            )
-
-        suitable = [e for e in with_skill if verdicts[e.id] is not ReasonCode.NO_TRANSPORT]
-        if suitable and all(verdicts[e.id] is ReasonCode.UNREACHABLE for e in suitable):
-            nearest = min(
-                suitable,
-                key=lambda e: geo.leg(e, geo.start_node(e), geo.node(order.id))[1],
-            )
-            km, minutes = geo.leg(nearest, geo.start_node(nearest), geo.node(order.id))
-            return Unassigned(
-                order_id=order.id,
-                reason_code=ReasonCode.UNREACHABLE,
-                reason=(
-                    f"до адреса {km:.0f} км: даже самый быстрый инженер с навыком «{skill_ru}» "
-                    f"({TRANSPORT_RU[nearest.transport]}) доедет за {minutes} мин "
-                    f"и не успеет к концу окна {order.window_end}"
-                ),
-            )
-
-        shifts = sorted({f"{e.shift_start}–{e.shift_end}" for e in suitable or with_skill})
-        return Unassigned(
-            order_id=order.id,
-            reason_code=ReasonCode.SHIFT_MISMATCH,
-            reason=(
-                f"окно {order.window_start}–{order.window_end} и {order.duration_min} мин работы "
-                f"не помещаются в смены инженеров с навыком «{skill_ru}» ({', '.join(shifts)})"
-            ),
-        )
+        return _no_capable_reason(geo, order, verdicts)
 
     return Unassigned(
         order_id=order.id,
@@ -149,10 +165,16 @@ def _capacity_reason(
     skill_ru = SKILL_RU[order.skill]
     window = f"в окно {order.window_start}–{order.window_end}"
     if count == 1:
-        head = f"единственный инженер с навыком «{skill_ru}» занят {window}"
+        head = (
+            f"не удалось разместить в этом расчёте: в маршрут единственного инженера "
+            f"с навыком «{skill_ru}» заявка {window} не встаёт"
+        )
     else:
-        who = _plural(count, "инженер", "инженера", "инженеров")
-        head = f"все {count} {who} с навыком «{skill_ru}» заняты {window}"
+        who = _plural(count, "инженера", "инженеров", "инженеров")
+        head = (
+            f"не удалось разместить в этом расчёте: ни в один из текущих маршрутов "
+            f"{count} {who} с навыком «{skill_ru}» заявка {window} не встаёт"
+        )
 
     details: list[str] = []
     for engineer in capable[:3]:
