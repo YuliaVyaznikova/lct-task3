@@ -11,12 +11,11 @@ help:
 	@echo "serve    — запустить сервис на http://127.0.0.1:8000"
 	@echo "docker   — собрать и запустить контейнер"
 
-PY = .venv/Scripts/python.exe
+PY = uv run python
 
 install:
-	python -m venv .venv
-	$(PY) -m pip install -e .[dev]
-	cd frontend && npm install
+	uv sync --extra dev
+	cd frontend && npm ci
 
 data:
 	$(PY) -m planner.cli build
@@ -27,7 +26,7 @@ demo:
 	$(PY) -m planner.cli demo
 
 test:
-	$(PY) -m pytest -q
+	uv run --extra dev pytest -q
 
 plan:
 	$(PY) -m planner.cli plan --region demo --time-limit 20
