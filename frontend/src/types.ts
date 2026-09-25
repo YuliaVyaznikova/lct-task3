@@ -1,9 +1,7 @@
-/** Типы отражают модели бэкенда (backend/planner/core/models.py). */
-
 export type Skill = 'local' | 'connection' | 'emergency'
 export type Transport = 'car' | 'foot' | 'bike' | 'public'
 export type Priority = 'normal' | 'urgent'
-export type Objective = 'auto' | 'min_engineers' | 'min_distance'
+export type Objective = 'auto' | 'min_engineers' | 'min_distance' | 'balanced'
 
 export interface Point {
   address: string
@@ -27,6 +25,7 @@ export interface Order {
   window_start: string
   window_end: string
   priority: Priority
+  priority_tier: number
   required_transport: Transport | null
   attributes: Record<string, unknown>
 }
@@ -51,8 +50,8 @@ export interface Stop {
   start: string
   finish: string
   locked: boolean
-  /** На сколько минут визит начат позже обещанного клиенту окна. */
   late_min: number
+  departure?: string
 }
 
 export interface Route {
@@ -63,7 +62,20 @@ export interface Route {
   work_min: number
   wait_min: number
   end_time: string
+  break?: { start: string; finish: string } | null
 }
+
+export type ReasonCode =
+  | 'NO_SKILL'
+  | 'NO_TRANSPORT'
+  | 'NO_EQUIPMENT'
+  | 'SHIFT_MISMATCH'
+  | 'UNREACHABLE'
+  | 'CAPACITY'
+  | 'NO_COORDS'
+  | 'CANCELLED'
+  | 'ENGINEER_UNAVAILABLE'
+  | 'MANUAL'
 
 export interface Unassigned {
   order_id: string
@@ -88,9 +100,7 @@ export interface Metrics {
   utilization_by_engineer: Record<string, number>
   extra_engineers_needed: number
   late_risk: number
-  /** Сколько визитов перенесено за пределы обещанного окна. */
   rescheduled: number
-  /** По скольким авариям известен момент поступления и можно измерить реакцию. */
   response_measured: number
   response_median_min: number
   response_max_min: number
@@ -117,12 +127,24 @@ export type PlanEvent =
   | { type: 'new_order'; time: string; order: Partial<Order> & { id: string } }
   | { type: 'cancel_order'; time: string; order_id: string }
   | { type: 'engineer_unavailable'; time: string; engineer_id: string }
+  | { type: 'engineer_delayed'; time: string; engineer_id: string; minutes: number }
+
+export interface PlanParams {
+  objective: Objective
+  time_limit_s: number
+  seed: number
+  stability_weight_m: number
+  lunch: boolean
+  allow_reschedule: boolean
+  travel_model: string
+}
 
 export interface WorkType {
   work_type: string
   skill: Skill
   duration_min: number
   priority: 'normal' | 'urgent'
+  priority_tier: number
   normative: string
 }
 
@@ -130,7 +152,7 @@ export interface Plan {
   id: string
   scenario_id: string
   kind: 'optimized' | 'baseline'
-  params: { objective: Objective; time_limit_s: number; [k: string]: unknown }
+  params: PlanParams
   planned_from: string
   parent_plan_id: string | null
   event: PlanEvent | null
@@ -159,7 +181,6 @@ export interface ScenarioBrief {
   date: string
   orders: number
   engineers: number
-  /** Наименьшее число бригад, которое можно запросить для сценария. */
   engineers_min: number
   events: number
   office: string
@@ -180,7 +201,6 @@ export interface ControlRow {
   control: number
 }
 
-/** Справочное сопоставление с фактическим ручным распределением из выгрузки. */
 export interface ControlReference {
   available: boolean
   summary: string
@@ -190,12 +210,53 @@ export interface ControlReference {
   rows: ControlRow[]
 }
 
+export type VariantKey = 'min_engineers' | 'min_distance' | 'balanced'
+
+export interface Variant {
+  key: VariantKey | string
+  title: string
+  plan_id: string
+  metrics: Metrics
+}
+
 export interface PlanResponse {
   optimized: Plan
   baseline: Plan
   comparison: MetricRow[]
   control: ControlReference
   scenario: Scenario
+  variants?: Variant[]
+}
+
+export interface JobProgress {
+  elapsed_s: number
+  variant: string
+  assigned: number
+  total: number
+  engineers_used: number
+  distance_km: number
+  routes: Record<string, string[]>
+}
+
+export interface ShiftedVisit {
+  order_id: string
+  from_start: string
+  to_start: string
+}
+
+export interface Candidate {
+  engineer_id: string
+  feasible: boolean
+  reason_code: string | null
+  reason: string | null
+  position: number | null
+  arrival: string | null
+  start: string | null
+  added_km: number | null
+  donor_removed_km: number | null
+  total_delta_km: number | null
+  shifted: ShiftedVisit[]
+  preview_routes: Record<string, string[]>
 }
 
 export interface Change {
@@ -224,12 +285,12 @@ export interface Diff {
   summary: string
 }
 
-/** Ломаные маршрутов по дорогам. Только для отрисовки, на расчёт не влияют. */
 export interface PlanGeometry {
   available: boolean
   source: string
   profile: string
   routes: Record<string, [number, number][]>
+  legs?: Record<string, [number, number][][]>
   errors: string[]
 }
 
