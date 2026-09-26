@@ -79,20 +79,23 @@ export function SimulationEventForm({
   const [engineerId, setEngineerId] = useState(() => initialEngineerId(plan, scenario, states, clock))
   const [delay, setDelay] = useState(30)
   const [anchor, setAnchor] = useState(scenario.orders[0]?.id ?? '')
-  const [duration, setDuration] = useState(60)
+  const [duration, setDuration] = useState<number | null>(null)
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
   const [workType, setWorkType] = useState('')
-  const chosen = workTypes.find((item) => item.work_type === workType) ?? workTypes[0]
+  const emergency = workTypes.find((item) => item.priority === 'urgent')
+  const regular = workTypes.filter((item) => item.priority === 'normal')
+  const chosen = regular.find((item) => item.work_type === workType) ?? regular[0]
+  const emergencyDuration = duration ?? emergency?.duration_min
   const windows = openWindowStarts(clock)
   const [windowStart, setWindowStart] = useState(windows[windows.length > 1 ? 1 : 0] ?? '')
   const windowFrom = windows.includes(windowStart) ? windowStart : windows[0]
 
   useEffect(() => {
-    if (kind !== 'new_order') return
+    if (kind !== 'new_order' && kind !== 'urgent_order') return
     let cancelled = false
     api
       .workTypes()
-      .then((items) => !cancelled && setWorkTypes(items.filter((item) => item.priority === 'normal')))
+      .then((items) => !cancelled && setWorkTypes(items))
       .catch(() => !cancelled && setWorkTypes([]))
     return () => {
       cancelled = true
@@ -104,19 +107,20 @@ export function SimulationEventForm({
 
   function submit() {
     if (kind === 'urgent_order') {
+      if (!emergency || !emergencyDuration) return
       onAdd({
         type: 'urgent_order',
         time,
         order: {
           ...newOrderLocation('SOS', scenario, anchor, picked),
-          skill: 'emergency',
-          work_type: 'Авария',
+          skill: emergency.skill,
+          work_type: emergency.work_type,
           description: 'Авария',
-          duration_min: duration,
+          duration_min: emergencyDuration,
           window_start: time,
           window_end: '23:59',
           priority: 'urgent',
-          priority_tier: 1,
+          priority_tier: emergency.priority_tier,
         },
       })
     } else if (kind === 'new_order') {
@@ -166,7 +170,7 @@ export function SimulationEventForm({
       {(kind === 'urgent_order' || kind === 'new_order') && (
         <>
           <label className="field">
-            <span className="field-label">Адрес {picked ? '— точка на карте' : ''}</span>
+            <span className="field-label">Адрес{picked ? ', точка на карте' : ''}</span>
             {picked ? (
               <div className="picked">
                 {picked[0].toFixed(5)}, {picked[1].toFixed(5)}
@@ -186,7 +190,8 @@ export function SimulationEventForm({
           {kind === 'urgent_order' && (
             <label className="field">
               <span className="field-label">Работа, мин</span>
-              <input type="number" min={10} max={480} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
+              <input type="number" min={10} max={480} value={emergencyDuration ?? ''} disabled={!emergency} onChange={(e) => setDuration(Number(e.target.value))} />
+              {emergency && <span className="small muted">норматив {emergency.duration_min} мин</span>}
             </label>
           )}
         </>
@@ -241,7 +246,7 @@ export function SimulationEventForm({
         </div>
       )}
       <div className="ev-form-actions">
-        <button type="button" className="primary" disabled={busy || (kind === 'cancel_order' && !cancelTarget) || (kind === 'new_order' && (!chosen || !windowFrom))} onClick={submit}>
+        <button type="button" className="primary" disabled={busy || (kind === 'cancel_order' && !cancelTarget) || (kind === 'new_order' && (!chosen || !windowFrom)) || (kind === 'urgent_order' && (!emergency || !emergencyDuration))} onClick={submit}>
           Добавить и перестроить
         </button>
         <button type="button" className="ghost" onClick={onCancel}>
