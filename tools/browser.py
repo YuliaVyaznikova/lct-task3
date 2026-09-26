@@ -157,15 +157,13 @@ class Browser:
             time.sleep(poll_s)
         return False
 
-    def click_text(self, text: str, tag: str = "*") -> bool:
-        """Нажимает первый элемент, чей текст совпадает."""
+    def click_text(self, text: str, tag: str = "button, a, [role=tab]") -> bool:
+        """Нажимает самый вложенный элемент с точно таким текстом."""
         script = f"""
         (() => {{
-          const nodes = [...document.querySelectorAll({tag!r})];
-          const found = nodes.find(n => n.textContent.trim() === {text!r}
-                                     && n.children.length === 0 || n.textContent.trim() === {text!r});
-          const target = nodes.reverse().find(n => n.textContent.trim().startsWith({text!r}));
-          const node = found || target;
+          const nodes = [...document.querySelectorAll({tag!r})]
+            .filter(n => n.textContent.trim() === {text!r});
+          const node = nodes.find(n => !nodes.some(m => m !== n && n.contains(m)));
           if (!node) return false;
           node.click();
           return true;
