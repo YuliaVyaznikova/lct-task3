@@ -278,7 +278,7 @@ def _add_equipment_constraints(
 
 def _search_parameters(params: PlanParams):
     search = pywrapcp.DefaultRoutingSearchParameters()
-    search.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    search.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_INSERTION
     search.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
