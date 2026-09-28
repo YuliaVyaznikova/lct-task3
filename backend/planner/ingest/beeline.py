@@ -1,8 +1,9 @@
-"""Адаптер выгрузки билайна: CSV (cp1251, разделитель «;») -> Scenario."""
+"""Адаптер выгрузки билайна: CSV (UTF-8 или cp1251, разделитель «;», «,» или табуляция) -> Scenario."""
 
 from __future__ import annotations
 
 import csv
+import io
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,8 +19,8 @@ from planner.core.timeutil import min_to_hhmm, parse_ru_datetime
 from planner.ingest.normatives import classify
 from planner.paths import RAW_DIR
 
-ENCODING = "cp1251"
-DELIMITER = ";"
+ENCODINGS = ("utf-8-sig", "cp1251")
+DELIMITERS = (";", ",", "\t")
 
 OFFICE_PREFIX = "адрес оф"
 
@@ -60,9 +61,26 @@ class IngestError(RuntimeError):
     pass
 
 
+def _decode(raw: bytes) -> str:
+    for encoding in ENCODINGS:
+        try:
+            text = raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        if "\x00" not in text:
+            return text
+    raise IngestError("не удалось прочитать файл: ожидается кодировка UTF-8 или Windows-1251")
+
+
+def _delimiter(text: str) -> str:
+    header = text.lstrip().splitlines()[0] if text.strip() else ""
+    return max(DELIMITERS, key=header.count)
+
+
 def _read_rows(path: Path) -> tuple[list[str], list[list[str]]]:
-    with path.open(encoding=ENCODING, newline="") as fh:
-        rows = [row for row in csv.reader(fh, delimiter=DELIMITER) if any(c.strip() for c in row)]
+    text = _decode(path.read_bytes())
+    reader = csv.reader(io.StringIO(text, newline=""), delimiter=_delimiter(text))
+    rows = [row for row in reader if any(c.strip() for c in row)]
     if not rows:
         raise IngestError(f"пустой файл: {path}")
     return [c.strip() for c in rows[0]], rows[1:]

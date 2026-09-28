@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import collections
+import csv
+import io
 
 import pytest
 
@@ -140,3 +142,35 @@ def test_region_guessed_from_filename():
     """«Юго-восток» не должен определяться как «Восток» по подстроке."""
     synthetic, _ = beeline.find_region_files(beeline.REGION_BY_ID["yugo-vostok"])
     assert beeline._guess_spec(synthetic).id == "yugo-vostok"
+
+
+@pytest.mark.parametrize(
+    ("encoding", "delimiter"),
+    [("utf-8-sig", ";"), ("utf-8", ","), ("cp1251", "\t")],
+)
+def test_export_saved_in_another_encoding_reads_the_same(tmp_path, encoding, delimiter):
+    """Выгрузка, пересохранённая в Excel или редакторе, даёт те же заявки, что исходный файл."""
+    if not RAW_DIR.is_dir():
+        pytest.skip("нет data/raw с выгрузкой билайна")
+    source, _ = beeline.find_region_files(beeline.REGION_BY_ID["vostok"])
+    rows = list(csv.reader(io.StringIO(source.read_text(encoding="cp1251"), newline=""), delimiter=";"))
+    resaved = tmp_path / source.name
+    with resaved.open("w", encoding=encoding, newline="") as fh:
+        csv.writer(fh, delimiter=delimiter).writerows(rows)
+
+    original = beeline.load_region(source)
+    converted = beeline.load_region(resaved)
+
+    assert len(converted.orders) == 66
+    assert converted.office.address == original.office.address
+    assert [o.model_dump() for o in converted.orders] == [o.model_dump() for o in original.orders]
+
+
+def test_unreadable_encoding_is_refused_in_russian(tmp_path):
+    broken = tmp_path / "Восток Синтетические данные.csv"
+    broken.write_bytes("Тип заявки BK;Адрес\n".encode("utf-16"))
+
+    with pytest.raises(beeline.IngestError) as error:
+        beeline.load_region(broken)
+
+    assert "кодировк" in str(error.value)
