@@ -27,6 +27,10 @@ DEMO_NAME = "Демонстрационный день"
 
 PROBE_PARAMS = PlanParams(objective="min_engineers", time_limit_s=4)
 
+CANCEL_SAFE_DEPARTURE = "13:00"
+
+CANCEL_WINDOW_FROM = "16:00"
+
 
 @dataclass
 class Requirement:
@@ -113,22 +117,16 @@ def build_events(scenario: Scenario, plan) -> list:
     )
     events.append(UrgentOrderEvent(time="12:30", order=urgent))
 
-    cancelled = [
-        order
-        for order in beeline.cancelled_orders(scenario)
-        if any(
-            stop.order_id == order.id and stop.arrival > "11:10"
-            for route in plan.routes
-            for stop in route.stops
-        )
-    ]
+    untouched_at_cancel = {
+        stop.order_id
+        for route in plan.routes
+        for position, stop in enumerate(route.stops)
+        if position > 0 and stop.departure and stop.departure >= CANCEL_SAFE_DEPARTURE
+        and scenario.order(stop.order_id).window_start >= CANCEL_WINDOW_FROM
+    }
+    cancelled = [order for order in beeline.cancelled_orders(scenario) if order.id in untouched_at_cancel]
     if not cancelled:
-        cancelled = [
-            scenario.order(stop.order_id)
-            for route in plan.routes
-            for stop in route.stops
-            if stop.arrival > "11:10"
-        ]
+        cancelled = [scenario.order(order_id) for order_id in sorted(untouched_at_cancel)]
     if cancelled:
         events.append(CancelOrderEvent(time="11:10", order_id=cancelled[0].id))
 

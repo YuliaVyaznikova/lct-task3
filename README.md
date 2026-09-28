@@ -11,6 +11,8 @@ docker compose up --build
 # открыть http://localhost:8000
 ```
 
+В браузере, без установки: [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/YuliaVyaznikova/lct-task3?quickstart=1). Нужен только аккаунт GitHub. Codespaces сам соберёт проект за 3-5 минут и откроет вкладку с сервисом, а если она не открылась, сервис можно найти на панели Ports, порт 8000. Машина Codespaces слабее ноутбука, на котором сделаны замеры, поэтому за то же время поиск может найти план на несколько процентов хуже.
+
 Без Docker, через uv:
 
 ```bash

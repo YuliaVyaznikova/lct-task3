@@ -1,0 +1,22 @@
+{
+  "name": "Помощник диспетчера, задача №3",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "8gb"
+  },
+  "postCreateCommand": "pip install -e . && cd frontend && npm ci && npm run build",
+  "postStartCommand": "bash -c 'nohup python -m planner.cli serve --host 0.0.0.0 --port 8000 > /tmp/planner.log 2>&1 &'",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "Сервис",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
