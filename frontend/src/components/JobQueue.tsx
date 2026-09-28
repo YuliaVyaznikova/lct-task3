@@ -23,16 +23,18 @@ export function JobQueue({ scenario, plan, filter, onFilter, selectedOrder, onSe
   const unassigned = new Map((plan?.unassigned ?? []).map((u) => [u.order_id, u]))
   const ids = scenario.engineers.map((e) => e.id)
   const isUrgent = (o: Order) => o.priority === 'urgent' || effectiveTier(o) === 1
+  const cancelledAt = (o: Order) => o.attributes?.cancelled_at as string | undefined
+  const isUnplaced = (o: Order) => Boolean(plan && !refs[o.id] && !cancelledAt(o))
   const counts = {
     all: scenario.orders.length,
-    unplaced: scenario.orders.filter((o) => plan && !refs[o.id]).length,
+    unplaced: scenario.orders.filter(isUnplaced).length,
     urgent: scenario.orders.filter(isUrgent).length,
   }
   const items = scenario.orders
-    .filter((o) => (filter === 'unplaced' ? plan && !refs[o.id] : filter === 'urgent' ? isUrgent(o) : true))
+    .filter((o) => (filter === 'unplaced' ? isUnplaced(o) : filter === 'urgent' ? isUrgent(o) : true))
     .sort((a, b) => {
-      const ua = plan && !refs[a.id] ? 0 : 1
-      const ub = plan && !refs[b.id] ? 0 : 1
+      const ua = isUnplaced(a) ? 0 : cancelledAt(a) ? 2 : 1
+      const ub = isUnplaced(b) ? 0 : cancelledAt(b) ? 2 : 1
       if (ua !== ub) return ua - ub
       const ta = refs[a.id] ? minutes(refs[a.id].stop.start) : minutes(a.window_start)
       const tb = refs[b.id] ? minutes(refs[b.id].stop.start) : minutes(b.window_start)
@@ -74,7 +76,7 @@ export function JobQueue({ scenario, plan, filter, onFilter, selectedOrder, onSe
             <li key={order.id}>
               <button
                 type="button"
-                className={`q-row ${selectedOrder === order.id ? 'selected' : ''} ${ref ? '' : plan ? 'unplaced' : ''}`}
+                className={`q-row ${selectedOrder === order.id ? 'selected' : ''} ${isUnplaced(order) ? 'unplaced' : ''} ${cancelledAt(order) ? 'cancelled' : ''}`}
                 onClick={() => onSelectOrder(order.id)}
               >
                 <span className="q-top">
@@ -82,6 +84,7 @@ export function JobQueue({ scenario, plan, filter, onFilter, selectedOrder, onSe
                   <b className="q-id">{order.id}</b>
                   {order.priority === 'urgent' && <span className="tag urgent">срочная</span>}
                   {changed.has(order.id) && <span className="tag changed">изменена</span>}
+                  {cancelledAt(order) && <span className="tag">отменена</span>}
                   <span className="q-window">
                     {order.window_start}–{order.window_end}
                   </span>
@@ -98,6 +101,8 @@ export function JobQueue({ scenario, plan, filter, onFilter, selectedOrder, onSe
                     </>
                   ) : u ? (
                     <span className="q-reason">{reasonLabel(u.reason_code)}</span>
+                  ) : cancelledAt(order) ? (
+                    <span className="muted">отменена в {cancelledAt(order)}</span>
                   ) : (
                     <span className="muted">
                       {SKILL_SHORT[order.skill]} · {order.duration_min} мин · {order.district}

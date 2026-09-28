@@ -166,7 +166,11 @@ export function JobPanel({ plan, scenario, orderId, change, busy, onClose, onSel
           </div>
         )}
 
-        {!ref && !unassigned && <p className="pad muted">Заявка не участвует в плане.</p>}
+        {!ref && !unassigned && (
+          <p className="pad muted">
+            {order.attributes?.cancelled_at ? `Заявка отменена в ${order.attributes.cancelled_at}.` : 'Заявка не участвует в плане.'}
+          </p>
+        )}
 
         {result && (
           <div className={`note ${result.ok ? 'good' : 'bad'}`} role="status">

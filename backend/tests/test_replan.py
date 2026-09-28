@@ -237,6 +237,24 @@ def test_cancelled_order_disappears_from_the_plan(day, day_plan):
     assert target in diff.removed
 
 
+def test_cancelled_order_leaves_the_totals(day, day_plan):
+    target = next(
+        stop.order_id
+        for route in day_plan.routes
+        for stop in route.stops
+        if departure_min(route, stop) > hhmm_to_min("12:00")
+    )
+    scenario = day.model_copy(deep=True)
+    new_plan, _ = replan.replan(
+        scenario, day_plan, CancelOrderEvent(time="12:00", order_id=target), Geo(scenario), FAST
+    )
+
+    assert scenario.orders_by_id[target].attributes["cancelled_at"] == "12:00"
+    assert new_plan.metrics.orders_total == day_plan.metrics.orders_total - 1
+    assert new_plan.metrics.assigned + new_plan.metrics.unassigned == new_plan.metrics.orders_total
+    assert not day.orders_by_id[target].attributes.get("cancelled_at"), "исходный сценарий не трогаем"
+
+
 def test_cancelling_a_started_visit_is_refused(day, day_plan):
     started = next(
         stop.order_id

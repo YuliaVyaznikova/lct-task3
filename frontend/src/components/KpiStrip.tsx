@@ -18,6 +18,7 @@ const TIER_NAME: Record<number, string> = { 1: 'аварии', 2: 'подклю�
 function tiersFor(scenario: Scenario, assigned: Set<string>) {
   const rows = new Map<number, { tier: number; assigned: number; total: number }>()
   for (const order of scenario.orders) {
+    if (order.attributes?.cancelled_at) continue
     const tier = effectiveTier(order)
     const row = rows.get(tier) ?? { tier, assigned: 0, total: 0 }
     row.total += 1

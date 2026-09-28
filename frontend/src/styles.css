@@ -613,6 +613,8 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .q-row:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 .q-row.selected { background: var(--signal-soft); }
 .q-row.unplaced { box-shadow: inset 3px 0 0 var(--amber); }
+.q-row.cancelled { opacity: 0.6; }
+.q-row.cancelled .q-id { text-decoration: line-through; }
 .q-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .q-id { font-weight: 600; }
 .q-window { margin-left: auto; font-size: 12.5px; color: var(--muted); white-space: nowrap; }

@@ -63,7 +63,7 @@ def compute(
     per_order = round(total_km / len(assigned_ids), 2) if assigned_ids else 0.0
 
     return Metrics(
-        orders_total=len(scenario.orders),
+        orders_total=sum(1 for order in scenario.orders if not order.attributes.get("cancelled_at")),
         assigned=len(assigned_ids),
         unassigned=len(unassigned),
         urgent_total=len(urgent),

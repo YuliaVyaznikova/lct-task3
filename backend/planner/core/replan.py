@@ -243,6 +243,7 @@ def apply_event(
                 "отменять нечего"
             )
         pool = [order_id for order_id in pool if order_id != event.order_id]
+        scenario.orders_by_id[event.order_id].attributes["cancelled_at"] = event.time
         return geo, pool, f"отмена заявки {event.order_id}"
 
     if isinstance(event, EngineerUnavailableEvent):
