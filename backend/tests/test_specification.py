@@ -290,6 +290,16 @@ def test_4_demo_scenario_exists_with_events(demo):
     assert {event.type for event in demo.events} >= {"urgent_order", "cancel_order"}
 
 
+@pytest.mark.parametrize("objective", ["min_engineers", "min_distance"])
+def test_4_prepared_events_apply_one_after_another(demo, objective):
+    """Заготовленные события защиты применяются по очереди, отмена не попадает на визит, к которому уже выехали."""
+    working = demo.model_copy(deep=True)
+    plan = solver.plan(working, Geo(working), PlanParams(objective=objective, time_limit_s=4))
+    for event in sorted(working.events, key=lambda item: item.time):
+        plan, _ = replan.replan(working, plan, event, Geo(working), FAST)
+    assert plan.metrics.assigned > 0
+
+
 def test_4_7_comparison_table_lists_both_mandatory_metrics_first(demo, demo_plan):
     base = baseline.plan(demo, Geo(demo))
     rows = metrics.compare(demo_plan.metrics, base.metrics)

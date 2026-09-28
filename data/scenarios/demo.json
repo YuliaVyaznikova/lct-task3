@@ -2081,11 +2081,11 @@
       "order": {
         "id": "SOS-067",
         "external_id": "",
-        "address": "Город Москва, пр-кт.Волгоградский, д. 97 к 1 (авария на ТКД)",
+        "address": "Город Москва, ул.Новорогожская, д. 10 (авария на ТКД)",
         "address_normalized": "",
-        "district": "Кузьминки",
-        "lat": 55.70782,
-        "lon": 37.75189,
+        "district": "Таганский",
+        "lat": 55.740097,
+        "lon": 37.683205,
         "geocode_quality": "manual",
         "skill": "emergency",
         "work_type": "Глобальная проблема",
@@ -2102,7 +2102,7 @@
     {
       "type": "cancel_order",
       "time": "11:10",
-      "order_id": "V-009"
+      "order_id": "V-011"
     },
     {
       "type": "engineer_unavailable",
