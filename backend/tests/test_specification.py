@@ -375,7 +375,7 @@ def test_8_1_reacts_correctly_to_intraday_change(demo, demo_plan):
     }
     working = demo.model_copy(deep=True)
     target = next(
-        s.order_id for r in demo_plan.routes for s in r.stops if s.arrival > at
+        s.order_id for r in demo_plan.routes for s in r.stops if s.departure > at
     )
     new_plan, _ = replan.replan(
         working, demo_plan, CancelOrderEvent(time=at, order_id=target), Geo(working), FAST
