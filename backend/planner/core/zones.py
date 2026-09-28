@@ -6,6 +6,8 @@ import numpy as np
 
 REMOTE_FROM_OFFICE_KM = 25.0
 SAME_CLUSTER_KM = 20.0
+OUTSKIRTS_FROM_OFFICE_KM = 15.0
+TOWN_EDGE_KM = 7.0
 BASE_ZONE = 0
 
 
@@ -38,4 +40,11 @@ def split_into_zones(distance_m: np.ndarray, office_node: int) -> list[int]:
         if root not in numbers:
             numbers[root] = len(numbers) + 1
         zones[node] = numbers[root]
+
+    for node, km in enumerate(from_office_km):
+        if zones[node] != BASE_ZONE or km <= OUTSKIRTS_FROM_OFFICE_KM:
+            continue
+        nearest = min(remote, key=lambda other: distance_m[node, other])
+        if distance_m[node, nearest] / 1000.0 <= TOWN_EDGE_KM:
+            zones[node] = zones[nearest]
     return zones

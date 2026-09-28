@@ -42,6 +42,14 @@ def test_chain_of_close_points_stays_one_cluster():
     assert result[1] == result[2] == result[3]
 
 
+def test_town_on_the_radius_is_not_split():
+    """Город на границе радиуса целиком уходит в удалённую зону, а ближние районы остаются в офисной."""
+    result = zones.split_into_zones(distances([0.0, 12.0, 23.0, 27.0]), office_node=0)
+    assert result[3] != zones.BASE_ZONE
+    assert result[2] == result[3]
+    assert result[0] == result[1] == zones.BASE_ZONE
+
+
 @pytest.fixture(scope="module")
 def scenarios():
     data = {s.id: s for s in store.load_all()}
