@@ -87,7 +87,7 @@ def test_incidents_get_an_arrival_time(scenarios):
     assert len(incidents) == 11
     for order in incidents:
         assert order.window_start == order.attributes["reported_at"]
-        assert "09:00" <= order.window_start <= "19:00"
+        assert "10:00" <= order.window_start <= "20:00"
         assert order.window_start != "00:01"
 
 

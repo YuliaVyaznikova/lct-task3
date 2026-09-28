@@ -54,7 +54,7 @@
       "window_end": "20:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": null,
+      "required_transport": "car",
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -64,7 +64,8 @@
         "control_id": "305838184",
         "equipment": {
           "router": 1
-        }
+        },
+        "required_transport_synthetic": true
       }
     },
     {
@@ -84,7 +85,7 @@
       "window_end": "20:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": "car",
+      "required_transport": null,
       "attributes": {
         "gigabit": true,
         "normative": "Подключение клиентов Базовая",
@@ -93,8 +94,7 @@
         "control_id": "305857695",
         "equipment": {
           "router": 1
-        },
-        "required_transport_synthetic": true
+        }
       }
     },
     {
@@ -234,7 +234,7 @@
       "window_end": "18:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": null,
+      "required_transport": "car",
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -244,7 +244,8 @@
         "control_id": "305821472",
         "equipment": {
           "router": 1
-        }
+        },
+        "required_transport_synthetic": true
       }
     },
     {
@@ -294,7 +295,7 @@
       "window_end": "14:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": "car",
+      "required_transport": null,
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -304,8 +305,7 @@
         "control_id": "305896844",
         "equipment": {
           "router": 1
-        },
-        "required_transport_synthetic": true
+        }
       }
     },
     {
@@ -475,7 +475,7 @@
       "window_end": "14:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": null,
+      "required_transport": "car",
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -485,7 +485,8 @@
         "control_id": "305863399",
         "equipment": {
           "router": 1
-        }
+        },
+        "required_transport_synthetic": true
       }
     },
     {
@@ -535,7 +536,7 @@
       "window_end": "16:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": null,
+      "required_transport": "car",
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -545,7 +546,8 @@
         "control_id": "305885296",
         "equipment": {
           "router": 1
-        }
+        },
+        "required_transport_synthetic": true
       }
     },
     {
@@ -565,7 +567,7 @@
       "window_end": "12:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": "car",
+      "required_transport": null,
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -575,8 +577,7 @@
         "control_id": "305888536",
         "equipment": {
           "router": 1
-        },
-        "required_transport_synthetic": true
+        }
       }
     },
     {
@@ -894,7 +895,7 @@
       "window_end": "16:00",
       "priority": "normal",
       "priority_tier": 2,
-      "required_transport": "car",
+      "required_transport": null,
       "attributes": {
         "connection": "FMC",
         "gigabit": false,
@@ -904,8 +905,7 @@
         "control_id": "305825274",
         "equipment": {
           "router": 1
-        },
-        "required_transport_synthetic": true
+        }
       }
     },
     {
@@ -1886,11 +1886,13 @@
       "id": "E01",
       "name": "Инженер 01",
       "skills": [
-        "local"
+        "local",
+        "connection",
+        "emergency"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1901,11 +1903,12 @@
       "id": "E02",
       "name": "Инженер 02",
       "skills": [
-        "local"
+        "local",
+        "connection"
       ],
-      "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "transport": "foot",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1916,12 +1919,11 @@
       "id": "E03",
       "name": "Инженер 03",
       "skills": [
-        "connection",
         "emergency"
       ],
-      "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "transport": "car",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1932,12 +1934,12 @@
       "id": "E04",
       "name": "Инженер 04",
       "skills": [
-        "local",
-        "connection"
+        "connection",
+        "emergency"
       ],
-      "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "transport": "public",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1948,11 +1950,12 @@
       "id": "E05",
       "name": "Инженер 05",
       "skills": [
-        "emergency"
+        "local",
+        "connection"
       ],
-      "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "transport": "public",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1964,11 +1967,12 @@
       "name": "Инженер 06",
       "skills": [
         "local",
-        "connection"
+        "connection",
+        "emergency"
       ],
       "transport": "foot",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1983,9 +1987,9 @@
         "connection",
         "emergency"
       ],
-      "transport": "public",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "transport": "car",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1997,12 +2001,11 @@
       "name": "Инженер 08",
       "skills": [
         "local",
-        "connection",
-        "emergency"
+        "connection"
       ],
-      "transport": "foot",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "transport": "car",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2013,13 +2016,11 @@
       "id": "E09",
       "name": "Инженер 09",
       "skills": [
-        "local",
-        "connection",
-        "emergency"
+        "connection"
       ],
-      "transport": "public",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "transport": "foot",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2030,12 +2031,11 @@
       "id": "E10",
       "name": "Инженер 10",
       "skills": [
-        "local",
         "connection"
       ],
-      "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "transport": "bike",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2046,11 +2046,12 @@
       "id": "E11",
       "name": "Инженер 11",
       "skills": [
+        "local",
         "connection"
       ],
-      "transport": "foot",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "transport": "car",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2061,12 +2062,11 @@
       "id": "E12",
       "name": "Инженер 12",
       "skills": [
-        "local",
-        "connection"
+        "local"
       ],
-      "transport": "bike",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "transport": "public",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2077,7 +2077,7 @@
   "events": [],
   "meta": {
     "source": "beeline",
-    "generator_seed": 43,
+    "generator_seed": 42,
     "geocoder": "dadata+nominatim",
     "notes": "синтетика: Восток Синтетические данные.csv; контроль: Восток Контрольное распределение..csv (66 строк)"
   }

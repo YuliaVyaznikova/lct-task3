@@ -1577,8 +1577,8 @@
         "emergency"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1594,8 +1594,8 @@
         "emergency"
       ],
       "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1609,8 +1609,8 @@
         "local"
       ],
       "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1626,8 +1626,8 @@
         "emergency"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1642,8 +1642,8 @@
         "connection"
       ],
       "transport": "foot",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1657,8 +1657,8 @@
         "connection"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1673,8 +1673,8 @@
         "connection"
       ],
       "transport": "public",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1689,8 +1689,8 @@
         "emergency"
       ],
       "transport": "foot",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1704,8 +1704,8 @@
         "connection"
       ],
       "transport": "bike",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1720,8 +1720,8 @@
         "emergency"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,
@@ -1735,8 +1735,8 @@
         "local"
       ],
       "transport": "foot",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г.Москва проезд Симферопольский, д.7",
         "lat": 55.66501,

@@ -2026,7 +2026,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "15:00",
+      "window_start": "16:00",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2034,7 +2034,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "15:00",
+        "reported_at": "16:00",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2051,7 +2051,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "14:15",
+      "window_start": "15:15",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2059,7 +2059,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "14:15",
+        "reported_at": "15:15",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2076,7 +2076,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "16:40",
+      "window_start": "17:40",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2084,7 +2084,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "16:40",
+        "reported_at": "17:40",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2101,7 +2101,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "18:55",
+      "window_start": "19:55",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2109,7 +2109,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "18:55",
+        "reported_at": "19:55",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2126,7 +2126,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "17:50",
+      "window_start": "18:50",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2134,7 +2134,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "17:50",
+        "reported_at": "18:50",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2151,7 +2151,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "14:35",
+      "window_start": "15:35",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2159,7 +2159,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "14:35",
+        "reported_at": "15:35",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2176,7 +2176,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "12:55",
+      "window_start": "13:55",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2184,7 +2184,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "12:55",
+        "reported_at": "13:55",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2201,7 +2201,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "12:05",
+      "window_start": "13:05",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2209,7 +2209,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "12:05",
+        "reported_at": "13:05",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2226,7 +2226,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "10:50",
+      "window_start": "11:50",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2234,7 +2234,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "10:50",
+        "reported_at": "11:50",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2251,7 +2251,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "15:30",
+      "window_start": "16:30",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2259,7 +2259,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "15:30",
+        "reported_at": "16:30",
         "incident_window": "сутки от поступления"
       }
     },
@@ -2276,7 +2276,7 @@
       "work_type": "Глобальная проблема",
       "description": "Авария",
       "duration_min": 80,
-      "window_start": "10:50",
+      "window_start": "11:50",
       "window_end": "23:59",
       "priority": "urgent",
       "priority_tier": 1,
@@ -2284,7 +2284,7 @@
       "attributes": {
         "gigabit": false,
         "normative": "Аварий на ТКД",
-        "reported_at": "10:50",
+        "reported_at": "11:50",
         "incident_window": "сутки от поступления"
       }
     }
@@ -2299,8 +2299,8 @@
         "emergency"
       ],
       "transport": "foot",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2315,11 +2315,11 @@
         "connection"
       ],
       "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "выездная база: Домодедово",
-        "lat": 55.42968426844951,
+        "lat": 55.429684268449506,
         "lon": 37.77666514500732
       }
     },
@@ -2330,11 +2330,11 @@
         "emergency"
       ],
       "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "выездная база: Кашира, Ступино",
-        "lat": 54.850969250000006,
+        "lat": 54.85096924999999,
         "lon": 38.201189299999996
       }
     },
@@ -2346,8 +2346,8 @@
         "emergency"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2362,8 +2362,8 @@
         "connection"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2379,11 +2379,11 @@
         "emergency"
       ],
       "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "выездная база: Кашира, Ступино",
-        "lat": 54.850969250000006,
+        "lat": 54.85096924999999,
         "lon": 38.201189299999996
       }
     },
@@ -2396,8 +2396,8 @@
         "emergency"
       ],
       "transport": "foot",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2412,8 +2412,8 @@
         "connection"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2427,8 +2427,8 @@
         "connection"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2442,8 +2442,8 @@
         "connection"
       ],
       "transport": "bike",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2458,8 +2458,8 @@
         "connection"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,
@@ -2473,8 +2473,8 @@
         "local"
       ],
       "transport": "public",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Бирюлёвская, д 1с1",
         "lat": 55.590704,

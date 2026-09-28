@@ -141,8 +141,6 @@ def check_invariants(engineers: list[Engineer], config: EngineerConfig) -> None:
             raise InvariantError(f"навык {skill.value}: только {len(owners)} инженеров, нужно ≥2")
 
     shifts = {(e.shift_start, e.shift_end) for e in engineers}
-    if len(shifts) < 2:
-        raise InvariantError("обе смены должны быть представлены")
     for shift in shifts:
         covered = {
             skill

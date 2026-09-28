@@ -1890,8 +1890,8 @@
         "connection"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1906,8 +1906,8 @@
         "connection"
       ],
       "transport": "car",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1923,8 +1923,8 @@
         "emergency"
       ],
       "transport": "bike",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1938,8 +1938,8 @@
         "connection"
       ],
       "transport": "public",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1953,8 +1953,8 @@
         "connection"
       ],
       "transport": "foot",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1968,8 +1968,8 @@
         "connection"
       ],
       "transport": "foot",
-      "shift_start": "09:00",
-      "shift_end": "18:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -1985,8 +1985,8 @@
         "emergency"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2001,8 +2001,8 @@
         "emergency"
       ],
       "transport": "public",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2017,8 +2017,8 @@
         "emergency"
       ],
       "transport": "foot",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2034,8 +2034,8 @@
         "emergency"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2049,8 +2049,8 @@
         "connection"
       ],
       "transport": "public",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2065,8 +2065,8 @@
         "connection"
       ],
       "transport": "car",
-      "shift_start": "14:00",
-      "shift_end": "23:00",
+      "shift_start": "10:00",
+      "shift_end": "22:00",
       "start": {
         "address": "г. Москва, ул Юных Ленинцев, д 83с 4",
         "lat": 55.700588,
@@ -2081,11 +2081,11 @@
       "order": {
         "id": "SOS-067",
         "external_id": "",
-        "address": "Город Москва, ул.Большая Калитниковская, д. 38 (авария на ТКД)",
+        "address": "Город Москва, пр-кт.Волгоградский, д. 97 к 1 (авария на ТКД)",
         "address_normalized": "",
-        "district": "Таганский",
-        "lat": 55.7361667,
-        "lon": 37.6862061,
+        "district": "Кузьминки",
+        "lat": 55.70782,
+        "lon": 37.75189,
         "geocode_quality": "manual",
         "skill": "emergency",
         "work_type": "Глобальная проблема",
@@ -2102,18 +2102,18 @@
     {
       "type": "cancel_order",
       "time": "11:10",
-      "order_id": "V-010"
+      "order_id": "V-009"
     },
     {
       "type": "engineer_unavailable",
       "time": "13:00",
-      "engineer_id": "E03"
+      "engineer_id": "E10"
     }
   ],
   "meta": {
     "source": "beeline",
     "generator_seed": 1,
     "geocoder": "dadata+nominatim",
-    "notes": "демо-набор на основе региона «Восток»: адреса, окна и типы работ — из выгрузки, справочник инженеров и события — синтетические (seed 1)"
+    "notes": "демо-набор на основе региона «Восток»: адреса, окна и типы работ из выгрузки, справочник инженеров и события синтетические (seed 1)"
   }
 }

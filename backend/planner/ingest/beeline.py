@@ -28,7 +28,7 @@ CANCEL_LEAD_MIN = 50
 
 FULL_DAY_WINDOW_MIN = 20 * 60
 
-INCIDENT_HOURS = (9 * 60, 19 * 60)
+INCIDENT_HOURS = (10 * 60, 20 * 60)
 
 
 @dataclass(frozen=True)

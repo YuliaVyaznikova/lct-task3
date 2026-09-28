@@ -94,9 +94,12 @@ def test_invariants_reject_broken_directory(scenarios):
     with pytest.raises(gen.InvariantError, match="транспорт"):
         gen.check_invariants(all_on_foot, config)
 
-    one_shift = [e.model_copy(update={"shift_start": "09:00", "shift_end": "18:00"}) for e in engineers]
-    with pytest.raises(gen.InvariantError, match="смены"):
-        gen.check_invariants(one_shift, config)
+    no_emergency_in_evening = [
+        e if Skill.EMERGENCY in e.skills else e.model_copy(update={"shift_start": "14:00", "shift_end": "22:00"})
+        for e in engineers
+    ]
+    with pytest.raises(gen.InvariantError, match="аварии"):
+        gen.check_invariants(no_emergency_in_evening, config)
 
 
 def test_yugo_vostok_has_more_cars(scenarios):
