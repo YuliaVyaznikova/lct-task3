@@ -514,6 +514,15 @@ def get_candidates(plan_id: str, order_id: str) -> list[dict]:
     return candidates_module.list_candidates(record.geo, record.plan, order_id)
 
 
+@app.get("/api/plans/{plan_id}/nearest/{order_id}")
+def get_nearest_window(plan_id: str, order_id: str) -> dict:
+    """Ближайшее другое окно, которое можно предложить клиенту по неназначенной заявке."""
+    record = _record(plan_id)
+    if order_id not in record.geo.orders:
+        raise HTTPException(404, f"Заявки {order_id} нет в сценарии")
+    return candidates_module.nearest_window(record.geo, record.plan, order_id)
+
+
 @app.get("/api/plans/{plan_id}/explain/{order_id}")
 def explain_order(plan_id: str, order_id: str) -> dict:
     record = _record(plan_id)

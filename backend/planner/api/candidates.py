@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from planner.core.models import Plan, Route
-from planner.core.validate import Geo, best_insertion, evaluate_route, first_blocking_violation
+import copy
+
+from planner.core.models import Plan, Priority, Route
+from planner.core.timeutil import hhmm_to_min
+from planner.core.validate import Geo, best_insertion, check_static, evaluate_route, first_blocking_violation
+
+CLIENT_WINDOWS = [(f"{hour:02d}:00", f"{hour + 2:02d}:00") for hour in range(10, 22, 2)]
 
 
 def _changed_starts(before: list[Route], after: list[Route]) -> list[dict[str, str]]:
@@ -89,3 +94,55 @@ def list_candidates(geo: Geo, plan: Plan, order_id: str) -> list[dict]:
 
     rows.sort(key=lambda row: (not row["feasible"], row["total_delta_km"] if row["feasible"] else 0))
     return rows
+
+
+def _other_windows(order, planned_from: str) -> list[tuple[str, str]]:
+    own = order.window_start_min
+    earliest = max(hhmm_to_min(planned_from), own if order.priority is Priority.URGENT else 0)
+    return sorted(
+        (
+            window for window in CLIENT_WINDOWS
+            if window[0] != order.window_start and hhmm_to_min(window[0]) >= earliest
+        ),
+        key=lambda window: (abs(hhmm_to_min(window[0]) - own), hhmm_to_min(window[0]) < own),
+    )
+
+
+def nearest_window(geo: Geo, plan: Plan, order_id: str) -> dict:
+    """Ближайшее другое окно сегодня, куда заявка встаёт, не сдвигая обещанное другим клиентам."""
+    order = geo.orders[order_id]
+    engineers = [e for e in geo.scenario.engineers if check_static(e, order) is None]
+    empty = {"available": False, "window_start": None, "window_end": None, "engineer_id": None, "start": None}
+    if not engineers:
+        return {**empty, "text": "Другое окно не поможет: у инженеров нет нужного навыка или транспорта."}
+
+    routes = plan.routes_by_engineer
+    for window_start, window_end in _other_windows(order, plan.planned_from):
+        shifted = copy.copy(geo)
+        shifted.orders = {
+            **geo.orders,
+            order_id: order.model_copy(update={"window_start": window_start, "window_end": window_end}),
+        }
+        best = None
+        for engineer in engineers:
+            current = [item for item in (routes[engineer.id].order_ids if engineer.id in routes else []) if item != order_id]
+            found = best_insertion(shifted, engineer, current, order_id, lunch=plan.params.lunch)
+            if found is not None and (best is None or found[1] < best[1]):
+                best = (engineer, found[1], [*current[:found[0]], order_id, *current[found[0]:]])
+        if best is None:
+            continue
+        engineer, added_km, sequence = best
+        route, _ = evaluate_route(shifted, engineer, sequence, lunch=plan.params.lunch)
+        stop = next(item for item in route.stops if item.order_id == order_id)
+        return {
+            "available": True,
+            "window_start": window_start,
+            "window_end": window_end,
+            "engineer_id": engineer.id,
+            "start": stop.start,
+            "text": (
+                f"Ближайшее свободное окно {window_start}–{window_end}: {engineer.name} может начать в {stop.start}, "
+                f"остальные визиты остаются в своих окнах."
+            ),
+        }
+    return {**empty, "text": "Сегодня свободного окна для этой заявки нет."}

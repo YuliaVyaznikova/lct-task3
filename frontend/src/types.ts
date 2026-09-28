@@ -238,6 +238,15 @@ export interface JobProgress {
   routes: Record<string, string[]>
 }
 
+export interface NearestWindow {
+  available: boolean
+  window_start: string | null
+  window_end: string | null
+  engineer_id: string | null
+  start: string | null
+  text: string
+}
+
 export interface ShiftedVisit {
   order_id: string
   from_start: string

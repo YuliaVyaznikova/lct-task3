@@ -639,6 +639,8 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .status-block.bad .status-main b { color: var(--bad); }
 .status-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .status-times { margin-top: 3px; }
+.nearest { margin-top: 6px; color: var(--ink); }
+.nearest.found { color: var(--good); font-weight: 500; }
 .eng-name-inline { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 button.link.eng-name-inline { text-decoration: none; color: var(--ink); }
 button.link.eng-name-inline:hover { color: var(--signal); }

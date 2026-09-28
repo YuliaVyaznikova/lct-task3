@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
+
+import { api } from '../api'
 import { engineerColor, minutes } from '../colors'
 import type { VisitChange } from '../derive'
 import { stopsByOrder } from '../derive'
 import { effectiveTier, humanizeCodes, plural, REASON_IS_RULE, reasonLabel, shortReason, signed, TIER_LABEL } from '../labels'
-import type { Candidate, OrderExplanation, Plan, ReasonCode, Scenario } from '../types'
+import type { Candidate, NearestWindow, OrderExplanation, Plan, ReasonCode, Scenario } from '../types'
 import { SKILL_RU, TRANSPORT_RU } from '../types'
 import { Disclosure, EngineerName, LockIcon } from './common'
 import type { CandidatePreview } from './MapView'
@@ -38,6 +41,19 @@ export function JobPanel({ plan, scenario, orderId, change, busy, onClose, onSel
     onPreview,
     onAssign,
   })
+
+  const [nearest, setNearest] = useState<NearestWindow | null>(null)
+  const hasReason = Boolean(unassigned)
+  useEffect(() => {
+    setNearest(null)
+    if (!hasReason) return
+    const controller = new AbortController()
+    api
+      .nearest(plan.id, orderId, controller.signal)
+      .then(setNearest)
+      .catch(() => setNearest(null))
+    return () => controller.abort()
+  }, [plan.id, orderId, hasReason])
 
   if (!order) {
     return (
@@ -143,6 +159,7 @@ export function JobPanel({ plan, scenario, orderId, change, busy, onClose, onSel
               <b>{reasonLabel(unassigned.reason_code)}</b>
             </div>
             <div className="status-times">{shortReason(unassigned.reason_code, order, scenario.engineers)}</div>
+            {nearest && <div className={`nearest ${nearest.available ? 'found' : ''}`}>{nearest.text}</div>}
             <Disclosure title="Текст сервиса" className="compact">
               <p className="small diag">{humanizeCodes(unassigned.reason)}</p>
             </Disclosure>

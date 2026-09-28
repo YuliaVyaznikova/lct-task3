@@ -2,6 +2,7 @@ import { humanizeCodes } from './labels'
 import type {
   Candidate,
   JobProgress,
+  NearestWindow,
   Objective,
   OrderExplanation,
   PlanEvent,
@@ -183,6 +184,9 @@ export const api = {
     )
     return Array.isArray(body) ? body : body.candidates
   },
+
+  nearest: (planId: string, orderId: string, signal?: AbortSignal) =>
+    request<NearestWindow>(`/plans/${planId}/nearest/${encodeURIComponent(orderId)}`, { signal }),
 
   geometry: (planId: string) => request<PlanGeometry>(`/plans/${planId}/geometry`),
 
