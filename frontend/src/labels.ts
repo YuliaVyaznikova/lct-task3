@@ -41,7 +41,7 @@ export function shortReason(code: string, order: Order | undefined, engineers: E
       return `Ни у одного инженера на смене нет навыка «${skillName(order.skill)}».`
     case 'NO_TRANSPORT':
       return `Заявке нужен транспорт «${
-        order.required_transport ? TRANSPORT_RU[order.required_transport] : '—'
+        order.required_transport ? TRANSPORT_RU[order.required_transport] : 'любой'
       }», а у инженеров с нужным навыком его нет.`
     case 'NO_EQUIPMENT':
       return 'Для заявки нужно больше оборудования, чем бригада берёт с собой утром.'
@@ -52,7 +52,7 @@ export function shortReason(code: string, order: Order | undefined, engineers: E
     case 'CAPACITY':
       return `Инженеры с нужным навыком есть, но в окно ${window} заявка не встала без опозданий на других адресах.`
     case 'NO_COORDS':
-      return 'Адрес не удалось найти на карте — уточните его, и заявку можно будет планировать.'
+      return 'Адрес не удалось найти на карте. Уточните его, и заявку можно будет планировать.'
     case 'CANCELLED':
       return 'Заявка отменена и в плане больше не участвует.'
     case 'ENGINEER_UNAVAILABLE':

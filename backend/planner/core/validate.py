@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from planner.core.models import (
+    TRANSPORT_RU,
     Engineer,
     LunchBreak,
     Order,
@@ -192,8 +193,8 @@ def check_static(engineer: Engineer, order: Order) -> Violation | None:
             order_id=order.id,
             code="NO_TRANSPORT",
             text=(
-                f"заявке нужен транспорт «{order.required_transport.value}», "
-                f"у {engineer.name} — «{engineer.transport.value}»"
+                f"заявке нужен транспорт «{TRANSPORT_RU[order.required_transport]}», "
+                f"а у {engineer.name} «{TRANSPORT_RU[engineer.transport]}»"
             ),
         )
     return None

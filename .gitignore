@@ -1,4 +1,4 @@
-# secrets — никогда не коммитить
+# ключи и секреты, в git не коммитить
 .env
 *-key.txt
 *.key
@@ -19,6 +19,7 @@ data/cache/geometry/
 # node
 node_modules/
 frontend/dist/
+*.tsbuildinfo
 
 # ide / os
 .vscode/

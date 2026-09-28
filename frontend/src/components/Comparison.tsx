@@ -67,7 +67,7 @@ function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan,
       base: km(b.distance_total_km),
       delta: signed(m.distance_total_km - b.distance_total_km),
       better: distanceBetter,
-      hint: m.assigned < b.assigned ? 'заявок меньше — сравнивать нельзя' : undefined,
+      hint: m.assigned < b.assigned ? 'заявок меньше, сравнивать нельзя' : undefined,
     },
     {
       title: 'Км на выполненную заявку',
@@ -123,7 +123,7 @@ function verdict(m: Metrics, b: Metrics, subject: string): string {
   else if (dist < 0) kmText = `и проезжает на ${km(-dist)} км меньше`
   else kmText = `и проезжает на ${km(dist)} км больше`
   let text = `${subject} ${jobsText} ${kmText}`
-  if (jobs < 0 && dist < 0) text += ' — меньший пробег здесь не выигрыш, заявок выполнено меньше'
+  if (jobs < 0 && dist < 0) text += ', но меньший пробег здесь не выигрыш, потому что заявок выполнено меньше'
   return text + '.'
 }
 
@@ -286,7 +286,7 @@ function controlBlock(control: ControlReference, m: Metrics, optimized: Plan, ev
           {control.summary && <p className="small">{control.summary}</p>}
           {control.covered_orders !== m.assigned && (
             <p className="small muted">
-              Факт покрывает {control.covered_orders} заявок, план — {m.assigned}.
+              Факт покрывает {control.covered_orders} заявок, план {m.assigned}.
             </p>
           )}
         </>

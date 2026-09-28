@@ -112,7 +112,7 @@ export function RouteTable({
                       {stop.locked && <span className="badge frozen">зафиксирован</span>}
                       {changed.has(stop.order_id) && <span className="badge changed">изменён событием</span>}
                       {stop.late_min > 0 && (
-                        <span className="badge urgent" title="Обещанное время сдвинуто — предупредить клиента">
+                        <span className="badge urgent" title="Обещанное время сдвинуто, предупредите клиента">
                           позже окна на {stop.late_min} мин
                         </span>
                       )}

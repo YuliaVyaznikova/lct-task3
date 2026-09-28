@@ -1,8 +1,3 @@
-/* Рабочее место диспетчера.
-   Экран занимает окно целиком, прокручиваются только панели.
-   Цвет несёт смысл: янтарный — не размещено, красный — срочно или отказ,
-   сиреневый — зафиксировано, оранжевая обводка — изменено событием. */
-
 :root {
   --ground: #e7ebee;
   --surface: #ffffff;
@@ -61,8 +56,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition: none !important; }
 }
-
-/* ------------------------------------------------------------ элементы */
 
 button, .button {
   font: inherit;
@@ -221,8 +214,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .checks li.ok::before { content: '✓'; color: var(--good); }
 .checks li.bad::before { content: '✕'; color: var(--bad); }
 
-/* ------------------------------------------------------------ каркас */
-
 .app {
   height: 100vh;
   display: grid;
@@ -322,8 +313,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .main.with-bar { grid-template-rows: minmax(0, 1fr) auto; }
 .loading-screen { display: flex; align-items: center; justify-content: center; }
 
-/* ------------------------------------------------------------ сводка */
-
 .kpis {
   display: flex;
   gap: var(--gap);
@@ -390,8 +379,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .was-row > span { color: var(--muted); }
 .was-row b { font-weight: 600; white-space: nowrap; }
 
-/* ------------------------------------------------------------ панели */
-
 .plan-grid, .sim-body {
   display: grid;
   grid-template-columns: clamp(236px, 20vw, 300px) minmax(0, 1fr) clamp(300px, 27vw, 400px);
@@ -437,7 +424,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .plan-grid.is-busy .map-pane { box-shadow: 0 0 0 2px var(--signal-soft); }
 .map-shell { position: relative; flex: 1; min-height: 0; }
 .map-shell .leaflet-container { position: absolute; inset: 0; background: #eef0f2; font: inherit; }
-/* Подложка приглушена, чтобы цветные маршруты читались первыми. */
 .map-shell .leaflet-tile-pane { filter: grayscale(0.75) contrast(0.92) brightness(1.04); }
 .leaflet-container.picking { cursor: crosshair; }
 .map-hint {
@@ -457,7 +443,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 }
 .map-hint.show { opacity: 1; }
 
-/* значки карты */
 .vm-wrap, .map-label-wrap, .em-wrap { background: none; border: none; }
 .vm {
   width: 20px;
@@ -530,8 +515,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .tip-warn { color: #9a6212; }
 .leaflet-tooltip { font: inherit; }
 
-/* ------------------------------------------------------------ инженеры */
-
 .eng { border-bottom: 1px solid var(--line-soft); }
 .eng-row {
   width: 100%;
@@ -593,8 +576,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .status.s-unavailable { background: var(--bad-soft); color: var(--bad); }
 .status.s-delayed { background: #fde2c4; color: #8a4a00; }
 
-/* ------------------------------------------------------------ очередь заявок */
-
 .queue .seg button { padding: 3px 7px; font-size: 12px; }
 .q-row {
   width: 100%;
@@ -622,8 +603,6 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .q-eng { overflow: hidden; text-overflow: ellipsis; }
 .q-at { color: var(--muted); margin-left: auto; }
 .q-reason { color: var(--warn); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
-
-/* ------------------------------------------------------------ заявка и кандидаты */
 
 .job-title { font-size: 16px !important; }
 .job-facts { padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line-soft); }
@@ -694,8 +673,6 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .cands-foot { padding: 8px 12px 0; margin: 0; }
 .unassign { margin: 12px 12px 0; }
 
-/* ------------------------------------------------------------ нижняя полоса: расчёт и варианты */
-
 .variant-bar {
   display: grid;
   grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
@@ -737,8 +714,6 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .vc-title { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
 .vc-figures { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vc-figures b { color: var(--ink); font-weight: 600; }
-
-/* ------------------------------------------------------------ расписание */
 
 .schedule { display: grid; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
 .sched-gantt, .sched-table {
@@ -854,8 +829,6 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .drop-card.error { border-left-color: var(--bad); }
 .drop-card.done { border-left-color: var(--good); }
 
-/* ------------------------------------------------------------ таблицы */
-
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table th {
   text-align: left;
@@ -920,8 +893,6 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .delta.bad { color: var(--bad); font-weight: 600; }
 .inactive { color: var(--faint); font-style: italic; }
 
-/* ------------------------------------------------------------ сравнение */
-
 .compare-page {
   min-height: 0;
   overflow: auto;
@@ -946,8 +917,6 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .engineer-km .bar { height: 5px; border-radius: 2px; margin: 3px 0; min-width: 1px; }
 .engineer-km .bar.ours { background: var(--signal); }
 .engineer-km .bar.base { background: #b4bec8; }
-
-/* ------------------------------------------------------------ симуляция */
 
 .sim { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--gap); min-height: 0; }
 .sim-bar {
@@ -1011,8 +980,6 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .ev-form .seg { flex-wrap: wrap; }
 .ev-form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .picked { font-size: 13px; padding: 5px 8px; border: 1px dashed var(--bad); border-radius: var(--radius-s); background: #fff; }
-
-/* ------------------------------------------------------------ ширина экрана */
 
 @media (max-width: 1380px) {
   .tb-date { display: none; }

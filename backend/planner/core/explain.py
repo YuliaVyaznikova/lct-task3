@@ -72,7 +72,7 @@ def _equipment_check(geo: Geo, route: Route, stop: Stop) -> str:
             taken[kind] = taken.get(kind, 0) + count
     stock = geo.equipment_stock(route.engineer_id)
     if not needs:
-        return "Оборудование — не требуется"
+        return "Оборудование не требуется"
     spent = ", ".join(
         f"{geo.equipment.title(kind)} {taken.get(kind, 0)} из {stock.get(kind, 0)}"
         for kind in sorted(needs)
@@ -93,10 +93,10 @@ def explain_order(
     engineer = geo.engineers[route.engineer_id]
 
     checks = [
-        Check(True, f"Навык «{SKILL_RU[order.skill]}» — есть (навыки инженера: {engineer.skills_ru})"),
+        Check(True, f"Навык «{SKILL_RU[order.skill]}» есть (навыки инженера: {engineer.skills_ru})"),
         Check(
             True,
-            f"Транспорт — {_transport_check(order, engineer)}",
+            f"Транспорт: {_transport_check(order, engineer)}",
         ),
         Check(
             True,
@@ -173,16 +173,16 @@ def _alternatives(
         if found is None:
             violation = first_blocking_violation(geo, engineer, order_ids, order.id, start)
             if violation is not None:
-                blocked.append(f"{engineer.name} — {violation.text}")
+                blocked.append(f"{engineer.name}: {violation.text}")
             continue
-        cheaper.append((found[1], f"{engineer.name} — +{found[1]:.1f} км к его маршруту"))
+        cheaper.append((found[1], f"{engineer.name}: +{found[1]:.1f} км к его маршруту"))
 
     cheaper.sort(key=lambda item: item[0])
     lines = [text for _, text in cheaper[:MAX_ALTERNATIVES]]
     lines += blocked[: max(0, MAX_ALTERNATIVES - len(lines))]
     if no_skill:
         word = _plural(no_skill, "инженер", "инженера", "инженеров")
-        lines.append(f"ещё {no_skill} {word} — не подходят по навыку или транспорту")
+        lines.append(f"ещё {no_skill} {word} не подходят по навыку или транспорту")
 
     why = _alternative_reason(
         geo, chosen, order.id, routes.get(chosen.id), start_states.get(chosen.id),
@@ -205,7 +205,7 @@ def _alternative_reason(
         own = _own_increment(geo, chosen_route, chosen, order_id, start)
         if own is not None and own <= best_delta + 0.05:
             return (
-                f"В маршруте {chosen.name} заявка добавляет {own:.1f} км — не больше, "
+                f"В маршруте {chosen.name} заявка добавляет {own:.1f} км, это не больше, "
                 f"чем у проверенных альтернатив (лучшая добавила бы {best_delta:.1f} км)."
             )
         if own is not None:
@@ -296,7 +296,7 @@ def explain_plan(geo: Geo, plan: Plan) -> str:
             "NO_COORDS": "нет координат",
         }
         listed = ", ".join(
-            f"{count} — {titles.get(code, code)}" for code, count in by_reason.most_common()
+            f"{titles.get(code, code)}: {count}" for code, count in by_reason.most_common()
         )
         parts.append(f"Не назначено {len(plan.unassigned)}: {listed}.")
         if m.extra_engineers_needed:

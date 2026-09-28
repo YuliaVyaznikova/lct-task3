@@ -41,7 +41,7 @@ export function EngineerName({
   id: string | null
   onClick?: (id: string) => void
 }) {
-  if (!id) return <span className="muted">—</span>
+  if (!id) return <span className="muted">не назначена</span>
   const ids = engineers.map((e) => e.id)
   const label = engineers.find((e) => e.id === id)?.name ?? id
   if (!onClick) {

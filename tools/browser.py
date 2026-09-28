@@ -33,7 +33,7 @@ def find_chrome() -> str:
     found = shutil.which("chrome") or shutil.which("chromium") or shutil.which("msedge")
     if found:
         return found
-    raise RuntimeError("не найден Chrome или Edge — укажите путь в CHROME_CANDIDATES")
+    raise RuntimeError("не найден Chrome или Edge, укажите путь в CHROME_CANDIDATES")
 
 
 def free_port() -> int:

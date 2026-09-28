@@ -253,13 +253,13 @@ export function JobPanel({ plan, scenario, orderId, change, busy, onClose, onSel
                       <span className="cand-name">{name(row.engineer_id)}</span>
                       <span className="cand-reason">{shortCandidateReason(row)}</span>
                     </span>
-                    <span className="cand-dash">—</span>
+                    <span className="cand-dash">нет</span>
                   </li>
                 ))}
               </ul>
             )}
             {estimated && (
-              <p className="small muted cands-foot">≈ — оценка по прямой; окно и смену сервис проверит при переносе.</p>
+              <p className="small muted cands-foot">Значок ≈ означает оценку по прямой, окно и смену сервис проверит при переносе.</p>
             )}
             {ref && (
               <button type="button" className="ghost small unassign" disabled={busy || pending !== null} onClick={() => assign(null)}>

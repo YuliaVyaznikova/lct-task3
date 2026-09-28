@@ -362,7 +362,7 @@ def test_export_matches_the_specification_format(client, plan):
     plan_id = plan["optimized"]["id"]
     body = client.get(f"/api/plans/{plan_id}/export").json()
 
-    assert body["исполнители"], "по каждому исполнителю — упорядоченный список заявок"
+    assert body["исполнители"], "по каждому исполнителю нужен упорядоченный список заявок"
     first = body["исполнители"][0]
     assert {"исполнитель", "пробег_км", "заявки"} <= set(first)
     visit = first["заявки"][0]

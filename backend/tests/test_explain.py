@@ -49,7 +49,7 @@ def test_card_has_travel_and_reason(explained):
 
 
 def test_alternatives_are_ranked_by_added_distance():
-    """Главный ответ на вопрос ТЗ «почему именно этот инженер»."""
+    """Главный ответ на вопрос задания «почему именно этот инженер»."""
     orders = [make_order("A", 1), make_order("B", 10)]
     engineers = [make_engineer("E01"), make_engineer("E02"), make_engineer("E03")]
     scenario = make_scenario(orders, engineers)

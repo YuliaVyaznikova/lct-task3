@@ -76,7 +76,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
     print(f"\n{scenario.name}: {len(scenario.orders)} заявок, {len(scenario.engineers)} инженеров")
     for requirement in report:
         mark = "+" if requirement.ok else "-"
-        print(f"  [{mark}] {requirement.title}" + (f" — {requirement.detail}" if requirement.detail else ""))
+        print(f"  [{mark}] {requirement.title}" + (f": {requirement.detail}" if requirement.detail else ""))
     print(f"\n  события для демонстрации:")
     for event in scenario.events:
         target = getattr(event, "order_id", None) or getattr(event, "engineer_id", None)

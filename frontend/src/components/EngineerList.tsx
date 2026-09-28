@@ -86,7 +86,7 @@ export function EngineerList({
                   </span>
                 </span>
                 <span className="eng-visits" title={state ? 'выполнено из запланированных' : 'визитов'}>
-                  {state ? `${state.done}/${state.total}` : visits || '—'}
+                  {state ? `${state.done}/${state.total}` : visits || 0}
                 </span>
               </button>
               {isSelected && route && route.stops.length > 0 && (

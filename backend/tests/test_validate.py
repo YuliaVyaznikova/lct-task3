@@ -122,7 +122,7 @@ def test_best_insertion_finds_cheapest_position(toy_geo):
     found = best_insertion(toy_geo, engineer, ["A", "F"], "B")
     assert found is not None
     position, delta = found
-    assert position == 1, "B лежит между A и F — вставка в середину дешевле краёв"
+    assert position == 1, "B лежит между A и F, поэтому вставка в середину дешевле краёв"
     assert delta >= 0
 
 

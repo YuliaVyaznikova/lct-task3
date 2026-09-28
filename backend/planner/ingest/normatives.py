@@ -68,7 +68,7 @@ def classify(work_type: str, hd_type: str, path: Path | None = None) -> Norm:
         if rule.hd_match != "*" and rule.hd_match not in hd:
             continue
         return rule.norm
-    raise ValueError(f"нет правила для ({work_type!r}, {hd_type!r}) — в справочнике должна быть строка *;*")
+    raise ValueError(f"нет правила для ({work_type!r}, {hd_type!r}), в справочнике должна быть строка *;*")
 
 
 def work_types(path: Path | None = None) -> list[dict]:

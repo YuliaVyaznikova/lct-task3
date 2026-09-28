@@ -265,7 +265,7 @@ def build(
 
 def describe() -> str:
     """Человекочитаемое описание модели идёт в README и в объяснения плана."""
-    factors = ", ".join(f"{d:g} км — ×{f:g}" for d, f in DETOUR_CALIBRATION)
+    factors = ", ".join(f"{d:g} км: ×{f:g}" for d, f in DETOUR_CALIBRATION)
     lines = [
         "Расстояние: по прямой, умноженной на коэффициент извилистости дорог;"
         f" коэффициент откалиброван по реальной сети ({factors})."
@@ -275,7 +275,7 @@ def describe() -> str:
         previous = 0.0
         for segment in profile.segments:
             bound = "далее" if segment.upto_km == INF else f"до {segment.upto_km:g} км"
-            parts.append(f"{bound} — {segment.speed_kmh:g} км/ч")
+            parts.append(f"{bound}: {segment.speed_kmh:g} км/ч")
             previous = segment.upto_km
         overhead = f"+{profile.overhead_min:g} мин " if profile.overhead_min else ""
         lines.append(f"  {transport.value}: {overhead}{'; '.join(parts)}")

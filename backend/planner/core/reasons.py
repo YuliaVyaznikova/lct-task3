@@ -71,12 +71,12 @@ def _no_capable_reason(
             reason_code=ReasonCode.NO_EQUIPMENT,
             reason=(
                 f"для заявки нужно {describe_needs(geo.equipment_needs(order.id), geo.equipment)}, "
-                "а бригады столько с собой не берут — нужно увеличить утренний запас"
+                "а бригады столько с собой не берут, нужно увеличить утренний запас"
             ),
         )
 
     if all(code is ReasonCode.NO_TRANSPORT for code in blocked):
-        required = TRANSPORT_RU[order.required_transport] if order.required_transport else "—"
+        required = TRANSPORT_RU[order.required_transport] if order.required_transport else "не указан"
         have = ", ".join(sorted({TRANSPORT_RU[engineer.transport] for engineer in with_skill}))
         return Unassigned(
             order_id=order.id,
@@ -139,7 +139,7 @@ def diagnose(
         return Unassigned(
             order_id=order.id,
             reason_code=ReasonCode.NO_COORDS,
-            reason="не удалось определить координаты адреса — заявку нужно уточнить вручную",
+            reason="не удалось определить координаты адреса, заявку нужно уточнить вручную",
         )
 
     verdicts = {
@@ -191,7 +191,7 @@ def _capacity_reason(
         if blocking is None:
             continue
         if route and route.stops:
-            details.append(f"{engineer.name} освобождается в {route.end_time} — {blocking.text}")
+            details.append(f"{engineer.name} освобождается в {route.end_time}: {blocking.text}")
         else:
             details.append(f"{engineer.name}: {blocking.text}")
 

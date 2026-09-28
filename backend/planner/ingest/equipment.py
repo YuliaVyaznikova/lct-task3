@@ -115,6 +115,6 @@ def summary(scenario: Scenario, config: EquipmentConfig | None = None) -> str:
             totals[kind] = totals.get(kind, 0) + count
     if not totals:
         return "оборудование заявкам не требуется"
-    need = ", ".join(f"{config.title(k)} — {v}" for k, v in sorted(totals.items()))
-    have = ", ".join(f"{config.title(k)} — {v}" for k, v in sorted(config.stock.items()))
+    need = ", ".join(f"{config.title(k)}: {v}" for k, v in sorted(totals.items()))
+    have = ", ".join(f"{config.title(k)}: {v}" for k, v in sorted(config.stock.items()))
     return f"нужно за день: {need}; утренний запас на бригаду: {have}"

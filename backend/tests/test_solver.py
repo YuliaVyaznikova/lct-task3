@@ -222,7 +222,7 @@ def test_priority_order_is_emergency_then_connection_then_the_rest():
         penalties[label] = _drop_penalty(order)
 
     assert penalties["авария"] > penalties["подключение"] > penalties["дозаказ"]
-    assert penalties["дозаказ"] == penalties["ремонт"], "дозаказ и ремонт — один ярус"
+    assert penalties["дозаказ"] == penalties["ремонт"], "дозаказ и ремонт в одном ярусе"
 
 
 def test_connection_wins_over_a_repair_when_only_one_fits():

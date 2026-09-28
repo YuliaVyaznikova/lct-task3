@@ -103,7 +103,7 @@ def test_yugo_vostok_pays_for_stricter_constraints(scenarios):
     ours = solver.plan(scenario, geo, PlanParams(time_limit_s=25))
     reference = control.build(scenario)
 
-    assert reference.late_starts >= 5, "факт нарушает окна, мы — нет"
+    assert reference.late_starts >= 5, "факт нарушает окна, а мы нет"
     orders = scenario.orders_by_id
     for route in ours.routes:
         for stop in route.stops:
@@ -118,7 +118,7 @@ def test_yugo_vostok_pays_for_stricter_constraints(scenarios):
     )
     overhead = ours.metrics.distance_total_km / max(fact_km, 1e-6)
     assert overhead < 1.3, (
-        f"на тех же заявках мы проезжаем в {overhead:.2f} раза больше факта — "
+        f"на тех же заявках мы проезжаем в {overhead:.2f} раза больше факта, "
         "допустимая плата за ограничения не должна превышать треть"
     )
 

@@ -123,7 +123,7 @@ def demo():
 
 def test_real_orders_carry_their_needs(demo):
     marked = [o for o in demo.orders if o.attributes.get("equipment")]
-    assert marked, "подключениям нужен роутер — потребность должна быть проставлена"
+    assert marked, "подключениям нужен роутер, потребность должна быть проставлена"
     for order in marked:
         assert all(count > 0 for count in order.attributes["equipment"].values())
 

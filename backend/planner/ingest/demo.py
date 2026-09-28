@@ -170,7 +170,7 @@ def build(
         conflict = check_conflict(candidate, params)
         checks.append(conflict)
         if verbose:
-            print(f"  seed {seed}: {conflict.detail}" + ("" if conflict.ok else " — недостаточно"))
+            print(f"  seed {seed}: {conflict.detail}" + ("" if conflict.ok else ", недостаточно"))
         if conflict.ok:
             chosen, report = candidate, checks
             break
@@ -185,8 +185,8 @@ def build(
     plan = solver.plan(chosen, geo, params or PROBE_PARAMS)
     chosen.events = build_events(chosen, plan)
     chosen.meta.notes = (
-        f"демо-набор на основе региона «{source.name}»: адреса, окна и типы работ — "
-        f"из выгрузки, справочник инженеров и события — синтетические "
+        f"демо-набор на основе региона «{source.name}»: адреса, окна и типы работ "
+        f"из выгрузки, справочник инженеров и события синтетические "
         f"(seed {chosen.meta.generator_seed})"
     )
     _ = config

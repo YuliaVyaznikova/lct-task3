@@ -239,7 +239,7 @@ def apply_event(
         }
         if event.order_id in locked_ids:
             raise ReplanError(
-                f"заявка {event.order_id} к {event.time} уже выполняется или выполнена — "
+                f"заявка {event.order_id} к {event.time} уже выполняется или выполнена, "
                 "отменять нечего"
             )
         pool = [order_id for order_id in pool if order_id != event.order_id]
@@ -444,8 +444,8 @@ def _summary(
         count = after.metrics.rescheduled
         word = _plural(count, "заявке", "заявкам", "заявкам")
         parts.append(
-            f"По {count} {word} пришлось сдвинуть обещанное клиенту время — "
-            "службе поддержки нужно предупредить."
+            f"По {count} {word} пришлось сдвинуть обещанное клиенту время, "
+            "службе поддержки нужно предупредить клиентов."
         )
 
     delta_distance = round(after.metrics.distance_total_km - before.metrics.distance_total_km, 1)

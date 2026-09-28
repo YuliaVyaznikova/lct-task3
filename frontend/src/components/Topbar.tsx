@@ -172,7 +172,7 @@ export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading,
             </label>
             <label className="field">
               <span className="field-label">
-                Бригад на смене <b>{params.engineerCount ?? brief?.engineers ?? '—'}</b>
+                Бригад на смене <b>{params.engineerCount ?? brief?.engineers ?? '…'}</b>
               </span>
               <input
                 type="range"
