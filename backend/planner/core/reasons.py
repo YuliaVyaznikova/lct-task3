@@ -109,18 +109,23 @@ def _no_capable_reason(
             ),
         )
 
-    shifts = sorted({
-        f"{engineer.shift_start}–{engineer.shift_end}"
-        for engineer in suitable or with_skill
-    })
-    return Unassigned(
-        order_id=order.id,
-        reason_code=ReasonCode.SHIFT_MISMATCH,
-        reason=(
-            f"окно {order.window_start}–{order.window_end} и {order.duration_min} мин работы "
-            f"не помещаются в смены инженеров с навыком «{skill_ru}» ({', '.join(shifts)})"
-        ),
+    by_shift = [
+        engineer for engineer in suitable if verdicts[engineer.id] is ReasonCode.SHIFT_MISMATCH
+    ] or suitable or with_skill
+    shifts = sorted({f"{engineer.shift_start}–{engineer.shift_end}" for engineer in by_shift})
+    reason = (
+        f"окно {order.window_start}–{order.window_end} и {order.duration_min} мин работы "
+        f"не помещаются в смены инженеров с навыком «{skill_ru}» ({', '.join(shifts)})"
     )
+    far = [engineer for engineer in suitable if verdicts[engineer.id] is ReasonCode.UNREACHABLE]
+    if far:
+        nearest = min(far, key=lambda engineer: geo.leg(engineer, geo.start_node(engineer), geo.node(order.id))[1])
+        km, minutes = geo.leg(nearest, geo.start_node(nearest), geo.node(order.id))
+        reason += (
+            f", а {nearest.name} со сменой {nearest.shift_start}–{nearest.shift_end} не успевает доехать: "
+            f"{km:.0f} км, {TRANSPORT_RU[nearest.transport]}, {minutes} мин в пути"
+        )
+    return Unassigned(order_id=order.id, reason_code=ReasonCode.SHIFT_MISMATCH, reason=reason)
 
 
 def diagnose(

@@ -121,6 +121,22 @@ def test_shift_mismatch_reason():
     assert "смен" in plan.unassigned[0].reason
 
 
+def test_mixed_reason_names_shift_and_distance_separately():
+    """Дневная смена кончается раньше окна, а вечерний инженер пеший и далеко."""
+    orders = [make_order("X", 100, Skill.EMERGENCY, ("18:55", "23:59"), duration=80)]
+    engineers = [
+        make_engineer("E01", [Skill.EMERGENCY], Transport.CAR, ("09:00", "18:00")),
+        make_engineer("E02", [Skill.EMERGENCY], Transport.FOOT, ("14:00", "23:00")),
+    ]
+    plan = baseline.plan(make_scenario(orders, engineers))
+    reason = plan.unassigned[0].reason
+
+    assert plan.unassigned[0].reason_code is ReasonCode.SHIFT_MISMATCH
+    assert "(09:00–18:00)" in reason, "в списке смен только те, кому не хватает смены"
+    assert "14:00–23:00 не успевает доехать" in reason
+    assert "км, пешком" in reason
+
+
 def test_unreachable_reason():
     """Пешеход до точки в 60 км не дойдёт за время окна."""
     orders = [make_order("X", 60, Skill.LOCAL, ("10:00", "12:00"))]
