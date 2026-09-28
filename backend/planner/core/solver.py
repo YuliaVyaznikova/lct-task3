@@ -44,6 +44,10 @@ RESCHEDULE_WEIGHT = 5_000
 
 ZONE_SWITCH_PENALTY_M = 30_000
 
+BALANCE_WEIGHT = 300
+
+BALANCE_PHASE_S = 6
+
 HORIZON_MIN = 1_800
 
 
@@ -206,6 +210,19 @@ def _add_time_constraints(
         time_dim.CumulVar(start_index).SetRange(available, available)
         time_dim.CumulVar(routing.End(vehicle)).SetMax(engineer.shift_end_min)
     return time_dim
+
+
+def _add_load_balance(
+    routing, engineers: list[Engineer], starts: dict[str, StartState], time_callback_indices: list[int]
+) -> None:
+    """Штраф за самую большую загрузку: работа расходится по инженерам ровнее."""
+    routing.AddDimensionWithVehicleTransits(time_callback_indices, 0, HORIZON_MIN, False, "Load")
+    load_dim = routing.GetDimensionOrDie("Load")
+    for vehicle, engineer in enumerate(engineers):
+        state = starts.get(engineer.id)
+        done = state.work_min + state.travel_min if state else 0
+        load_dim.CumulVar(routing.Start(vehicle)).SetValue(done)
+    load_dim.SetGlobalSpanCostCoefficient(BALANCE_WEIGHT)
 
 
 def _add_order_constraints(
@@ -371,7 +388,7 @@ def solve(
         routing.SetFixedCostOfAllVehicles(ENGINEER_FIXED_COST)
 
     if params.objective == "balanced":
-        time_dim.SetGlobalSpanCostCoefficient(10)
+        _add_load_balance(routing, engineers, starts, time_callback_indices)
 
     if params.lunch:
         _add_lunch_breaks(routing, manager, time_dim, engineers, service_min, starts)
@@ -517,6 +534,14 @@ def plan(
                 best = attempt
         return best
 
+    if params.objective == "balanced" and seed is None:
+        first = solve(
+            scenario, geo, params.model_copy(update={"objective": "min_distance"}),
+            starts, order_ids, previous, on_progress,
+        )
+        seed = first.assignment
+        params = params.model_copy(update={"time_limit_s": BALANCE_PHASE_S})
+
     result = solve(scenario, geo, params, starts, order_ids, previous, on_progress, seed)
 
     routes, violations = evaluate(
@@ -547,6 +572,24 @@ def plan(
         scenario, routes, unassigned, reasons.extra_engineers_needed(geo, unassigned)
     )
     return result_plan
+
+
+def balance(
+    scenario: Scenario,
+    geo: Geo,
+    params: PlanParams,
+    start_from: Plan,
+    plan_id: str = "balanced",
+    on_progress: ProgressCallback | None = None,
+) -> Plan:
+    """Выравнивает загрузку готового плана, не теряя его заявок."""
+    return plan(
+        scenario, geo,
+        params.model_copy(update={"objective": "balanced", "time_limit_s": BALANCE_PHASE_S}),
+        plan_id=plan_id,
+        on_progress=on_progress,
+        seed={route.engineer_id: route.order_ids for route in start_from.routes},
+    )
 
 
 def _plan_worker(queue, scenario, params, objective, plan_id, starts, order_ids, previous, seed) -> None:

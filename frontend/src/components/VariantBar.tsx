@@ -31,10 +31,11 @@ interface Props {
   selecting: string | null
 }
 
-function Figures({ assigned, total, engineers, distance }: { assigned: number; total: number; engineers: number; distance: number }) {
+function Figures({ assigned, total, engineers, distance, peak }: { assigned: number; total: number; engineers: number; distance: number; peak?: number }) {
   return (
     <span className="vc-figures">
       <b>{assigned}</b>/{total} заявок · <b>{engineers}</b> инж. · <b>{km(distance, 0)}</b> км
+      {peak !== undefined && <span title="Самая большая загрузка инженера за смену"> · до <b>{Math.round(peak * 100)}</b>%</span>}
     </span>
   )
 }
@@ -44,6 +45,7 @@ const fromMetrics = (m: Metrics) => ({
   total: m.orders_total,
   engineers: m.engineers_used,
   distance: m.distance_total_km,
+  peak: Math.max(0, ...Object.values(m.utilization_by_engineer ?? {})),
 })
 
 export function VariantBar({ job, variants, currentPlanId, hovered, onHover, onSelect, selecting }: Props) {

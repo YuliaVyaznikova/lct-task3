@@ -4,6 +4,8 @@ import { api, ApiError, isMissing, streamJob, type PlanRequest } from './api'
 import type { RunningJob } from './components/VariantBar'
 import type { JobProgress, Plan, PlanEvent, PlanResponse, ReplanResponse } from './types'
 
+const BALANCE_PHASE_S = 6
+
 function parseReplan(data: unknown): ReplanResponse {
   const body = data as Partial<ReplanResponse> & { optimized?: ReplanResponse['plan'] }
   const plan = body.plan ?? body.optimized
@@ -48,7 +50,7 @@ export function usePlanningRequests() {
       kind: 'plan',
       label: 'Идёт расчёт',
       startedAt: Date.now(),
-      budgetS: request.timeLimit,
+      budgetS: request.objective === 'auto' || request.objective === 'balanced' ? request.timeLimit + BALANCE_PHASE_S : request.timeLimit,
       streaming: true,
       last: null,
       byVariant: {},

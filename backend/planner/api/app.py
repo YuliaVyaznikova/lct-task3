@@ -318,8 +318,11 @@ def _create_plan(request: PlanRequest, on_progress=None) -> PlanResponse:
     if request.params.objective == "auto":
         keys = ("min_engineers", "min_distance", "balanced")
         attempts = solver.parallel_plans(
-            working, request.params, keys, next_plan_id(), on_progress=on_progress
+            working, request.params, keys[:2], next_plan_id(), on_progress=on_progress
         )
+        attempts.append(solver.balance(
+            working, geo, request.params, attempts[1], next_plan_id(), on_progress=on_progress
+        ))
         best = attempts[0]
         if metrics_module.is_better(attempts[1].metrics, best.metrics):
             best = attempts[1]
