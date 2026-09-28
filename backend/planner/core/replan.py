@@ -27,7 +27,7 @@ from planner.core.models import (
     UrgentOrderEvent,
 )
 from planner.core.timeutil import hhmm_to_min, min_to_hhmm
-from planner.core.validate import Geo, StartState
+from planner.core.validate import Geo, StartState, check_static, evaluate_route
 
 DEFAULT_STABILITY_M = 3000
 DEFAULT_EVENT_BUDGET_S = 8
@@ -137,6 +137,64 @@ def remap_starts(geo: Geo, frozen: Frozen) -> None:
             state.node = geo.start_node(geo.engineers[engineer_id])
 
 
+def _cheapest_insertion(
+    geo: Geo, frozen: Frozen, routes: dict[str, list[str]], order_id: str, skip: str, lunch: bool
+) -> tuple[str, list[str]] | None:
+    """Куда вытолкнутый визит встаёт без нарушений с наименьшим добавочным пробегом."""
+    order = geo.orders[order_id]
+    best: tuple[float, str, list[str]] | None = None
+    for engineer in geo.engineers.values():
+        state = frozen.starts.get(engineer.id)
+        if engineer.id == skip or state is None or state.closed or check_static(engineer, order) is not None:
+            continue
+        current = routes.get(engineer.id, [])
+        before = evaluate_route(geo, engineer, current, state, lunch=lunch)[0].distance_km
+        for position in range(len(current) + 1):
+            trial = [*current[:position], order_id, *current[position:]]
+            route, violations = evaluate_route(geo, engineer, trial, state, lunch=lunch)
+            if not violations and (best is None or route.distance_km - before < best[0]):
+                best = (route.distance_km - before, engineer.id, trial)
+    return (best[1], best[2]) if best else None
+
+
+def urgent_seed(
+    geo: Geo, frozen: Frozen, plan: Plan, pool: list[str], order_id: str, lunch: bool = False
+) -> dict[str, list[str]] | None:
+    """Стартовое решение, где авария стоит как можно раньше, а мешающие ей визиты переставлены к другим."""
+    waiting = set(pool)
+    routes = {r.engineer_id: [s.order_id for s in r.stops if s.order_id in waiting] for r in plan.routes}
+    order = geo.orders[order_id]
+    options: list[tuple[int, int, str, list[str], list[str]]] = []
+    for engineer in geo.engineers.values():
+        state = frozen.starts.get(engineer.id)
+        if state is None or state.closed or check_static(engineer, order) is not None:
+            continue
+        current = routes.get(engineer.id, [])
+        for position in range(len(current) + 1):
+            kept = [*current[:position], order_id]
+            route, violations = evaluate_route(geo, engineer, kept, state, lunch=lunch)
+            if violations:
+                continue
+            dropped: list[str] = []
+            for other in current[position:]:
+                if evaluate_route(geo, engineer, [*kept, other], state, lunch=lunch)[1]:
+                    dropped.append(other)
+                else:
+                    kept = [*kept, other]
+            options.append((hhmm_to_min(route.stops[-1].start), len(dropped), engineer.id, kept, dropped))
+
+    for _, _, engineer_id, kept, dropped in sorted(options, key=lambda item: item[:2]):
+        seed = {**routes, engineer_id: kept}
+        for other in dropped:
+            placed = _cheapest_insertion(geo, frozen, seed, other, engineer_id, lunch)
+            if placed is None:
+                break
+            seed[placed[0]] = placed[1]
+        else:
+            return seed
+    return None
+
+
 def _add_event_order(
     scenario: Scenario,
     pool: list[str],
@@ -153,8 +211,10 @@ def _add_event_order(
         )
     if any(existing.id == order.id for existing in scenario.orders):
         raise ReplanError(f"заявка {order.id} уже есть в сценарии")
-    if order.priority is Priority.URGENT and not order.attributes.get("reported_at"):
-        order.attributes["reported_at"] = event.time
+    if order.priority is Priority.URGENT:
+        if not order.attributes.get("reported_at"):
+            order.attributes["reported_at"] = event.time
+        order.attributes["reported_live"] = True
     scenario.orders.append(order)
     geo = Geo(scenario)
     pool.append(order.id)
@@ -223,6 +283,9 @@ def replan(
     frozen = freeze(geo, plan, at_min)
     geo, pool, caption = apply_event(scenario, geo, frozen, event, at_min)
     remap_starts(geo, frozen)
+    seed = None
+    if isinstance(event, UrgentOrderEvent):
+        seed = urgent_seed(geo, frozen, plan, pool, event.order.id, search_params.lunch)
 
     new_plan = solver.plan(
         scenario,
@@ -233,6 +296,7 @@ def replan(
         order_ids=pool,
         previous=plan.assignment,
         on_progress=on_progress,
+        seed=seed,
     )
     new_plan.parent_plan_id = plan.id
     new_plan.event = event

@@ -38,6 +38,8 @@ ENGINEER_FIXED_COST = 100_000
 
 URGENT_LATENESS_WEIGHT = 50
 
+LIVE_URGENT_LATENESS_WEIGHT = 1_000
+
 RESCHEDULE_WEIGHT = 5_000
 
 ZONE_SWITCH_PENALTY_M = 30_000
@@ -96,6 +98,13 @@ def _drop_penalty(order) -> int:
     if order.priority is Priority.URGENT:
         tier = min(tier, 1)
     return DROP_PENALTY_BY_TIER.get(tier, DROP_PENALTY_BY_TIER[3])
+
+
+def _lateness_weight(order: Order) -> int:
+    """Авария, пришедшая в течение дня, ждёт дороже аварии из утренней выгрузки."""
+    if order.attributes.get("reported_live"):
+        return LIVE_URGENT_LATENESS_WEIGHT
+    return URGENT_LATENESS_WEIGHT
 
 
 def _capable(scenario: Scenario, order) -> list[Engineer]:
@@ -188,7 +197,7 @@ def _add_time_constraints(
             time_dim.CumulVar(index).SetRange(order.window_start_min, order.window_end_min)
         if order.priority is Priority.URGENT:
             bound = max(order.window_start_min, earliest_shift)
-            time_dim.SetCumulVarSoftUpperBound(index, bound, URGENT_LATENESS_WEIGHT)
+            time_dim.SetCumulVarSoftUpperBound(index, bound, _lateness_weight(order))
 
     for vehicle, engineer in enumerate(engineers):
         state = starts.get(engineer.id)
@@ -281,9 +290,13 @@ def _route_sequences(
     return sequences
 
 
-def _solve_model(routing, search, engineers, previous, node_of_order):
+def _solve_model(routing, search, engineers, previous, node_of_order, seed=None):
+    candidates = []
+    if seed:
+        candidates.append(_seed_routes(engineers, seed, node_of_order))
     if previous:
-        initial = _initial_routes(engineers, previous, node_of_order)
+        candidates.append(_initial_routes(engineers, previous, node_of_order))
+    for initial in candidates:
         if any(initial):
             candidate = routing.ReadAssignmentFromRoutes(initial, True)
             if candidate is not None:
@@ -301,6 +314,7 @@ def solve(
     order_ids: list[str] | None = None,
     previous: dict[str, str] | None = None,
     on_progress: ProgressCallback | None = None,
+    seed: dict[str, list[str]] | None = None,
 ) -> SolveResult:
     """Строит распределение."""
     geo = geo or Geo(scenario)
@@ -424,7 +438,7 @@ def solve(
     idle_limit = IdleLimit()
     routing.AddSearchMonitor(idle_limit)
 
-    solution = _solve_model(routing, search, engineers, previous, node_of_order)
+    solution = _solve_model(routing, search, engineers, previous, node_of_order, seed)
 
     assignment: dict[str, list[str]] = {e.id: [] for e in scenario.engineers}
     if solution is None:
@@ -437,6 +451,16 @@ def solve(
     assigned = {order_id for sequence in assignment.values() for order_id in sequence}
     unassigned_ids = [o.id for o in pool if o.id not in assigned]
     return SolveResult(assignment, unassigned_ids, prefiltered, routing.status())
+
+
+def _seed_routes(
+    engineers: list[Engineer], seed: dict[str, list[str]], node_of_order: dict[str, int]
+) -> list[list[int]]:
+    """Готовое стартовое решение в порядке, который задал вызывающий."""
+    return [
+        [node_of_order[order_id] for order_id in seed.get(e.id, []) if order_id in node_of_order]
+        for e in engineers
+    ]
 
 
 def _initial_routes(
@@ -476,6 +500,7 @@ def plan(
     order_ids: list[str] | None = None,
     previous: dict[str, str] | None = None,
     on_progress: ProgressCallback | None = None,
+    seed: dict[str, list[str]] | None = None,
 ) -> Plan:
     """Полный план: решение солвера, пересчитанное валидатором и объяснённое."""
     geo = geo or Geo(scenario)
@@ -484,7 +509,7 @@ def plan(
     if params.objective == "auto":
         attempts = parallel_plans(
             scenario, params, ("min_engineers", "min_distance"), plan_id,
-            starts, order_ids, previous, on_progress,
+            starts, order_ids, previous, on_progress, seed,
         )
         best = attempts[0]
         for attempt in attempts[1:]:
@@ -492,7 +517,7 @@ def plan(
                 best = attempt
         return best
 
-    result = solve(scenario, geo, params, starts, order_ids, previous, on_progress)
+    result = solve(scenario, geo, params, starts, order_ids, previous, on_progress, seed)
 
     routes, violations = evaluate(
         geo, result.assignment, starts, allow_late=params.allow_reschedule and bool(starts),
@@ -524,13 +549,13 @@ def plan(
     return result_plan
 
 
-def _plan_worker(queue, scenario, params, objective, plan_id, starts, order_ids, previous) -> None:
+def _plan_worker(queue, scenario, params, objective, plan_id, starts, order_ids, previous, seed) -> None:
     """Отдельный процесс для одного варианта поиска."""
     try:
         attempt = plan(
             scenario, params=params.model_copy(update={"objective": objective}),
             plan_id=plan_id, starts=starts, order_ids=order_ids, previous=previous,
-            on_progress=lambda snapshot: queue.put(("progress", objective, snapshot)),
+            on_progress=lambda snapshot: queue.put(("progress", objective, snapshot)), seed=seed,
         )
         queue.put(("done", objective, attempt.model_dump(mode="json")))
     except Exception as exc:
@@ -546,6 +571,7 @@ def parallel_plans(
     order_ids: list[str] | None = None,
     previous: dict[str, str] | None = None,
     on_progress: ProgressCallback | None = None,
+    seed: dict[str, list[str]] | None = None,
 ) -> list[Plan]:
     """Считает независимые цели одновременно и возвращает их в заданном порядке."""
     context = get_context("spawn")
@@ -553,7 +579,7 @@ def parallel_plans(
     workers = [
         context.Process(
             target=_plan_worker,
-            args=(queue, scenario, params, objective, plan_id, starts, order_ids, previous),
+            args=(queue, scenario, params, objective, plan_id, starts, order_ids, previous, seed),
         )
         for objective in objectives
     ]

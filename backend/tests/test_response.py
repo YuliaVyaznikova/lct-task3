@@ -16,7 +16,7 @@ from planner.core.models import (
     UrgentOrderEvent,
 )
 from planner.core.timeutil import hhmm_to_min
-from planner.core.validate import Geo
+from planner.core.validate import Geo, evaluate
 from planner.ingest import store
 
 FAST = PlanParams(time_limit_s=5)
@@ -126,3 +126,54 @@ def test_existing_reported_time_is_not_overwritten(scenarios):
 
     added = next(item for item in working.orders if item.id == "SOS-961")
     assert added.attributes["reported_at"] == "11:00"
+
+
+def test_incident_during_the_day_is_marked_as_live(scenarios):
+    scenario = scenarios["demo"].model_copy(deep=True)
+    base = solver.plan(scenario, Geo(scenario), FAST)
+    working = copy.deepcopy(scenario)
+
+    replan.replan(
+        working, base, UrgentOrderEvent(time="12:30", order=incident(scenario, "SOS-962", reported="")), params=FAST
+    )
+
+    added = next(item for item in working.orders if item.id == "SOS-962")
+    assert added.attributes["reported_live"] is True
+    assert not any(order.attributes.get("reported_live") for order in scenario.orders)
+
+
+def test_demo_incident_starts_within_the_two_hour_norm(scenarios):
+    scenario = scenarios["demo"].model_copy(deep=True)
+    base = solver.plan(scenario, Geo(scenario), PlanParams(time_limit_s=20))
+    event = next(item for item in scenario.events if isinstance(item, UrgentOrderEvent))
+    working = copy.deepcopy(scenario)
+
+    plan, _ = replan.replan(working, base, event)
+
+    started = {stop.order_id: stop.start for route in plan.routes for stop in route.stops}
+    assert event.order.id in started, "авария должна попасть в план"
+    reaction = hhmm_to_min(started[event.order.id]) - hhmm_to_min(event.time)
+    assert reaction <= metrics.RESPONSE_NORM_MIN, f"реакция {reaction} мин при нормативе два часа"
+
+
+def test_seed_puts_the_incident_early_and_keeps_every_visit(scenarios):
+    scenario = scenarios["demo"].model_copy(deep=True)
+    base = solver.plan(scenario, Geo(scenario), PlanParams(objective="min_engineers", time_limit_s=5))
+    event = next(item for item in scenario.events if isinstance(item, UrgentOrderEvent))
+    working = copy.deepcopy(scenario)
+    at = hhmm_to_min(event.time)
+    frozen = replan.freeze(Geo(working), base, at)
+    geo, pool, _ = replan.apply_event(working, Geo(working), frozen, event, at)
+    replan.remap_starts(geo, frozen)
+
+    seed = replan.urgent_seed(geo, frozen, base, pool, event.order.id)
+
+    assert seed is not None
+    seeded = [order_id for ids in seed.values() for order_id in ids]
+    assert len(seeded) == len(set(seeded))
+    planned_before = {order_id for order_id in pool if order_id in base.assignment}
+    assert planned_before | {event.order.id} <= set(seeded), "вытолкнутые визиты должны встать к другим"
+    routes, violations = evaluate(geo, seed, frozen.starts)
+    assert not violations
+    start = next(stop.start for route in routes for stop in route.stops if stop.order_id == event.order.id)
+    assert hhmm_to_min(start) - at <= metrics.RESPONSE_NORM_MIN
