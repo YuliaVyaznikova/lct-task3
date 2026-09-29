@@ -15,6 +15,7 @@ from planner.core.models import (
     ScenarioMeta,
 )
 from planner.core.timeutil import min_to_hhmm, parse_ru_datetime
+from planner.ingest import store
 from planner.ingest.normatives import classify
 from planner.paths import RAW_DIR
 
@@ -22,6 +23,7 @@ ENCODINGS = ("utf-8-sig", "cp1251")
 DELIMITERS = (";", ",", "\t")
 
 OFFICE_PREFIX = "адрес оф"
+CANCELLED_STATUS = "отменена"
 
 FULL_DAY_WINDOW_MIN = 20 * 60
 
@@ -124,6 +126,7 @@ def _column_indexes(header: list[str], file_name: str) -> dict[str, int | None]:
         "address": _column_index(header, "Адрес"),
         "connection": _column_index(header, "Подключение"),
         "gigabit": _column_index(header, "Гигабитное подключение"),
+        "status": _column_index(header, "Статус BK"),
     }
     for required in ("work_type", "hd_type", "start", "end", "address"):
         if idx[required] is None:
@@ -177,17 +180,15 @@ def load_region(
     spec: RegionSpec | None = None,
 ) -> Scenario:
     """Собирает Scenario без координат и без инженеров их добавляют следующие шаги."""
-    spec = spec or _guess_spec(synthetic_csv)
     header, rows = _read_rows(synthetic_csv)
     order_rows, office_address = _split_orders_and_office(rows)
     if not order_rows:
         raise IngestError(f"в файле нет строк заявок: {synthetic_csv}")
-    if not office_address:
-        raise IngestError(
-            f"не найдена строка с адресом офиса (префикс «{OFFICE_PREFIX}…») в {synthetic_csv}"
-        )
 
     idx = _column_indexes(header, synthetic_csv.name)
+    order_rows = [row for row in order_rows if _cell(row, idx["status"]).casefold() != CANCELLED_STATUS]
+    spec = spec or _guess_spec(synthetic_csv, [_cell(row, idx["district"]) for row in order_rows])
+    office = Point(address=office_address) if office_address else _region_office(spec, synthetic_csv)
 
     orders: list[Order] = []
     date: str | None = None
@@ -198,9 +199,9 @@ def load_region(
 
     scenario = Scenario(
         id=spec.id,
-        name=spec.name,
+        name=spec.name if office_address else f"{spec.name} {_ru_date(date)}",
         date=date or "",
-        office=Point(address=office_address),
+        office=office,
         orders=orders,
         meta=ScenarioMeta(source="beeline", notes=f"синтетика: {synthetic_csv.name}"),
     )
@@ -268,12 +269,50 @@ def cancelled_orders(scenario: Scenario) -> list[Order]:
     return [o for o in scenario.orders if o.attributes.get("control_status") == "Отменена"]
 
 
-def _guess_spec(path: Path) -> RegionSpec:
-    name = path.name.casefold()
+def _ru_date(iso_date: str) -> str:
+    year, month, day = iso_date.split("-")
+    return f"{day}.{month}.{year}"
+
+
+def _compact(text: str) -> str:
+    return "".join(ch for ch in text.casefold().replace("ё", "е") if ch.isalnum())
+
+
+def _guess_spec(path: Path, districts: list[str] | None = None) -> RegionSpec:
+    name = _compact(path.stem)
     for spec in sorted(REGIONS, key=lambda s: -len(s.name)):
-        if spec.name.casefold() in name:
+        if _compact(spec.name) in name:
             return spec
-    raise IngestError(f"не удалось определить регион по имени файла: {path.name}")
+    by_districts = _spec_by_districts(districts or [])
+    if by_districts is not None:
+        return by_districts
+    raise IngestError(f"не удалось определить регион по имени файла и районам заявок: {path.name}")
+
+
+def _spec_by_districts(districts: list[str]) -> RegionSpec | None:
+    """Регион, у встроенного сценария которого больше всего заявок в тех же районах."""
+    wanted = {_compact(d) for d in districts if d}
+    best, best_overlap = None, 0
+    for spec in REGIONS:
+        try:
+            known = {_compact(o.district) for o in store.load(spec.id).orders if o.district}
+        except FileNotFoundError:
+            continue
+        overlap = len(wanted & known)
+        if overlap > best_overlap:
+            best, best_overlap = spec, overlap
+    return best
+
+
+def _region_office(spec: RegionSpec, path: Path) -> Point:
+    """Офис встроенного сценария региона для выгрузки без строки с адресом офиса."""
+    try:
+        office = store.load(spec.id).office
+    except FileNotFoundError:
+        raise IngestError(
+            f"не найдена строка с адресом офиса (префикс «{OFFICE_PREFIX}…») в {path.name}"
+        ) from None
+    return Point(address=office.address, lat=office.lat, lon=office.lon)
 
 
 def find_region_files(spec: RegionSpec, raw_dir: Path | None = None) -> tuple[Path, Path | None]:

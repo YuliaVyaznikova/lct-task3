@@ -10,7 +10,7 @@ import pytest
 
 from planner.core.control import control_brigades
 from planner.core.models import Priority, Skill
-from planner.ingest import beeline
+from planner.ingest import beeline, store
 from planner.ingest.normatives import classify
 from planner.paths import RAW_DIR
 
@@ -143,6 +143,32 @@ def test_region_guessed_from_filename():
     """«Юго-восток» не должен определяться как «Восток» по подстроке."""
     synthetic, _ = beeline.find_region_files(beeline.REGION_BY_ID["yugo-vostok"])
     assert beeline._guess_spec(synthetic).id == "yugo-vostok"
+
+
+EXTRA_DAY_HEADER = "Заявка;Тип заявки BK;Статус BK;Тип заявки HD;Начало;Окончание;Район;Адрес;Гигабитное подключение"
+
+
+def _extra_day_csv(path, district="Выхино"):
+    rows = [
+        EXTRA_DAY_HEADER,
+        f"1001;Подключение;Отправлена;Конвергенция абонента;29.09.2026 14:00;29.09.2026 16:00;{district};Город Москва, ул.Вострухина, д. 6 к 1;Да",
+        f"1002;Подключение;Отменена;Конвергенция абонента;29.09.2026 10:00;29.09.2026 12:00;{district};Город Москва, ул.Хлобыстова, д. 14 к 1;Нет",
+    ]
+    path.write_bytes("\n".join(rows).encode("cp1251"))
+    return path
+
+
+def test_extra_day_export_takes_office_from_region(tmp_path):
+    scenario = beeline.load_region(_extra_day_csv(tmp_path / "юго-центр день 2.csv"))
+    assert scenario.id == "yugocentr"
+    assert scenario.name == "Югоцентр 29.09.2026"
+    assert scenario.office.address == store.load("yugocentr").office.address
+    assert [order.external_id for order in scenario.orders] == ["1001"]
+
+
+def test_extra_day_region_guessed_from_districts(tmp_path):
+    scenario = beeline.load_region(_extra_day_csv(tmp_path / "юго восок день 3.csv", district="Кашира"))
+    assert scenario.id == "yugo-vostok"
 
 
 @pytest.mark.parametrize(
