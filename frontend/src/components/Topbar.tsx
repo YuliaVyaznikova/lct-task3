@@ -2,6 +2,7 @@ import { useRef } from 'react'
 
 import { api } from '../api'
 import type { Plan, ScenarioBrief, Tab, UploadProgress } from '../types'
+import { StopGlyph } from './common'
 
 export const TABS: [Tab, string][] = [
   ['map', 'Карта'],
@@ -78,7 +79,7 @@ export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading,
           <span className="tb-date tb-upload" role="status">
             {uploadProgress ? `Ищем адреса: ${uploadProgress.done} из ${uploadProgress.total}` : 'Загружаем файл…'}
             <button type="button" className="tb-stop" onClick={onCancelUpload} aria-label="Остановить загрузку" title="Остановить загрузку">
-              ×
+              <StopGlyph />
             </button>
           </span>
         ) : (

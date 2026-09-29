@@ -4,7 +4,7 @@ import { cx } from '../classes'
 import { km, MINE_TITLE, VARIANT_NOTE, VARIANT_ORDER, VARIANT_TITLE } from '../labels'
 import type { EventReview } from '../derive'
 import type { BarVariant, Metrics, MineVariant, RunningJob, Scenario } from '../types'
-import { useElapsed } from './common'
+import { StopGlyph, useElapsed } from './common'
 import { droppedLabel, ReviewCard } from './ReviewCard'
 import { verdictAgainst } from '../variant-diff'
 
@@ -221,7 +221,7 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
       {planControl}
       {stoppable ? (
         <button type="button" className="vb-stop" onClick={onCancel} aria-label="Остановить расчёт" title="Остановить расчёт">
-          ×
+          <StopGlyph />
         </button>
       ) : (
         tools

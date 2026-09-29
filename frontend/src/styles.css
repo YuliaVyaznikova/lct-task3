@@ -825,8 +825,10 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .vb-side.stoppable .plan-arrow { display: none; }
 .vb-stop, .tb-stop { display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--stop); background: var(--stop); color: #000; line-height: 1; cursor: pointer; }
 .vb-stop:hover, .vb-stop:focus-visible, .tb-stop:hover, .tb-stop:focus-visible { background: var(--stop-hover); border-color: var(--stop-hover); color: #000; outline: none; }
-.vb-stop { flex: none; width: 78px; border-radius: 0 var(--radius-s) var(--radius-s) 0; font-size: 34px; font-weight: 500; }
-.tb-stop { width: 24px; height: 24px; border-radius: var(--radius-s); font-size: 20px; font-weight: 600; }
+.vb-stop { flex: none; width: 78px; border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+.vb-stop .stop-glyph { width: 32px; height: 32px; }
+.tb-stop { width: 26px; height: 26px; border-radius: var(--radius-s); }
+.tb-stop .stop-glyph { width: 14px; height: 14px; }
 .vb-side .popover, .vb-side .ps-pop { left: 0; right: auto; }
 .vb-main { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
 .vb-main.reviewing { flex-direction: column; align-items: stretch; gap: 8px; }
