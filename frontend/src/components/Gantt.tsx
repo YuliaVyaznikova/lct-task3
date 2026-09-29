@@ -94,6 +94,8 @@ function LunchIcon() {
   )
 }
 
+const NOW_LABEL_CLEARANCE_MIN = 50
+
 export function Gantt({
   scenario,
   plan,
@@ -131,6 +133,8 @@ export function Gantt({
   const to = Math.ceil(Math.max(...shown.map((e) => minutes(e.shift_end)), ...finishes, 18 * 60) / 60) * 60
   const span = Math.max(to - from, 60)
   const pct = (value: number) => ((value - from) / span) * 100
+  const nowShown = now !== null && now >= from && now <= to
+  const nearNow = (value: number) => nowShown && Math.abs(value - now!) < NOW_LABEL_CLEARANCE_MIN
   const hours: number[] = []
   for (let h = from / 60; h <= to / 60; h += 1) hours.push(h)
   const orders = ordersById(scenario)
@@ -141,12 +145,12 @@ export function Gantt({
       <div className="g-axis">
         <div className="g-name" />
         <div className="g-track">
-          {hours.map((h) => (
+          {hours.filter((h) => !nearNow(h * 60)).map((h) => (
             <span key={h} className="g-hour" style={{ left: `${pct(h * 60)}%` }}>
               {hhmm(h * 60)}
             </span>
           ))}
-          {now !== null && now >= from && now <= to && (
+          {nowShown && (
             <span className="g-now-label" style={{ left: `${pct(now)}%` }}>
               {nowLabel}
             </span>

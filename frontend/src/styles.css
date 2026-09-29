@@ -807,7 +807,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .vb-side .popover, .vb-side .ps-pop { left: 0; right: auto; }
 .vb-main { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
 .vb-main.reviewing { flex-direction: column; align-items: stretch; gap: 8px; }
-.vb-main.reviewing .review-card { flex: none; height: 152px; overflow-y: auto; overscroll-behavior: contain; }
+.vb-main.reviewing .review-card { flex: none; max-height: 232px; overflow-y: auto; overscroll-behavior: contain; }
 .variant-bar.deciding { box-shadow: inset 4px 0 0 var(--signal); align-items: start; }
 .plan-storage { position: relative; display: inline-flex; align-items: center; gap: 6px; }
 .ps-pop.ps-save { display: flex; align-items: center; gap: 6px; width: auto; padding: 8px; overflow: visible; }
@@ -1246,7 +1246,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .tb-tabs button { padding: 0 8px; font-size: 13.5px; }
   .area-label { display: none; }
   .area select { max-width: 240px; }
-  .tb-right .button.ghost { display: none; }
+  .tb-right .button.ghost { padding: 4px 10px; font-size: 13.5px; }
   .kpis { padding: var(--gap) 10px 0; }
   .main { padding: var(--gap) 10px 10px; }
   .kpi { padding: 9px 12px 8px; }
@@ -1276,7 +1276,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .kpi { padding: 8px 14px 7px; }
   .kpi-value { font-size: 24px; }
   .kpi-unit { font-size: 14.5px; }
-  .kpi-legend { display: none; }
+  .kpi-legend { min-height: 0; font-size: 12px; }
   .tier-bar, .thin-bar { margin: 4px 0; }
   .kpi-base { min-height: 0; margin-top: 0; font-size: 12.5px; }
   .main { padding: var(--gap) 12px 10px; }
@@ -1285,8 +1285,10 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .plan-btn { padding: 6px 12px; font-size: 14px; }
   .plan-arrow { padding: 6px 8px; }
   .vc { min-height: 0; padding: 6px 10px; }
-  .vc-lines { display: none; }
+  .vc-lines { font-size: 12px; margin-top: 0; }
+  .vc-lines > :nth-child(n + 3) { display: none; }
   .vc-note { min-height: 0; }
+  .vb-main.reviewing .review-card { max-height: 150px; }
   .vc-compare { top: 4px; }
   .panel-head { padding: 7px 10px; }
   .eng-filter { gap: 4px; }
