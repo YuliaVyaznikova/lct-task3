@@ -1295,7 +1295,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .vb-side { gap: 4px; }
   .plan-btn { padding: 6px 12px; font-size: 14px; }
   .plan-arrow { padding: 6px 8px; }
-  .vc { min-height: 0; padding: 6px 10px; }
+  .vc { min-height: 83px; padding: 6px 10px; }
   .vc-lines { font-size: 12px; margin-top: 0; }
   .vc-lines > :nth-child(n + 3) { display: none; }
   .vc-note { min-height: 0; }
