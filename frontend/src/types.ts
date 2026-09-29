@@ -1,6 +1,7 @@
 export type Skill = 'local' | 'connection' | 'emergency'
 export type Transport = 'car' | 'foot' | 'bike' | 'public'
 export type Priority = 'normal' | 'urgent'
+export type MapMode = 'plan' | 'sim'
 export type Objective = 'auto' | 'min_engineers' | 'min_distance' | 'balanced'
 
 export interface Point {
@@ -51,7 +52,7 @@ export interface Stop {
   finish: string
   locked: boolean
   late_min: number
-  departure?: string
+  departure: string | null
 }
 
 export interface Route {
@@ -62,7 +63,7 @@ export interface Route {
   work_min: number
   wait_min: number
   end_time: string
-  break?: { start: string; finish: string } | null
+  break: { start: string; finish: string } | null
 }
 
 export type ReasonCode =
@@ -79,8 +80,9 @@ export type ReasonCode =
 
 export interface Unassigned {
   order_id: string
-  reason_code: string
+  reason_code: ReasonCode
   reason: string
+  detail: string
 }
 
 export interface Metrics {
@@ -137,6 +139,7 @@ export interface PlanParams {
   lunch: boolean
   allow_reschedule: boolean
   travel_model: string
+  required_orders?: string[]
 }
 
 export interface WorkType {
@@ -152,6 +155,7 @@ export interface Plan {
   id: string
   scenario_id: string
   kind: 'optimized' | 'baseline'
+  origin: 'solver' | 'manual' | 'event'
   params: PlanParams
   planned_from: string
   parent_plan_id: string | null
@@ -213,7 +217,7 @@ export interface ControlReference {
 export type VariantKey = 'min_engineers' | 'min_distance' | 'balanced'
 
 export interface Variant {
-  key: VariantKey | string
+  key: VariantKey
   title: string
   plan_id: string
   metrics: Metrics
@@ -225,7 +229,17 @@ export interface PlanResponse {
   comparison: MetricRow[]
   control: ControlReference
   scenario: Scenario
-  variants?: Variant[]
+  variants: Variant[]
+  diff: Diff | null
+}
+
+export interface SavedPlan {
+  id: string
+  name: string
+  saved_at: string
+  scenario_id: string
+  metrics: Metrics
+  from_title: string | null
 }
 
 export interface JobProgress {
@@ -253,10 +267,12 @@ export interface ShiftedVisit {
   to_start: string
 }
 
+export type CandidateReasonCode = 'NO_SKILL' | 'NO_TRANSPORT' | 'NO_EQUIPMENT' | 'WINDOW' | 'SHIFT' | 'LUNCH' | 'CAPACITY'
+
 export interface Candidate {
   engineer_id: string
   feasible: boolean
-  reason_code: string | null
+  reason_code: CandidateReasonCode | null
   reason: string | null
   position: number | null
   arrival: string | null
@@ -299,7 +315,7 @@ export interface PlanGeometry {
   source: string
   profile: string
   routes: Record<string, [number, number][]>
-  legs?: Record<string, [number, number][][]>
+  legs: Record<string, [number, number][][]>
   errors: string[]
 }
 
@@ -307,23 +323,38 @@ export interface ReplanResponse {
   plan: Plan
   diff: Diff
   scenario: Scenario
+  variants: Variant[]
 }
 
-export const SKILL_RU: Record<Skill, string> = {
-  local: 'Локальные работы',
-  connection: 'Подключение и дозаказы',
-  emergency: 'Аварийные работы',
+export interface Matched {
+  optimized: Plan
+  baseline: Plan
+  control: ControlReference
+  scenario: Scenario
 }
 
-export const TRANSPORT_RU: Record<Transport, string> = {
-  car: 'автомобиль',
-  foot: 'пешком',
-  bike: 'велосипед',
-  public: 'общественный транспорт',
+export type BarVariant = Omit<Variant, 'key'> & { key: string }
+
+export interface MineVariant {
+  planId: string
+  title?: string
+  metrics: Metrics
+  from?: string
+  draft: boolean
 }
 
-export const SKILL_COLOR: Record<Skill, string> = {
-  local: '#4c9f70',
-  connection: '#3f76c4',
-  emergency: '#c9513e',
+export interface RunningJob {
+  kind: 'plan' | 'event'
+  label: string
+  startedAt: number
+  budgetS: number
+  last: JobProgress | null
+  byVariant: Record<string, JobProgress>
+  expected: string[]
 }
+
+export type EventKind = PlanEvent['type']
+
+export type Selection = { kind: 'order'; id: string } | { kind: 'engineer'; id: string } | null
+
+export type Tab = 'map' | 'schedule' | 'compare'

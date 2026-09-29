@@ -1,5 +1,20 @@
-import type { Engineer, Order, ReasonCode, Skill, Transport } from './types'
-import { SKILL_RU, TRANSPORT_RU } from './types'
+import type { Candidate, CandidateReasonCode, Engineer, EventKind, Objective, Order, ReasonCode, Skill, Transport } from './types'
+import type { ColorMode } from './colors'
+
+export const SKILL_RU: Record<Skill, string> = {
+  local: 'Локальные работы',
+  connection: 'Подключение и дозаказы',
+  emergency: 'Аварийные работы',
+}
+
+export const TRANSPORT_RU: Record<Transport, string> = {
+  car: 'автомобиль',
+  foot: 'пешком',
+  bike: 'велосипед',
+  public: 'общественный транспорт',
+}
+
+export const SKILL_SHORT: Record<Skill, string> = { local: 'локальные', connection: 'подключение', emergency: 'авария' }
 
 export const REASON_LABEL: Record<ReasonCode, string> = {
   NO_SKILL: 'Нет инженера с нужным навыком',
@@ -27,16 +42,28 @@ export const REASON_IS_RULE: Record<ReasonCode, boolean> = {
   MANUAL: true,
 }
 
-export function reasonLabel(code: string): string {
-  return REASON_LABEL[code as ReasonCode] ?? `Не назначена (${code})`
+export const CANDIDATE_REASON: Record<CandidateReasonCode, string> = {
+  NO_SKILL: 'нет навыка',
+  NO_TRANSPORT: 'не тот транспорт',
+  NO_EQUIPMENT: 'не хватит оборудования',
+  WINDOW: 'не успеет к окну',
+  SHIFT: 'не хватит смены',
+  LUNCH: 'не встанет обед',
+  CAPACITY: 'не помещается в маршрут',
 }
+
+export const engineerName = (engineers: Engineer[], id: string) => engineers.find((e) => e.id === id)?.name ?? id
+
+export const candidateDeltaKm = (row: Candidate) => row.total_delta_km ?? row.added_km ?? 0
+
+export const shiftedVisits = (row: Candidate) =>
+  row.shifted.length ? `сдвинет ${row.shifted.length} ${plural(row.shifted.length, 'визит', 'визита', 'визитов')}` : 'без сдвигов'
 
 const skillName = (skill: Skill) => SKILL_RU[skill].toLowerCase()
 
-export function shortReason(code: string, order: Order | undefined, engineers: Engineer[]): string {
-  if (!order) return reasonLabel(code)
+export function shortReason(code: ReasonCode, order: Order): string {
   const window = `${order.window_start}–${order.window_end}`
-  switch (code as ReasonCode) {
+  switch (code) {
     case 'NO_SKILL':
       return `Ни у одного инженера на смене нет навыка «${skillName(order.skill)}».`
     case 'NO_TRANSPORT':
@@ -59,13 +86,11 @@ export function shortReason(code: string, order: Order | undefined, engineers: E
       return 'Исполнитель выбыл, а замену в этом расчёте найти не удалось.'
     case 'MANUAL':
       return 'Диспетчер снял заявку с маршрута. Её можно назначить обратно вручную.'
-    default:
-      return reasonLabel(code)
   }
 }
 
 export function effectiveTier(order: Order): number {
-  return order.priority === 'urgent' ? 1 : order.priority_tier ?? 3
+  return order.priority === 'urgent' ? 1 : order.priority_tier
 }
 
 export const TIER_LABEL: Record<number, string> = {
@@ -74,41 +99,37 @@ export const TIER_LABEL: Record<number, string> = {
   3: 'Ремонт и дозаказ',
 }
 
-export const TIER_SHORT: Record<number, string> = {
-  1: 'П1',
-  2: 'П2',
-  3: 'П3',
-}
+export const TIER_NAME: Record<number, string> = { 1: 'аварии', 2: 'подключения', 3: 'ремонт' }
 
 export function plural(count: number, one: string, few: string, many: string): string {
   const mod10 = count % 10
   const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) return one
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
+  if (mod10 === 1 && mod100 !== 11) {
+    return one
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return few
+  }
   return many
 }
 
 export function humanizeCodes(text: string): string {
   return text.replace(/«(local|connection|emergency|car|foot|bike|public)»/g, (_, code: string) => {
-    if (code in SKILL_RU) return `«${SKILL_RU[code as Skill]}»`
+    if (code in SKILL_RU) {
+      return `«${SKILL_RU[code as Skill]}»`
+    }
     return `«${TRANSPORT_RU[code as Transport]}»`
   })
 }
 
-export function staticMismatch(order: Order, engineer: Engineer): string {
-  if (!engineer.skills.includes(order.skill)) return `нет навыка «${skillName(order.skill)}»`
-  if (order.required_transport && order.required_transport !== engineer.transport) {
-    return `нужен транспорт «${TRANSPORT_RU[order.required_transport]}»`
-  }
-  return ''
+export const OBJECTIVE_LABEL: Record<Objective, string> = {
+  auto: 'Автоматически',
+  min_engineers: 'Меньше инженеров',
+  min_distance: 'Меньше пробега',
+  balanced: 'Равномерная загрузка',
 }
 
-export const OBJECTIVE_LABEL: Record<string, string> = {
-  auto: 'автоматически',
-  min_engineers: 'меньше инженеров',
-  min_distance: 'меньше пробега',
-  balanced: 'равномерная загрузка',
-}
+export const percent = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0)
 
 export function km(value: number, digits = 1): string {
   return value.toLocaleString('ru-RU', {
@@ -119,6 +140,45 @@ export function km(value: number, digits = 1): string {
 
 export function signed(value: number, digits = 1): string {
   const rounded = Number(value.toFixed(digits))
-  if (rounded === 0) return '±0'
+  if (rounded === 0) {
+    return '±0'
+  }
   return (rounded > 0 ? '+' : '−') + km(Math.abs(rounded), digits)
+}
+
+export type ScheduleView = 'gantt' | 'routes' | 'both'
+
+export const SCHEDULE_VIEWS: [ScheduleView, string][] = [
+  ['gantt', 'Диаграмма'],
+  ['routes', 'Маршруты'],
+  ['both', 'Обе'],
+]
+
+export const COLOR_MODE_RU: Record<ColorMode, string> = {
+  engineer: 'По инженерам',
+  office: 'По офисам',
+  transport: 'По транспорту',
+}
+
+export const MINE_TITLE = 'Мой вариант'
+
+export const VARIANT_TITLE: Record<string, string> = {
+  min_engineers: 'Меньше инженеров',
+  min_distance: 'Меньший пробег',
+  balanced: 'Ровная загрузка',
+}
+
+export const VARIANT_NOTE: Record<string, string> = {
+  min_engineers: 'цель: меньше инженеров',
+  min_distance: 'цель: короче маршруты',
+  balanced: 'цель: ровная загрузка',
+}
+export const VARIANT_ORDER = ['min_engineers', 'min_distance', 'balanced']
+
+export const EVENT_KIND_TITLE: Record<EventKind, string> = {
+  urgent_order: 'Авария',
+  new_order: 'Новая заявка',
+  cancel_order: 'Отмена',
+  engineer_unavailable: 'Инженер недоступен',
+  engineer_delayed: 'Задержка',
 }

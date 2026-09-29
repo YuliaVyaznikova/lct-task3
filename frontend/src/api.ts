@@ -4,17 +4,27 @@ import type {
   JobProgress,
   NearestWindow,
   Objective,
-  OrderExplanation,
   PlanEvent,
   PlanGeometry,
   PlanResponse,
-  ReplanResponse,
+  SavedPlan,
   Scenario,
   ScenarioBrief,
   WorkType,
 } from './types'
 
 const BASE = '/api'
+
+export interface LegScope {
+  planId?: string | null
+  scenarioId?: string | null
+  engineerCount?: number | null
+}
+
+export interface RoadLegs {
+  available: boolean
+  legs: Record<string, ([number, number][] | null)[]>
+}
 
 export class ApiError extends Error {
   constructor(
@@ -25,26 +35,28 @@ export class ApiError extends Error {
   }
 }
 
-export const isMissing = (e: unknown) =>
-  e instanceof ApiError && (e.status === 404 || e.status === 405) && /Not Found|Method Not Allowed|Нет такого метода/i.test(e.message)
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
     response = await fetch(BASE + path, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: init?.body instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
       ...init,
     })
   } catch (e) {
-    if ((e as Error).name === 'AbortError') throw e
+    if ((e as Error).name === 'AbortError') {
+      throw e
+    }
     throw new ApiError('Сервис планирования не отвечает.', 0)
   }
   if (!response.ok) {
     let message = `Ошибка сервиса (${response.status})`
     try {
       const body = await response.json()
-      if (typeof body.detail === 'string') message = body.detail
-      else if (Array.isArray(body.detail)) message = body.detail.map((d: any) => d.msg).join('; ')
+      if (typeof body.detail === 'string') {
+        message = body.detail
+      } else if (Array.isArray(body.detail)) {
+        message = body.detail.map((d: any) => d.msg).join('; ')
+      }
     } catch {}
     throw new ApiError(humanizeCodes(message), response.status)
   }
@@ -58,6 +70,7 @@ export interface PlanRequest {
   lunch: boolean
   engineerCount: number | null
   allowReschedule: boolean
+  requiredOrders: string[]
 }
 
 const planRequestBody = (r: PlanRequest) =>
@@ -68,6 +81,7 @@ const planRequestBody = (r: PlanRequest) =>
       time_limit_s: r.timeLimit,
       lunch: r.lunch,
       allow_reschedule: r.allowReschedule,
+      required_orders: r.requiredOrders,
     },
     engineer_count: r.engineerCount,
   })
@@ -83,7 +97,9 @@ export function streamJob<T>(jobId: string, handlers: JobHandlers<T>): Promise<T
     const source = new EventSource(`${BASE}/plans/jobs/${encodeURIComponent(jobId)}/events`)
     let settled = false
     const settleAndClose = (fn: () => void) => {
-      if (settled) return
+      if (settled) {
+        return
+      }
       settled = true
       source.close()
       fn()
@@ -92,14 +108,18 @@ export function streamJob<T>(jobId: string, handlers: JobHandlers<T>): Promise<T
       settleAndClose(() => reject(new DOMException('aborted', 'AbortError'))),
     )
     source.addEventListener('progress', (e) => {
+      let progress: JobProgress
       try {
-        handlers.onProgress(JSON.parse((e as MessageEvent).data))
-      } catch {}
+        progress = JSON.parse(e.data)
+      } catch {
+        return
+      }
+      handlers.onProgress(progress)
     })
     source.addEventListener('done', (e) => {
       settleAndClose(() => {
         try {
-          const data = JSON.parse((e as MessageEvent).data)
+          const data = JSON.parse(e.data)
           resolve(handlers.parse ? handlers.parse(data) : (data as T))
         } catch (err) {
           reject(new ApiError('Сервис прислал неполный итог расчёта.', 0))
@@ -107,14 +127,12 @@ export function streamJob<T>(jobId: string, handlers: JobHandlers<T>): Promise<T
       })
     })
     source.addEventListener('error', (e) => {
-      const data = (e as MessageEvent).data
-      if (typeof data === 'string' && data) {
-        let message = data
+      if (e instanceof MessageEvent) {
+        let message = String(e.data)
         try {
-          const body = JSON.parse(data)
-          message = body.detail ?? body.message ?? body.error ?? data
+          message = JSON.parse(e.data).detail
         } catch {}
-        settleAndClose(() => reject(new ApiError(humanizeCodes(String(message)), 422)))
+        settleAndClose(() => reject(new ApiError(humanizeCodes(message), 0)))
         return
       }
       if (source.readyState === EventSource.CLOSED) {
@@ -129,41 +147,20 @@ export const api = {
 
   scenario: (id: string) => request<Scenario>(`/scenarios/${id}`),
 
-  workTypes: () => request<{ work_types?: WorkType[] }>('/reference').then((r) => r.work_types ?? []),
+  workTypes: () => request<{ work_types: WorkType[] }>('/reference').then((r) => r.work_types),
 
-  upload: async (file: File) => {
+  upload: (file: File) => {
     const form = new FormData()
     form.append('synthetic', file)
-    let response: Response
-    try {
-      response = await fetch(`${BASE}/scenarios/upload`, { method: 'POST', body: form })
-    } catch {
-      throw new ApiError('Сервис планирования не отвечает.', 0)
-    }
-    if (!response.ok) {
-      const body = await response.json().catch(() => null)
-      const detail = typeof body?.detail === 'string' ? body.detail : `Ошибка сервиса (${response.status})`
-      throw new ApiError(humanizeCodes(detail), response.status)
-    }
-    return (await response.json()) as Scenario
+    return request<Scenario>('/scenarios/upload', { method: 'POST', body: form })
   },
-
-  plan: (r: PlanRequest, signal?: AbortSignal) =>
-    request<PlanResponse>('/plans', { method: 'POST', signal, body: planRequestBody(r) }),
 
   planJob: (r: PlanRequest, signal?: AbortSignal) =>
     request<{ job_id: string }>('/plans/jobs', { method: 'POST', signal, body: planRequestBody(r) }),
 
   getPlan: (planId: string) => request<PlanResponse>(`/plans/${planId}`),
 
-  select: (planId: string) =>
-    request<PlanResponse | Record<string, unknown>>(`/plans/${planId}/select`, { method: 'POST' }),
-
-  event: (planId: string, event: PlanEvent) =>
-    request<ReplanResponse>(`/plans/${planId}/events`, {
-      method: 'POST',
-      body: JSON.stringify(event),
-    }),
+  select: (planId: string) => request<PlanResponse>(`/plans/${planId}/select`, { method: 'POST' }),
 
   eventJob: (planId: string, event: PlanEvent) =>
     request<{ job_id: string }>(`/plans/${planId}/events/jobs`, {
@@ -177,23 +174,34 @@ export const api = {
       body: JSON.stringify({ order_id: orderId, engineer_id: engineerId, position }),
     }),
 
-  candidates: async (planId: string, orderId: string, signal?: AbortSignal) => {
-    const body = await request<Candidate[] | { candidates: Candidate[] }>(
-      `/plans/${planId}/candidates/${encodeURIComponent(orderId)}`,
-      { signal },
-    )
-    return Array.isArray(body) ? body : body.candidates
-  },
+  candidates: (planId: string, orderId: string, signal?: AbortSignal) =>
+    request<Candidate[]>(`/plans/${planId}/candidates/${encodeURIComponent(orderId)}`, { signal }),
 
   nearest: (planId: string, orderId: string, signal?: AbortSignal) =>
     request<NearestWindow>(`/plans/${planId}/nearest/${encodeURIComponent(orderId)}`, { signal }),
 
   geometry: (planId: string) => request<PlanGeometry>(`/plans/${planId}/geometry`),
 
-  explain: (planId: string, orderId: string) =>
-    request<OrderExplanation & { assigned: boolean; reason?: string; reason_code?: string }>(
-      `/plans/${planId}/explain/${orderId}`,
-    ),
+  geometryLegs: (body: LegScope & { routes: Record<string, string[]> }) =>
+    request<RoadLegs>('/geometry/legs', {
+      method: 'POST',
+      body: JSON.stringify({
+        plan_id: body.planId ?? null,
+        scenario_id: body.scenarioId ?? null,
+        engineer_count: body.engineerCount ?? null,
+        routes: body.routes,
+      }),
+    }),
+
+  savePlan: (planId: string, name: string) =>
+    request<SavedPlan>('/saved', { method: 'POST', body: JSON.stringify({ plan_id: planId, name }) }),
+
+  savedPlans: (scenarioId: string) => request<SavedPlan[]>(`/saved?scenario_id=${encodeURIComponent(scenarioId)}`),
+
+  loadSaved: (savedId: string, ontoPlanId?: string) =>
+    request<PlanResponse>(`/saved/${savedId}/load${ontoPlanId ? `?onto=${encodeURIComponent(ontoPlanId)}` : ''}`, { method: 'POST' }),
+
+  deleteSaved: (savedId: string) => request<{ deleted: string }>(`/saved/${savedId}`, { method: 'DELETE' }),
 
   exportUrl: (planId: string) => `${BASE}/plans/${planId}/export`,
 }

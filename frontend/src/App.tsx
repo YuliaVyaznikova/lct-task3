@@ -1,41 +1,62 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { api, ApiError, type PlanRequest } from './api'
-import { hhmm } from './colors'
-import { Comparison, type Matched } from './components/Comparison'
+import { colorResolver, EngineerColorContext } from './colors'
+import { api, ApiError, type LegScope, type PlanRequest } from './api'
+import { Comparison } from './components/Comparison'
 import { EngineerList } from './components/EngineerList'
 import { JobPanel, type AssignResult } from './components/JobPanel'
-import { JobQueue, type QueueFilter } from './components/JobQueue'
-import { kpiFromPlan, kpiFromProgress, KpiStrip } from './components/KpiStrip'
-import { MapView, type CandidatePreview } from './components/MapView'
+import { JobQueue } from './components/JobQueue'
+import { KpiStrip } from './components/KpiStrip'
+import { MapView } from './components/MapView'
+import { PlanControl, DEFAULT_PARAMS, type PlanParamsUi } from './components/PlanControl'
+import { PlanStorage } from './components/PlanStorage'
+import { EventReviewSchedule } from './components/ReviewSchedule'
 import { Schedule } from './components/Schedule'
-import { SimulationView } from './components/Simulation'
-import { DEFAULT_PARAMS, Topbar, type PlanParamsUi, type Tab } from './components/Topbar'
+import { EventsPanel, SimulationBar, StatusLegend, useSimulationView } from './components/Simulation'
+import { SwitchConfirm } from './components/SwitchConfirm'
+import { Topbar } from './components/Topbar'
 import { VariantBar } from './components/VariantBar'
-import { eventChanges, stopsByOrder, type EventRecord } from './derive'
-import { km, plural } from './labels'
+import { VariantSchedule, type VariantOption } from './components/VariantSchedule'
+import { Workspace } from './components/Workspace'
+import { addedLabel, changedOrders, differingOrders, emptyKpi, matchedFrom, type EventRecord } from './derive'
+import { dimmedEngineerIds } from './engineer-filter'
+import { withRoads } from './geo'
+import { km, MINE_TITLE } from './labels'
+import { collectEventRecords, currentKpi, describeAssignment, isAbort, planEventMessage, stripStatus } from './plan-session'
 import { dayRange } from './sim'
-import type { Plan, PlanEvent, PlanGeometry, PlanResponse, Scenario, ScenarioBrief, Variant } from './types'
-import { loadSelectedVariant, usePlanningRequests } from './usePlanningRequests'
+import { hhmm } from './time'
+import type { BarVariant, MapMode, Matched, MineVariant, Plan, PlanEvent, PlanResponse, SavedPlan, Scenario, Tab, Variant } from './types'
+import { useComparedPlans } from './useComparedPlans'
+import { useEventReview } from './useEventReview'
+import { useLiveRun } from './useLiveRun'
+import { useMapInteraction } from './useMapInteraction'
+import { usePlanningRequests } from './usePlanningRequests'
+import { useRequiredOrders } from './useRequiredOrders'
+import { useRoadLegs } from './useRoadLegs'
+import { useRoads } from './useRoads'
+import { useScenarioCatalog } from './useScenarioCatalog'
 import { useSimulation } from './useSimulation'
+import { useVariantDetails } from './useVariantDetails'
+import { useVariantPreviews } from './useVariantPreviews'
 
-type Selection = { kind: 'order'; id: string } | { kind: 'engineer'; id: string } | null
-
-const routeSignature = (plan: Plan | null) =>
-  plan ? plan.id + '|' + plan.routes.map((r) => r.engineer_id + ':' + r.stops.map((s) => s.order_id).join(',')).join(';') : ''
-
-const wallClock = () => {
-  const d = new Date()
-  return d.getHours() * 60 + d.getMinutes()
+interface PreEvent {
+  variants: Variant[]
+  mine: MineVariant | null
 }
 
-const stripStatus = (message: string) => message.replace(/^\d{3}:\s*/, '')
+function variantOptions(variants: BarVariant[], mine: MineVariant | null, exceptId: string | null): VariantOption[] {
+  const options = [
+    ...variants.map((v) => ({ planId: v.plan_id, title: v.title })),
+    ...(mine ? [{ planId: mine.planId, title: mine.title ?? MINE_TITLE }] : []),
+  ]
+  return options.filter((option, index) => option.planId !== exceptId && options.findIndex((o) => o.planId === option.planId) === index)
+}
 
 export default function App() {
-  const [scenarios, setScenarios] = useState<ScenarioBrief[]>([])
-  const [scenarioId, setScenarioId] = useState('demo')
-  const [scenarioVersion, setScenarioVersion] = useState(0)
-  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const catalog = useScenarioCatalog(setError)
+  const { scenarioId } = catalog
+  const [required, toggleRequired] = useRequiredOrders(scenarioId)
   const [params, setParams] = useState<PlanParamsUi>(DEFAULT_PARAMS)
   const [preview, setPreview] = useState<Scenario | null>(null)
 
@@ -44,48 +65,45 @@ export default function App() {
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [history, setHistory] = useState<EventRecord[]>([])
 
-  const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('plan')
-  const [selection, setSelection] = useState<Selection>(null)
-  const [queueFilter, setQueueFilter] = useState<QueueFilter>('all')
+  const [tab, setTab] = useState<Tab>('map')
+  const [mapMode, setMapMode] = useState<MapMode>('plan')
+  const map = useMapInteraction()
 
   const [variants, setVariants] = useState<Variant[]>([])
-  const [variantPlans, setVariantPlans] = useState<Record<string, Plan>>({})
-  const [hoverVariant, setHoverVariant] = useState<string | null>(null)
+  const [mine, setMine] = useState<MineVariant | null>(null)
+  const [eventRecords, setEventRecords] = useState<Record<string, EventRecord>>({})
   const [selecting, setSelecting] = useState<string | null>(null)
-  const [candidate, setCandidate] = useState<CandidatePreview | null>(null)
-  const [roads, setRoads] = useState<PlanGeometry | null>(null)
-  const [clockNow, setClockNow] = useState(wallClock())
+  const [pendingSwitch, setPendingSwitch] = useState<string | null>(null)
+  const previews = useVariantPreviews(plan?.id ?? null)
+  const { hoverVariant, setHoverVariant, variantPlans, setVariantPlans, hovered, hoveredRoutes } = previews
+  const details = useVariantDetails(variantPlans, setVariantPlans)
+  const eventReview = useEventReview()
+  const { review } = eventReview
+  const { job, cancelPlan, requestPlan, requestEvent } = usePlanningRequests()
+  const live = useLiveRun(job)
+  const { liveRoutes } = live
 
+  const selectVariantRef = useRef<(planId: string) => Promise<void>>(async () => {})
   const planRef = useRef<Plan | null>(null)
   planRef.current = plan
-  const { job, cancelPlan, requestPlan, requestEvent } = usePlanningRequests()
+  const historyRef = useRef<EventRecord[]>([])
+  historyRef.current = history
+  const preEventRef = useRef<PreEvent | null>(null)
 
-  const loadScenarios = useCallback(() => {
-    api
-      .scenarios()
-      .then((list) => {
-        setScenarios(list)
-        setScenarioId((current) => (list.length && !list.some((s) => s.id === current) ? list[0].id : current))
-      })
-      .catch((e) => setError((e as Error).message))
-  }, [])
-  useEffect(loadScenarios, [loadScenarios])
+  const reviewPlan = review?.record.after ?? null
+  const { roadsFor, resetRoads } = useRoads(reviewPlan ?? plan, variantPlans)
 
-  const upload = useCallback(async (file: File) => {
-    setUploading(true)
-    setError(null)
-    try {
-      const loaded = await api.upload(file)
-      setScenarios(await api.scenarios())
-      setScenarioId(loaded.id)
-      setScenarioVersion((v) => v + 1)
-    } catch (e) {
-      setError(`Файл не загружен: ${(e as Error).message}`)
-    } finally {
-      setUploading(false)
-    }
-  }, [])
+  const compareTarget = review ? eventReview.shownId : hoverVariant ?? plan?.id ?? null
+  const compared = useComparedPlans({ tab, targetId: compareTarget, plan, onError: setError })
+
+  const clearPlanState = useCallback(() => {
+    setHistory([])
+    setVariants([])
+    setMine(null)
+    setEventRecords({})
+    compared.clear()
+    preEventRef.current = null
+  }, [compared.clear])
 
   useEffect(() => {
     cancelPlan()
@@ -93,12 +111,12 @@ export default function App() {
     setInitial(null)
     setPlan(null)
     setScenario(null)
-    setHistory([])
-    setVariants([])
+    clearPlanState()
     setVariantPlans({})
-    setRoads(null)
-    setSelection(null)
-    setTab('plan')
+    resetRoads()
+    map.clearMap()
+    setTab('map')
+    setMapMode('plan')
     setParams((p) => ({ ...p, engineerCount: null }))
     let cancelled = false
     api
@@ -108,27 +126,29 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [scenarioId, scenarioVersion, cancelPlan])
+  }, [scenarioId, catalog.scenarioVersion, cancelPlan, clearPlanState, setVariantPlans, resetRoads, map.clearMap])
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setClockNow(wallClock()), 30000)
-    return () => window.clearInterval(timer)
-  }, [])
+  const showPlan = useCallback(
+    (response: PlanResponse) => {
+      setPlan(response.optimized)
+      setScenario(response.scenario)
+      setVariantPlans((cache) => ({ ...cache, [response.optimized.id]: response.optimized }))
+    },
+    [setVariantPlans],
+  )
 
-  const accept = useCallback((response: PlanResponse) => {
-    setInitial({
-      optimized: response.optimized,
-      baseline: response.baseline,
-      control: response.control,
-      scenario: response.scenario,
-      manualEdits: 0,
-    })
-    setPlan(response.optimized)
-    setScenario(response.scenario)
-    setHistory([])
-    setVariants(response.variants ?? [])
-    setVariantPlans({ [response.optimized.id]: response.optimized })
-  }, [])
+  const accept = useCallback(
+    (response: PlanResponse) => {
+      setInitial(matchedFrom(response))
+      setPlan(response.optimized)
+      setScenario(response.scenario)
+      clearPlanState()
+      setVariants(response.variants)
+      setVariantPlans({ [response.optimized.id]: response.optimized })
+      setHoverVariant(null)
+    },
+    [clearPlanState, setVariantPlans, setHoverVariant],
+  )
 
   const run = useCallback(async () => {
     const request: PlanRequest = {
@@ -138,57 +158,54 @@ export default function App() {
       lunch: params.lunch,
       engineerCount: params.engineerCount,
       allowReschedule: params.allowReschedule,
+      requiredOrders: [...required].filter((id) => scenario?.orders.some((o) => o.id === id) ?? true),
     }
     setError(null)
-    setSelection(null)
-    setCandidate(null)
+    map.clearSelection()
+    map.setCandidate(null)
     setVariants([])
+    setMine(null)
     setHoverVariant(null)
-    setTab('plan')
+    setTab('map')
+    setMapMode('plan')
+    live.watchVariant(variants.find((v) => v.plan_id === plan?.id)?.key ?? null)
     try {
       const response = await requestPlan(request)
-      if (response) accept(response)
+      if (!response) {
+        return
+      }
+      accept(response)
+      const watched = response.variants.find((v) => v.key === live.watchRef.current)
+      if (watched && watched.plan_id !== response.optimized.id) {
+        await selectVariantRef.current(watched.plan_id)
+      }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if (isAbort(e)) {
+        return
+      }
       setError(`План не построен: ${stripStatus((e as Error).message)}`)
     }
-  }, [scenarioId, params, requestPlan, accept])
-
-  const fetchVariant = useCallback(
-    async (planId: string): Promise<PlanResponse | null> => {
-      try {
-        const response = await api.getPlan(planId)
-        setVariantPlans((cache) => ({ ...cache, [planId]: response.optimized }))
-        return response
-      } catch {
-        return null
-      }
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (hoverVariant && !variantPlans[hoverVariant]) void fetchVariant(hoverVariant)
-  }, [hoverVariant, variantPlans, fetchVariant])
+  }, [scenarioId, params, required, scenario, requestPlan, accept, variants, plan?.id, live.watchVariant, live.watchRef, map.clearSelection, map.setCandidate, setHoverVariant])
 
   const selectVariant = useCallback(
     async (planId: string) => {
-      if (planId === plan?.id) return
+      if (planId === plan?.id) {
+        setMine((m) => (m?.draft ? null : m))
+        return
+      }
       setSelecting(planId)
       try {
-        const response = await loadSelectedVariant(planId)
-        setInitial({
-          optimized: response.optimized,
-          baseline: response.baseline,
-          control: response.control,
-          scenario: response.scenario,
-          manualEdits: 0,
-        })
-        setPlan(response.optimized)
-        setScenario(response.scenario)
-        setHistory([])
-        setVariantPlans((cache) => ({ ...cache, [planId]: response.optimized }))
-        setSelection(null)
+        const response = await api.select(planId)
+        const record = eventRecords[planId]
+        if (!historyRef.current.length) {
+          setInitial(matchedFrom(response))
+          setHistory([])
+        } else if (record) {
+          setHistory((items) => [...items.slice(0, -1), record])
+        }
+        showPlan(response)
+        setMine((m) => (m?.draft ? null : m))
+        map.clearSelection()
       } catch (e) {
         setError(`Вариант не выбран: ${(e as Error).message}`)
       } finally {
@@ -196,14 +213,25 @@ export default function App() {
         setHoverVariant(null)
       }
     },
-    [plan?.id],
+    [plan?.id, eventRecords, showPlan, map.clearSelection, setHoverVariant],
   )
+  selectVariantRef.current = selectVariant
+
+  const copyPlan = useCallback(() => {
+    const current = planRef.current
+    if (!current) {
+      return
+    }
+    const from = variants.find((v) => v.plan_id === current.id)?.title
+    setMine({ planId: current.id, metrics: current.metrics, from, draft: true })
+  }, [variants])
 
   const assign = useCallback(
     async (orderId: string, engineerId: string | null, position: number | 'best'): Promise<AssignResult> => {
       const current = planRef.current
-      if (!current || !scenario) return { ok: false, text: 'Плана нет.' }
-      const name = (id: string) => scenario.engineers.find((e) => e.id === id)?.name ?? id
+      if (!current || !scenario) {
+        return { ok: false, text: 'Плана нет.' }
+      }
       const before = current.metrics
       try {
         const response = await api.manual(current.id, orderId, engineerId, position)
@@ -211,22 +239,13 @@ export default function App() {
         setPlan(after)
         setScenario(response.scenario)
         setVariantPlans((cache) => ({ ...cache, [after.id]: after }))
-        setVariants((list) => list.map((v) => (v.plan_id === after.id ? { ...v, metrics: after.metrics } : v)))
-        if (!history.length) {
-          setInitial((m) => ({
-            optimized: after,
-            baseline: response.baseline,
-            control: response.control,
-            scenario: response.scenario,
-            manualEdits: (m?.manualEdits ?? 0) + 1,
-          }))
+        const from = variants.find((v) => v.plan_id === current.id)?.title
+        setMine((m) => ({ planId: after.id, metrics: after.metrics, from: m?.planId === current.id ? m.from : from, draft: false }))
+        setEventRecords((records) => (records[current.id] ? { ...records, [after.id]: records[current.id] } : records))
+        if (!historyRef.current.length) {
+          setInitial(matchedFrom(response))
         }
-        const ref = stopsByOrder(after)[orderId]
-        const where = engineerId
-          ? ref
-            ? `${orderId} у ${name(ref.engineerId)}: визит ${ref.position}, начало ${ref.stop.start}.`
-            : `${orderId} передана ${name(engineerId)}.`
-          : `${orderId} снята с маршрута.`
+        const where = describeAssignment(orderId, engineerId, after, scenario.engineers)
         return {
           ok: true,
           text: `${where} Пробег ${km(before.distance_total_km)} → ${km(after.metrics.distance_total_km)} км.`,
@@ -236,41 +255,101 @@ export default function App() {
         return { ok: false, text: e instanceof ApiError && e.status === 422 ? message : `Ошибка сервиса: ${message}` }
       }
     },
-    [scenario, history.length],
+    [scenario, variants, setVariantPlans],
   )
+
+  const saveCurrent = useCallback(async (name: string) => {
+    const current = planRef.current
+    if (!current) {
+      return
+    }
+    try {
+      await api.savePlan(current.id, name)
+    } catch (e) {
+      setError(`План не сохранён: ${(e as Error).message}`)
+      throw e
+    }
+  }, [])
+
+  const openSaved = useCallback(
+    async (item: SavedPlan) => {
+      const current = planRef.current
+      try {
+        const response = await api.loadSaved(item.id, current?.id)
+        const loaded = response.optimized
+        if (!current) {
+          accept(response)
+        } else {
+          if (!historyRef.current.length) {
+            setInitial(matchedFrom(response))
+          }
+          showPlan(response)
+        }
+        setMine({ planId: loaded.id, title: item.name, metrics: loaded.metrics, from: item.from_title ?? undefined, draft: false })
+        map.clearSelection()
+        setHoverVariant(null)
+      } catch (e) {
+        setError(`План не открыт: ${(e as Error).message}`)
+        throw e
+      }
+    },
+    [accept, showPlan, map.clearSelection, setHoverVariant],
+  )
+
+  const removeSaved = useCallback(async (id: string) => {
+    try {
+      await api.deleteSaved(id)
+    } catch (e) {
+      setError(`План не удалён: ${(e as Error).message}`)
+    }
+  }, [])
 
   const applyEvent = useCallback(
     async (event: PlanEvent) => {
       const before = planRef.current
-      if (!before) throw new ApiError('Плана нет.', 0)
+      if (!before) {
+        throw new ApiError('Плана нет.', 0)
+      }
       const started = Date.now()
+      let response
       try {
-        const response = await requestEvent(before, event)
-        const changes = eventChanges(before, response.plan, response.diff?.routes_changed ?? [])
-        setHistory((items) => [...items, { event, diff: response.diff, before, after: response.plan, changes }])
-        setPlan(response.plan)
-        setScenario(response.scenario)
-        let added: string | undefined
-        if (event.type === 'urgent_order' || event.type === 'new_order') {
-          const ref = stopsByOrder(response.plan)[event.order.id]
-          const name = response.scenario.engineers.find((e) => e.id === ref?.engineerId)?.name
-          added = ref ? `${event.order.id} → ${name}, начало ${ref.stop.start}` : `${event.order.id} не размещена`
-        }
-        return {
-          moved: changes.changed.length,
-          frozen: changes.frozen.length,
-          planId: response.plan.id,
-          seconds: Math.round((Date.now() - started) / 1000),
-          added,
-        }
+        response = await requestEvent(before, event)
       } catch (e) {
-        let message = stripStatus((e as Error).message)
-        if (/Input should be|Field required|Extra inputs/.test(message)) message = 'сервис не принимает такое событие'
+        const message = planEventMessage(e)
         setError(`Событие не применено: ${message}`)
         throw new ApiError(message, 0)
       }
+      const recommended = response.plan.id
+      const records = await collectEventRecords(event, before, response)
+      const eventVariants = response.variants.filter((v) => records[v.plan_id])
+      const scenarioAfter = response.scenario
+      const chosenId = await eventReview.ask({ records, variants: eventVariants, recommended, scenario: scenarioAfter })
+      eventReview.close()
+      setHoverVariant(null)
+      const record = records[chosenId ?? recommended]
+      const summary = {
+        moved: record.changes.changed.length,
+        frozen: record.changes.frozen.length,
+        planId: record.after.id,
+        seconds: Math.round((Date.now() - started) / 1000),
+        added: addedLabel(event, record.after, scenarioAfter),
+      }
+      if (!chosenId) {
+        return { ...summary, planId: before.id, rejected: true }
+      }
+      if (!historyRef.current.length) {
+        preEventRef.current = { variants, mine }
+      }
+      setHistory((items) => [...items, record])
+      setPlan(record.after)
+      setScenario(scenarioAfter)
+      setVariants(eventVariants)
+      setMine(null)
+      setEventRecords((all) => ({ ...all, ...records }))
+      setVariantPlans((cache) => ({ ...cache, ...Object.fromEntries(Object.values(records).map((r) => [r.after.id, r.after])) }))
+      return summary
     },
-    [requestEvent],
+    [requestEvent, eventReview.ask, eventReview.close, variants, mine, setHoverVariant, setVariantPlans],
   )
 
   const range = useMemo<[number, number]>(
@@ -281,273 +360,382 @@ export default function App() {
   const simTouched = history.length > 0 || sim.clock > range[0] || sim.playing
 
   useEffect(() => {
+    eventReview.reviewRef.current?.decide(false)
     sim.reset(initial?.scenario.events ?? [], range[0])
   }, [initial, range, sim.reset])
 
   const resetToInitial = useCallback(() => {
-    if (!initial) return
+    if (!initial) {
+      return
+    }
+    eventReview.reviewRef.current?.decide(false)
     setPlan(initial.optimized)
     setScenario(initial.scenario)
     setHistory([])
-    setSelection(null)
-    sim.reset(initial.scenario.events ?? [], range[0])
-  }, [initial, range, sim])
-
-  useEffect(() => {
-    if (tab !== 'sim' && sim.playing) sim.toggle()
-  }, [tab, sim.playing, sim.toggle])
-
-  const signature = routeSignature(plan)
-  const planId = plan?.id
-  useEffect(() => {
-    if (!planId) return
-    let cancelled = false
-    api
-      .geometry(planId)
-      .then((result) => !cancelled && setRoads(result))
-      .catch(() => !cancelled && setRoads(null))
-    return () => {
-      cancelled = true
+    if (preEventRef.current) {
+      setVariants(preEventRef.current.variants)
+      setMine(preEventRef.current.mine)
+      preEventRef.current = null
     }
-  }, [signature, planId])
+    map.clearSelection()
+    sim.reset(initial.scenario.events, range[0])
+  }, [initial, range, sim, eventReview.reviewRef, map.clearSelection])
+
+  useEffect(() => {
+    if (job && sim.playing) {
+      sim.toggle()
+    }
+  }, [job, sim.playing, sim.toggle])
 
   const last = history[history.length - 1] ?? null
-  const changed = useMemo(
-    () => new Set(last ? [...last.changes.changed.map((c) => c.orderId), ...last.changes.added.map((a) => a.stop.order_id)] : []),
-    [last],
-  )
+  const changed = useMemo(() => changedOrders(last), [last])
+  const reviewChanged = useMemo(() => changedOrders(review?.record ?? null), [review])
   const unavailable = useMemo(
-    () => new Set(history.filter((h) => h.event.type === 'engineer_unavailable').map((h) => (h.event as { engineer_id: string }).engineer_id)),
+    () => new Set(history.flatMap((h) => (h.event.type === 'engineer_unavailable' ? [h.event.engineer_id] : []))),
     [history],
   )
 
-  const liveRoutes = job?.streaming && job.last?.routes ? job.last.routes : null
-  const hovered = hoverVariant && hoverVariant !== plan?.id ? variantPlans[hoverVariant] ?? null : null
-  const displayPlan = hovered ?? plan
-  const mapScenario = scenario ?? preview
-  const selectedOrder = selection?.kind === 'order' ? selection.id : null
-  const selectedEngineer = selection?.kind === 'engineer' ? selection.id : null
-  const busy = job !== null || sim.busy
-
-  const kpiScenario = scenario ?? preview
-  const kpiView =
-    kpiScenario && job?.last
-      ? kpiFromProgress(job.last, kpiScenario)
-      : displayPlan && scenario
-        ? kpiFromPlan(displayPlan, scenario)
-        : null
-
-  const selectOrder = useCallback((id: string | null) => setSelection(id ? { kind: 'order', id } : null), [])
-  const selectEngineer = useCallback((id: string | null) => setSelection(id ? { kind: 'engineer', id } : null), [])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement)) setSelection(null)
+  const legScope = useMemo<LegScope | null>(() => {
+    if (liveRoutes) {
+      if (job?.kind === 'plan') {
+        return { scenarioId, engineerCount: params.engineerCount }
+      }
+      return plan ? { planId: plan.id } : null
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
+    return (hoveredRoutes || map.candidate) && plan ? { planId: plan.id } : null
+  }, [liveRoutes, hoveredRoutes, map.candidate, job?.kind, scenarioId, params.engineerCount, plan?.id])
+  const shownRoutes = liveRoutes ?? hoveredRoutes
+  const roadLegs = useRoadLegs(legScope, shownRoutes ?? map.candidate?.routes ?? null)
+  const displayPlan = reviewPlan ?? hovered ?? plan
+  const scheduleChanged = useMemo(() => {
+    if (review) {
+      return reviewChanged
+    }
+    return hovered && plan ? differingOrders(plan, hovered) : changed
+  }, [review, reviewChanged, hovered, plan, changed])
 
-  useEffect(() => {
-    if (!selectedOrder) setCandidate(null)
-  }, [selectedOrder])
+  const mapScenario = review?.scenario ?? scenario ?? preview
+  const busy = job !== null || sim.busy
+  const activeMapMode: MapMode = plan && scenario ? mapMode : 'plan'
+  const simMode = tab === 'map' && activeMapMode === 'sim'
+  const workspaceScenario = simMode ? review?.scenario ?? scenario : mapScenario
+  const colorOf = useMemo(
+    () => (workspaceScenario ? colorResolver(map.colorMode, workspaceScenario) : () => ''),
+    [map.colorMode, workspaceScenario],
+  )
+  const workspacePlan = simMode ? reviewPlan ?? plan : displayPlan
+  const dimmedEngineers = useMemo(
+    () => dimmedEngineerIds(workspaceScenario?.engineers ?? [], map.engineerFilter),
+    [workspaceScenario, map.engineerFilter],
+  )
+  const simView = useSimulationView({ sim, plan: workspacePlan, scenario: workspaceScenario, geometry: withRoads(roadsFor(workspacePlan)), enabled: simMode })
+  const simPicking = simMode && (simView.form === 'urgent_order' || simView.form === 'new_order')
+  const simMap = simMode
+    ? { states: simView.states, clock: sim.clock, group: simView.group, onClearGroup: () => simView.setStatusFilter(null) }
+    : null
 
-  const now = simTouched ? sim.clock : clockNow
-  const nowLabel = simTouched ? `симуляция ${hhmm(Math.floor(sim.clock))}` : `сейчас ${hhmm(clockNow)}`
-  const showBar = tab === 'plan' ? job !== null || variants.length > 1 : tab === 'sim' && job !== null
+  const kpiView = currentKpi(live.liveProgress, displayPlan, review?.scenario ?? scenario ?? preview)
+  const kpiBefore = (review?.record ?? last)?.diff.metrics_before ?? null
+
+  const switchMapMode = useCallback(
+    (mode: MapMode) => {
+      setMapMode(mode)
+      map.clearMap()
+    },
+    [map.clearMap],
+  )
+
+  const switchTab = useCallback(
+    (next: Tab) => {
+      setTab(next)
+      map.clearMap()
+      details.close()
+    },
+    [map.clearMap, details.close],
+  )
+
+  const goToOrder = useCallback(
+    (id: string) => {
+      setTab('map')
+      setMapMode('plan')
+      map.focusOrder(id)
+    },
+    [map.focusOrder],
+  )
+
+  const requestVariant = useCallback(
+    (planId: string) => {
+      if (planId === plan?.id || !simTouched || historyRef.current.length) {
+        void selectVariant(planId)
+        return
+      }
+      setPendingSwitch(planId)
+    },
+    [plan?.id, simTouched, selectVariant],
+  )
+
+  const confirmSwitch = () => {
+    if (!pendingSwitch) {
+      return
+    }
+    setPendingSwitch(null)
+    void selectVariant(pendingSwitch)
+  }
+
+  const now = simTouched ? sim.clock : null
+  const nowLabel = `симуляция ${hhmm(Math.floor(sim.clock))}`
+  const barVariants = useMemo<BarVariant[]>(
+    () => (variants.length || !plan ? variants : [{ key: 'plan', title: 'План', plan_id: plan.id, metrics: plan.metrics }]),
+    [variants, plan],
+  )
+
+  const detailOptions = useMemo(() => variantOptions(barVariants, mine, plan?.id ?? null), [barVariants, mine, plan?.id])
+  const currentTitle = useMemo(() => variantOptions(barVariants, mine, null).find((o) => o.planId === plan?.id)?.title ?? 'План', [barVariants, mine, plan?.id])
+  const closeDetails = details.close
+  useEffect(() => closeDetails(), [plan?.id, review, job, closeDetails])
+
+  const selectedOrder = map.selectedOrder
+  const selectedEngineer = map.selectedEngineer
+
+  function renderRightPanel(workspaceScenario: Scenario) {
+    if (simMode && workspacePlan) {
+      return <EventsPanel sim={sim} view={simView} plan={workspacePlan} scenario={workspaceScenario} reviewing={review !== null} />
+    }
+    if (plan && scenario && selectedOrder) {
+      return (
+        <JobPanel
+          plan={plan}
+          scenario={scenario}
+          orderId={selectedOrder}
+          change={last?.changes.changed.find((c) => c.orderId === selectedOrder) ?? null}
+          busy={busy}
+          onClose={map.clearSelection}
+          onGoToOrder={goToOrder}
+          onSelectEngineer={map.selectEngineer}
+          onPreview={map.setCandidate}
+          onAssign={assign}
+        />
+      )
+    }
+    return (
+      <JobQueue
+        scenario={workspaceScenario}
+        plan={liveRoutes ? null : displayPlan}
+        filter={map.queueFilter}
+        onFilter={map.setQueueFilter}
+        selectedOrder={selectedOrder}
+        onSelectOrder={map.selectOrder}
+        onGoToOrder={goToOrder}
+        changed={changed}
+        required={required}
+        onToggleRequired={toggleRequired}
+      />
+    )
+  }
+
+  const showEmptyCompare = tab === 'compare' && !compared.shown
+  const showMapLoading = tab === 'map' && !mapScenario
 
   return (
-    <div className="app">
-      <Topbar
-        scenarios={scenarios}
-        scenarioId={scenarioId}
-        onScenario={setScenarioId}
-        onUpload={upload}
-        uploading={uploading}
-        params={params}
-        onParams={setParams}
-        plan={plan}
-        busy={busy}
-        onPlan={run}
-        tab={tab}
-        onTab={(t) => {
-          setTab(t)
-          setCandidate(null)
-        }}
-        lockedTabs={!plan}
-      />
-
-      {kpiView ? (
-        <KpiStrip
-          view={kpiView}
-          live={Boolean(job?.last)}
-          before={last ? last.diff?.metrics_before ?? last.before.metrics : null}
-          baseline={!history.length && initial ? initial.baseline.metrics : null}
-          onUnplaced={() => {
-            setTab('plan')
-            setSelection(null)
-            setQueueFilter('unplaced')
-          }}
-          onCompare={() => setTab('compare')}
+    <EngineerColorContext.Provider value={colorOf}>
+      <div className="app">
+        <Topbar
+          scenarios={catalog.scenarios}
+          scenarioId={scenarioId}
+          onScenario={catalog.setScenarioId}
+          onUpload={catalog.upload}
+          uploading={catalog.uploading}
+          plan={plan}
+          busy={busy}
+          tab={tab}
+          onTab={switchTab}
+          lockedTabs={!plan}
+          simNeedsDecision={review !== null && tab !== 'map'}
+          mode={activeMapMode}
+          onMode={switchMapMode}
+          simLocked={!plan}
+          needsDecision={review !== null}
         />
-      ) : (
-        <section className="kpis empty" aria-label="Сводка участка">
-          {preview ? (
-            <>
-              <div className="kpi">
-                <div className="kpi-line">
-                  <b className="kpi-value">{preview.orders.length}</b>
-                  <span className="kpi-unit">заявок</span>
-                </div>
-              </div>
-              <div className="kpi">
-                <div className="kpi-line">
-                  <b className="kpi-value">{params.engineerCount ?? preview.engineers.length}</b>
-                  <span className="kpi-unit">инженеров на смене</span>
-                </div>
-              </div>
-              <div className="kpi">
-                <div className="kpi-line">
-                  <b className="kpi-value">{preview.events.length}</b>
-                  <span className="kpi-unit">{plural(preview.events.length, 'событие', 'события', 'событий')} на день</span>
-                </div>
-              </div>
-              <div className="kpi">
-                <div className="kpi-line">
-                  <span className="kpi-unit">{job ? 'идёт расчёт' : 'план не построен'}</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="kpi">
-              <span className="spinner" />
-            </div>
-          )}
-        </section>
-      )}
 
-      {error && (
-        <div className="toast error" role="alert">
-          <span>{error}</span>
-          {!scenarios.length && (
-            <button type="button" className="ghost small" onClick={loadScenarios}>
-              Повторить
-            </button>
-          )}
-          <button type="button" className="icon" onClick={() => setError(null)} aria-label="Скрыть">
-            ×
-          </button>
-        </div>
-      )}
+        <KpiStrip
+          view={kpiView ?? emptyKpi(preview, params.engineerCount)}
+          empty={!kpiView}
+          live={Boolean(live.liveProgress)}
+          before={kpiBefore}
+          baseline={!history.length && !review && initial ? initial.baseline.metrics : null}
+        />
 
-      <main className={`main tab-${tab} ${showBar ? 'with-bar' : ''}`}>
-        {tab === 'plan' && mapScenario && (
-          <div className={`plan-grid ${job ? 'is-busy' : ''}`}>
-            <EngineerList
-              scenario={mapScenario}
-              plan={displayPlan}
-              liveRoutes={liveRoutes}
-              selected={selectedEngineer}
-              selectedOrder={selectedOrder}
-              onSelect={selectEngineer}
-              onSelectOrder={selectOrder}
-              unavailable={unavailable}
-            />
-            <div className="map-pane">
-              <MapView
-                scenario={mapScenario}
-                plan={displayPlan}
-                routesOverride={liveRoutes ?? (hovered ? Object.fromEntries(hovered.routes.map((r) => [r.engineer_id, r.stops.map((s) => s.order_id)])) : null)}
-                geometry={roads && roads.available ? roads : null}
-                selectedOrder={selectedOrder}
-                selectedEngineer={selectedEngineer}
-                changed={changed}
-                preview={candidate}
-                onSelectOrder={selectOrder}
-                onSelectEngineer={selectEngineer}
-              />
-            </div>
-            {plan && scenario && selectedOrder ? (
-              <JobPanel
-                plan={plan}
-                scenario={scenario}
-                orderId={selectedOrder}
-                change={last?.changes.changed.find((c) => c.orderId === selectedOrder) ?? null}
-                busy={busy}
-                onClose={() => setSelection(null)}
-                onSelectEngineer={selectEngineer}
-                onPreview={setCandidate}
-                onAssign={assign}
-              />
-            ) : (
-              <JobQueue
-                scenario={mapScenario}
-                plan={liveRoutes ? null : displayPlan}
-                filter={queueFilter}
-                onFilter={setQueueFilter}
-                selectedOrder={selectedOrder}
-                onSelectOrder={selectOrder}
-                changed={changed}
-              />
+        {error && (
+          <div className="toast error" role="alert">
+            <span>{error}</span>
+            {!catalog.scenarios.length && (
+              <button type="button" className="ghost small" onClick={catalog.reload}>
+                Повторить
+              </button>
             )}
-          </div>
-        )}
-        {tab === 'plan' && !mapScenario && (
-          <div className="loading-screen">
-            <span className="spinner lg" />
-          </div>
-        )}
-
-        {tab === 'schedule' && plan && scenario && (
-          <Schedule
-            scenario={scenario}
-            plan={plan}
-            now={now}
-            nowLabel={nowLabel}
-            selectedOrder={selectedOrder}
-            selectedEngineer={selectedEngineer}
-            changed={changed}
-            unavailable={unavailable}
-            busy={busy}
-            onSelectOrder={selectOrder}
-            onSelectEngineer={selectEngineer}
-            onAssign={assign}
-          />
-        )}
-
-        {tab === 'compare' && initial && (
-          <div className="compare-page">
-            <Comparison matched={initial} eventState={history.length > 0} />
+            <button type="button" className="icon" onClick={() => setError(null)} aria-label="Скрыть">
+              ×
+            </button>
           </div>
         )}
 
-        {tab === 'sim' && plan && scenario && (
-          <SimulationView
-            sim={sim}
-            plan={plan}
-            scenario={scenario}
-            geometry={roads && roads.available ? roads : null}
-            changed={changed}
-            selectedOrder={selectedOrder}
-            selectedEngineer={selectedEngineer}
-            onSelectOrder={selectOrder}
-            onSelectEngineer={selectEngineer}
-            onReset={resetToInitial}
-          />
-        )}
+        <main className={`main tab-${tab}`}>
+          {tab === 'map' && workspaceScenario && (
+            <Workspace
+              busy={!simMode && job !== null}
+              top={simMode && <SimulationBar sim={sim} onReset={resetToInitial} />}
+              left={
+                <EngineerList
+                  scenario={workspaceScenario}
+                  plan={workspacePlan}
+                  liveRoutes={simMode ? null : liveRoutes}
+                  selected={selectedEngineer}
+                  selectedOrder={selectedOrder}
+                  onSelect={map.selectEngineer}
+                  onSelectOrder={map.selectOrder}
+                  unavailable={simMode ? simView.unavailable : unavailable}
+                  simStates={simMode ? simView.byId : null}
+                  group={simMode ? simView.group : null}
+                  onGoToPlace={map.focusPlace}
+                  filter={map.engineerFilter}
+                  onFilter={map.setEngineerFilter}
+                  onHover={map.setHoverEngineer}
+                />
+              }
+              map={
+                <MapView
+                  scenario={workspaceScenario}
+                  plan={workspacePlan}
+                  routesOverride={simMode ? null : shownRoutes}
+                  geometry={roadsFor(workspacePlan)}
+                  placeFocus={map.placeFocus}
+                  required={required}
+                  onToggleRequired={toggleRequired}
+                  roadLegs={simMode ? null : roadLegs}
+                  selectedOrder={selectedOrder}
+                  selectedEngineer={selectedEngineer}
+                  changed={review ? reviewChanged : changed}
+                  preview={simMode ? null : map.candidate}
+                  focus={simMode ? null : map.focus}
+                  sim={simMap}
+                  pickPoint={simPicking ? simView.setPicked : null}
+                  pickedPoint={simPicking ? simView.picked : null}
+                  onSelectOrder={map.selectOrder}
+                  onSelectEngineer={map.selectEngineer}
+                  colorMode={map.colorMode}
+                  onColorMode={map.setColorMode}
+                  hoverEngineer={map.hoverEngineer}
+                  dimmed={dimmedEngineers}
+                />
+              }
+              mapOverlay={
+                simMode && (
+                  <StatusLegend
+                    states={simView.states}
+                    active={simView.statusFilter}
+                    onPick={(status) => simView.setStatusFilter(simView.statusFilter === status ? null : status)}
+                  />
+                )
+              }
+              right={renderRightPanel(workspaceScenario)}
+            />
+          )}
+          {showMapLoading && (
+            <div className="loading-screen">
+              <span className="spinner lg" />
+            </div>
+          )}
 
-        {showBar && (
-          <VariantBar
-            job={job}
-            variants={variants}
-            currentPlanId={plan?.id ?? null}
-            hovered={hoverVariant}
-            onHover={setHoverVariant}
-            onSelect={selectVariant}
-            selecting={selecting}
-          />
-        )}
-      </main>
-    </div>
+          {tab === 'schedule' && plan && scenario && (
+            <Schedule
+              scenario={review?.scenario ?? scenario}
+              plan={displayPlan ?? plan}
+              now={now}
+              nowLabel={nowLabel}
+              selectedOrder={selectedOrder}
+              selectedEngineer={selectedEngineer}
+              changed={scheduleChanged}
+              unavailable={unavailable}
+              busy={busy}
+              previewing={hovered !== null || review !== null}
+              onSelectOrder={map.selectOrder}
+              onGoToOrder={goToOrder}
+              onSelectEngineer={map.selectEngineer}
+              onAssign={assign}
+            />
+          )}
+
+          {tab === 'compare' && compared.shown && (
+            <div className="compare-page">
+              <Comparison matched={compared.shown} />
+            </div>
+          )}
+          {showEmptyCompare && (
+            <div className="loading-screen">
+              <span className="spinner lg" />
+            </div>
+          )}
+
+          {review && eventReview.details && <EventReviewSchedule review={review} onClose={() => eventReview.setDetails(false)} />}
+
+          {plan && scenario && !review && details.otherId && (
+            <VariantSchedule
+              scenario={scenario}
+              current={plan}
+              currentTitle={currentTitle}
+              options={detailOptions}
+              otherId={details.otherId}
+              other={details.other}
+              onPick={details.open}
+              onClose={details.close}
+            />
+          )}
+
+          <div className="bar-slot">
+            {pendingSwitch && <SwitchConfirm clock={sim.clock} onConfirm={confirmSwitch} onCancel={() => setPendingSwitch(null)} />}
+            <VariantBar
+              job={job}
+              variants={barVariants}
+              mine={mine}
+              review={review}
+              tools={
+                plan && (
+                  <PlanStorage
+                    canSave={!busy}
+                    onCopy={mine || variants.length === 0 ? null : copyPlan}
+                    onSave={saveCurrent}
+                    onList={() => api.savedPlans(scenarioId)}
+                    onLoad={openSaved}
+                    onDelete={removeSaved}
+                  />
+                )
+              }
+              planControl={
+                <PlanControl
+                  brief={catalog.scenarios.find((item) => item.id === scenarioId)}
+                  params={params}
+                  onParams={setParams}
+                  plan={plan}
+                  busy={busy}
+                  onPlan={run}
+                />
+              }
+              currentPlanId={plan?.id ?? null}
+              hovered={hoverVariant}
+              onHover={setHoverVariant}
+              onSelect={requestVariant}
+              locked={sim.playing}
+              selecting={selecting}
+              watching={live.watching}
+              onWatch={live.watchVariant}
+              onPeek={live.setPeekKey}
+              onReviewDetails={() => eventReview.setDetails(true)}
+              onCompare={details.toggle}
+              comparing={details.otherId}
+            />
+          </div>
+        </main>
+      </div>
+    </EngineerColorContext.Provider>
   )
 }

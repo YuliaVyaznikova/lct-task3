@@ -1,15 +1,8 @@
-import { engineerComparison, tierCoverage } from '../derive'
-import { km, plural, signed, TIER_LABEL } from '../labels'
-import type { ControlReference, Metrics, Plan, Scenario } from '../types'
+import { cx } from '../classes'
+import { assignedOrderIds, compareWithBaseline, engineerComparison, tierCoverage } from '../derive'
+import { km, percent, plural, signed, TIER_LABEL } from '../labels'
+import type { ControlReference, Matched, Metrics, Plan, Scenario } from '../types'
 import { EngineerName } from './common'
-
-export interface Matched {
-  optimized: Plan
-  baseline: Plan
-  control: ControlReference
-  scenario: Scenario
-  manualEdits: number
-}
 
 interface Row {
   title: string
@@ -21,24 +14,19 @@ interface Row {
   sub?: boolean
 }
 
-function pct(a: number, b: number) {
-  return b ? Math.round((a / b) * 100) : 0
-}
+const betterThan = (current: number, base: number, higherIsBetter: boolean) => compareWithBaseline(current, base, higherIsBetter).better
 
 function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan, scenario: Scenario): Row[] {
-  const tiersOurs = tierCoverage(optimized, scenario)
-  const tiersBase = tierCoverage(baseline, scenario)
-  const distanceBetter =
-    m.assigned < b.assigned || m.distance_total_km === b.distance_total_km
-      ? null
-      : m.distance_total_km < b.distance_total_km
+  const tiersOurs = tierCoverage(scenario, assignedOrderIds(optimized))
+  const tiersBase = tierCoverage(scenario, assignedOrderIds(baseline))
+  const distanceBetter = m.assigned < b.assigned ? null : betterThan(m.distance_total_km, b.distance_total_km, false)
   const result: Row[] = [
     {
       title: 'Выполнено заявок',
-      ours: `${m.assigned} из ${m.orders_total} (${pct(m.assigned, m.orders_total)}%)`,
-      base: `${b.assigned} из ${b.orders_total} (${pct(b.assigned, b.orders_total)}%)`,
+      ours: `${m.assigned} из ${m.orders_total} (${percent(m.assigned, m.orders_total)}%)`,
+      base: `${b.assigned} из ${b.orders_total} (${percent(b.assigned, b.orders_total)}%)`,
       delta: signed(m.assigned - b.assigned, 0),
-      better: m.assigned === b.assigned ? null : m.assigned > b.assigned,
+      better: betterThan(m.assigned, b.assigned, true),
     },
   ]
   for (const tier of tiersOurs) {
@@ -49,7 +37,7 @@ function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan,
       ours: `${tier.assigned}/${tier.total}`,
       base: `${baseAssigned}/${tier.total}`,
       delta: signed(tier.assigned - baseAssigned, 0),
-      better: tier.assigned === baseAssigned ? null : tier.assigned > baseAssigned,
+      better: betterThan(tier.assigned, baseAssigned, true),
       sub: true,
     })
   }
@@ -59,7 +47,7 @@ function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan,
       ours: `${m.engineers_used} из ${m.engineers_total}`,
       base: `${b.engineers_used} из ${b.engineers_total}`,
       delta: signed(m.engineers_used - b.engineers_used, 0),
-      better: m.engineers_used === b.engineers_used ? null : m.engineers_used < b.engineers_used,
+      better: betterThan(m.engineers_used, b.engineers_used, false),
     },
     {
       title: 'Пробег за день, км',
@@ -74,17 +62,14 @@ function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan,
       ours: km(m.distance_per_order_km, 2),
       base: km(b.distance_per_order_km, 2),
       delta: signed(m.distance_per_order_km - b.distance_per_order_km, 2),
-      better:
-        m.distance_per_order_km === b.distance_per_order_km
-          ? null
-          : m.distance_per_order_km < b.distance_per_order_km,
+      better: betterThan(m.distance_per_order_km, b.distance_per_order_km, false),
     },
     {
       title: 'Начало впритык к концу окна',
       ours: String(m.late_risk),
       base: String(b.late_risk),
       delta: signed(m.late_risk - b.late_risk, 0),
-      better: m.late_risk === b.late_risk ? null : m.late_risk < b.late_risk,
+      better: betterThan(m.late_risk, b.late_risk, false),
       hint: 'запас меньше 15 мин',
     },
   )
@@ -95,7 +80,7 @@ function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan,
         ours: `${m.response_median_min} мин`,
         base: `${b.response_median_min} мин`,
         delta: signed(m.response_median_min - b.response_median_min, 0),
-        better: m.response_median_min === b.response_median_min ? null : m.response_median_min < b.response_median_min,
+        better: betterThan(m.response_median_min, b.response_median_min, false),
         hint: `максимум ${m.response_max_min} мин`,
       },
       {
@@ -103,7 +88,7 @@ function comparisonRows(m: Metrics, b: Metrics, optimized: Plan, baseline: Plan,
         ours: String(m.response_over_norm),
         base: String(b.response_over_norm),
         delta: signed(m.response_over_norm - b.response_over_norm, 0),
-        better: m.response_over_norm === b.response_over_norm ? null : m.response_over_norm < b.response_over_norm,
+        better: betterThan(m.response_over_norm, b.response_over_norm, false),
         sub: true,
       },
     )
@@ -115,19 +100,34 @@ function verdict(m: Metrics, b: Metrics, subject: string): string {
   const jobs = m.assigned - b.assigned
   const dist = m.distance_total_km - b.distance_total_km
   let jobsText = 'выполняет столько же заявок'
-  if (jobs > 0) jobsText = `выполняет на ${jobs} ${plural(jobs, 'заявку', 'заявки', 'заявок')} больше`
-  else if (jobs < 0) jobsText = `выполняет на ${-jobs} ${plural(-jobs, 'заявку', 'заявки', 'заявок')} меньше`
+  if (jobs > 0) {
+    jobsText = `выполняет на ${jobs} ${plural(jobs, 'заявку', 'заявки', 'заявок')} больше`
+  } else if (jobs < 0) {
+    jobsText = `выполняет на ${-jobs} ${plural(-jobs, 'заявку', 'заявки', 'заявок')} меньше`
+  }
 
   let kmText: string
-  if (Math.abs(dist) < 0.05) kmText = 'с тем же пробегом'
-  else if (dist < 0) kmText = `и проезжает на ${km(-dist)} км меньше`
-  else kmText = `и проезжает на ${km(dist)} км больше`
+  if (Math.abs(dist) < 0.05) {
+    kmText = 'с тем же пробегом'
+  } else if (dist < 0) {
+    kmText = `и проезжает на ${km(-dist)} км меньше`
+  } else {
+    kmText = `и проезжает на ${km(dist)} км больше`
+  }
   let text = `${subject} ${jobsText} ${kmText}`
-  if (jobs < 0 && dist < 0) text += ', но меньший пробег здесь не выигрыш, потому что заявок выполнено меньше'
+  if (jobs < 0 && dist < 0) {
+    text += ', но меньший пробег здесь не выигрыш, потому что заявок выполнено меньше'
+  }
   return text + '.'
 }
 
-export function Comparison({ matched, eventState }: { matched: Matched; eventState: boolean }) {
+const PLAN_TITLE = { solver: 'План', manual: 'Мой вариант', event: 'План после события' }
+
+interface ComparisonProps {
+  matched: Matched
+}
+
+export function Comparison({ matched }: ComparisonProps) {
   const { optimized, baseline, control, scenario } = matched
   const m = optimized.metrics
   const b = baseline.metrics
@@ -141,17 +141,16 @@ export function Comparison({ matched, eventState }: { matched: Matched; eventSta
     <div className="comparison">
       <div className="cmp-col">
         <div className="cmp-meta muted small">
-          {eventState ? `Исходный план ${optimized.id}, до событий` : `План ${optimized.id}`}
-          {matched.manualEdits > 0 && ` · ручных правок: ${matched.manualEdits}`} · базовый {baseline.id}
+          {PLAN_TITLE[optimized.origin ?? 'solver']} {optimized.id} · базовый {baseline.id}
         </div>
 
-        <p className="verdict-line">По сравнению с базовым вариантом {verdict(m, b, eventState ? 'исходный план' : 'план')}</p>
+        <p className="verdict-line">По сравнению с базовым вариантом {verdict(m, b, 'план')}</p>
 
-        <table className="table compare-table">
+        <table className="table">
           <thead>
             <tr>
               <th>Показатель</th>
-              <th className="num">{eventState ? 'Исходный план' : 'Предлагаемый'}</th>
+              <th className="num">Выбранный</th>
               <th className="num">Базовый</th>
               <th className="num">Разница</th>
             </tr>
@@ -165,7 +164,7 @@ export function Comparison({ matched, eventState }: { matched: Matched; eventSta
                 </td>
                 <td className="num mono strong">{row.ours}</td>
                 <td className="num mono">{row.base}</td>
-                <td className={`num mono delta ${row.better === null ? '' : row.better ? 'good' : 'bad'}`}>
+                <td className={cx('num mono delta', row.better === true && 'good', row.better === false && 'bad')}>
                   {row.delta}
                 </td>
               </tr>
@@ -173,13 +172,13 @@ export function Comparison({ matched, eventState }: { matched: Matched; eventSta
           </tbody>
         </table>
 
-        {controlBlock(control, m, optimized, eventState)}
+        {controlBlock(control, m, optimized)}
       </div>
       <div className="cmp-col">
         <h4 className="section-title">Пробег по инженерам</h4>
         <div className="legend-inline small">
           <span>
-            <i className="swatch ours" /> {eventState ? 'исходный план' : 'предлагаемый'}
+            <i className="swatch ours" /> выбранный план
           </span>
           <span>
             <i className="swatch base" /> базовый
@@ -189,7 +188,7 @@ export function Comparison({ matched, eventState }: { matched: Matched; eventSta
           <thead>
             <tr>
               <th>Инженер</th>
-              <th className="num">{eventState ? 'Исходный' : 'Предлагаемый'}</th>
+              <th className="num">Выбранный</th>
               <th className="num">Базовый</th>
               <th className="bars-col" aria-hidden />
             </tr>
@@ -241,7 +240,7 @@ export function Comparison({ matched, eventState }: { matched: Matched; eventSta
   )
 }
 
-function controlBlock(control: ControlReference, m: Metrics, optimized: Plan, eventState: boolean) {
+function controlBlock(control: ControlReference, m: Metrics, optimized: Plan) {
   return (
     <>
       <h4 className="section-title">Факт того же дня, распределение вручную</h4>
@@ -251,7 +250,7 @@ function controlBlock(control: ControlReference, m: Metrics, optimized: Plan, ev
             <thead>
               <tr>
                 <th>Показатель</th>
-                <th className="num">{eventState ? 'Исходный план' : 'Предлагаемый'}</th>
+                <th className="num">Выбранный</th>
                 <th className="num">Факт (вручную)</th>
               </tr>
             </thead>

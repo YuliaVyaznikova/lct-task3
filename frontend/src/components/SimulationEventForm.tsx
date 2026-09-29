@@ -1,22 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api'
-import { hhmm, minutes } from '../colors'
 import type { LatLon } from '../geo'
 import type { EngineerState } from '../sim'
-import type { Plan, PlanEvent, Scenario, WorkType } from '../types'
-
-export type Kind = 'urgent_order' | 'new_order' | 'cancel_order' | 'engineer_unavailable' | 'engineer_delayed'
-
-export const KIND_TITLE: Record<Kind, string> = {
-  urgent_order: 'Авария',
-  new_order: 'Новая заявка',
-  cancel_order: 'Отмена',
-  engineer_unavailable: 'Инженер недоступен',
-  engineer_delayed: 'Задержка',
-}
+import { departureMin, hhmm, minutes } from '../time'
+import type { EventKind, Plan, PlanEvent, Scenario, WorkType } from '../types'
 
 const WINDOW_STARTS = ['10:00', '12:00', '14:00', '16:00', '18:00']
+const WINDOW_LENGTH_MIN = 120
 
 function initialEngineerId(plan: Plan, scenario: Scenario, states: EngineerState[], clock: number): string {
   const nextAvailable = states
@@ -27,13 +18,13 @@ function initialEngineerId(plan: Plan, scenario: Scenario, states: EngineerState
 }
 
 function openWindowStarts(clock: number): string[] {
-  return WINDOW_STARTS.filter((start) => minutes(start) + 120 > clock)
+  return WINDOW_STARTS.filter((start) => minutes(start) + WINDOW_LENGTH_MIN > clock)
 }
 
 function cancellableOrderIds(plan: Plan, clock: number): string[] {
   return plan.routes
     .flatMap((route) => route.stops)
-    .filter((stop) => !stop.locked && minutes(stop.arrival) - stop.travel_min > clock)
+    .filter((stop) => !stop.locked && departureMin(stop) > clock)
     .map((stop) => stop.order_id)
     .sort()
 }
@@ -54,6 +45,18 @@ function newOrderLocation(prefix: string, scenario: Scenario, anchor: string, pi
   }
 }
 
+interface SimulationEventFormProps {
+  kind: EventKind
+  plan: Plan
+  scenario: Scenario
+  clock: number
+  states: EngineerState[]
+  picked: LatLon | null
+  busy: boolean
+  onCancel: () => void
+  onAdd: (event: PlanEvent) => void
+}
+
 export function SimulationEventForm({
   kind,
   plan,
@@ -64,23 +67,14 @@ export function SimulationEventForm({
   busy,
   onCancel,
   onAdd,
-}: {
-  kind: Kind
-  plan: Plan
-  scenario: Scenario
-  clock: number
-  states: EngineerState[]
-  picked: LatLon | null
-  busy: boolean
-  onCancel: () => void
-  onAdd: (event: PlanEvent) => void
-}) {
+}: SimulationEventFormProps) {
   const time = hhmm(Math.floor(clock))
   const [engineerId, setEngineerId] = useState(() => initialEngineerId(plan, scenario, states, clock))
   const [delay, setDelay] = useState(30)
   const [anchor, setAnchor] = useState(scenario.orders[0]?.id ?? '')
   const [duration, setDuration] = useState<number | null>(null)
   const [workTypes, setWorkTypes] = useState<WorkType[]>([])
+  const [workTypesError, setWorkTypesError] = useState<string | null>(null)
   const [workType, setWorkType] = useState('')
   const emergency = workTypes.find((item) => item.priority === 'urgent')
   const regular = workTypes.filter((item) => item.priority === 'normal')
@@ -91,12 +85,14 @@ export function SimulationEventForm({
   const windowFrom = windows.includes(windowStart) ? windowStart : windows[0]
 
   useEffect(() => {
-    if (kind !== 'new_order' && kind !== 'urgent_order') return
+    if (kind !== 'new_order' && kind !== 'urgent_order') {
+      return
+    }
     let cancelled = false
     api
       .workTypes()
       .then((items) => !cancelled && setWorkTypes(items))
-      .catch(() => !cancelled && setWorkTypes([]))
+      .catch((e) => !cancelled && setWorkTypesError((e as Error).message))
     return () => {
       cancelled = true
     }
@@ -107,7 +103,9 @@ export function SimulationEventForm({
 
   function submit() {
     if (kind === 'urgent_order') {
-      if (!emergency || !emergencyDuration) return
+      if (!emergency || !emergencyDuration) {
+        return
+      }
       onAdd({
         type: 'urgent_order',
         time,
@@ -124,7 +122,9 @@ export function SimulationEventForm({
         },
       })
     } else if (kind === 'new_order') {
-      if (!chosen || !windowFrom) return
+      if (!chosen || !windowFrom) {
+        return
+      }
       onAdd({
         type: 'new_order',
         time,
@@ -135,13 +135,15 @@ export function SimulationEventForm({
           description: chosen.normative,
           duration_min: chosen.duration_min,
           window_start: windowFrom,
-          window_end: hhmm(minutes(windowFrom) + 120),
+          window_end: hhmm(minutes(windowFrom) + WINDOW_LENGTH_MIN),
           priority: 'normal',
           priority_tier: chosen.priority_tier,
         },
       })
     } else if (kind === 'cancel_order') {
-      if (cancelTarget) onAdd({ type: 'cancel_order', time, order_id: cancelTarget })
+      if (cancelTarget) {
+        onAdd({ type: 'cancel_order', time, order_id: cancelTarget })
+      }
     } else if (kind === 'engineer_unavailable') {
       onAdd({ type: 'engineer_unavailable', time, engineer_id: engineerId })
     } else {
@@ -194,6 +196,7 @@ export function SimulationEventForm({
               {emergency && <span className="small muted">норматив {emergency.duration_min} мин</span>}
             </label>
           )}
+          {kind === 'urgent_order' && workTypesError && <div className="note bad">Типы работ не загрузились: {workTypesError}</div>}
         </>
       )}
       {kind === 'new_order' && (
@@ -201,21 +204,22 @@ export function SimulationEventForm({
           <label className="field">
             <span className="field-label">Тип работ</span>
             <select value={chosen?.work_type ?? ''} onChange={(e) => setWorkType(e.target.value)}>
-              {!workTypes.length && <option value="">…</option>}
-              {workTypes.map((item) => (
+              {!regular.length && <option value="">{workTypesError ? 'не загрузились' : '…'}</option>}
+              {regular.map((item) => (
                 <option key={item.work_type} value={item.work_type}>
                   {item.work_type}, {item.duration_min} мин
                 </option>
               ))}
             </select>
           </label>
+          {workTypesError && <div className="note bad">Типы работ не загрузились: {workTypesError}</div>}
           <label className="field">
             <span className="field-label">Окно клиента</span>
             <select value={windowFrom ?? ''} onChange={(e) => setWindowStart(e.target.value)}>
               {!windows.length && <option value="">окна на сегодня закрыты</option>}
               {windows.map((start) => (
                 <option key={start} value={start}>
-                  {start}–{hhmm(minutes(start) + 120)}
+                  {start}–{hhmm(minutes(start) + WINDOW_LENGTH_MIN)}
                 </option>
               ))}
             </select>
