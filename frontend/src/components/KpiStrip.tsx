@@ -38,11 +38,12 @@ interface BaselineLineProps {
   higherIsBetter: boolean
   digits?: number
   unit?: string
+  unknown?: boolean
 }
 
-function BaselineLine({ current = 0, baseline, higherIsBetter, digits = 0, unit = '' }: BaselineLineProps) {
+function BaselineLine({ current = 0, baseline, higherIsBetter, digits = 0, unit = '', unknown = false }: BaselineLineProps) {
   if (baseline === null) {
-    return <div className="kpi-base">{NO_BASE}</div>
+    return <div className="kpi-base">{unknown ? 'база ?' : NO_BASE}</div>
   }
   const { delta, better } = compareWithBaseline(current, baseline, higherIsBetter)
   const cls = cx(better === true && 'good-text', better === false && 'bad-text') || undefined
@@ -55,6 +56,7 @@ function BaselineLine({ current = 0, baseline, higherIsBetter, digits = 0, unit 
 }
 
 const NO_BASE = '\u00a0'
+const UNKNOWN = '?'
 
 interface KmBarProps {
   km: number
@@ -78,7 +80,7 @@ export function KpiStrip({ view, empty = false, live, before, baseline }: KpiStr
     <section className={cx('kpis', live && 'live', empty && 'empty')} aria-label="Сводка плана" aria-live={live ? 'polite' : undefined}>
       <div className="kpi">
         <div className="kpi-line">
-          <b className="kpi-value">{v.assigned}</b>
+          <b className="kpi-value">{empty ? UNKNOWN : v.assigned}</b>
           <span className="kpi-unit">{v.total ? `из ${v.total} заявок` : 'заявок'}</span>
           {deltas && <Delta value={v.assigned - before.assigned} />}
         </div>
@@ -93,7 +95,7 @@ export function KpiStrip({ view, empty = false, live, before, baseline }: KpiStr
           {v.tiers.map((t) => (
             <span key={t.tier} className={!empty && t.assigned < t.total ? 'short' : ''}>
               <i className={`tier-dot t${t.tier}`} />
-              {TIER_NAME[t.tier] ?? `ярус ${t.tier}`} {t.assigned}/{t.total}
+              {TIER_NAME[t.tier] ?? `ярус ${t.tier}`} {empty ? UNKNOWN : t.assigned}/{t.total}
               {t.tier === 1 && v.response && (
                 <span
                   className={v.response.over ? 'warn-text' : ''}
@@ -106,32 +108,32 @@ export function KpiStrip({ view, empty = false, live, before, baseline }: KpiStr
           ))}
           {v.rescheduled > 0 && <span className="warn-text">сдвинуто время у {v.rescheduled}</span>}
         </div>
-        <BaselineLine current={v.assigned} baseline={base((m) => m.assigned)} higherIsBetter />
+        <BaselineLine current={v.assigned} baseline={base((m) => m.assigned)} higherIsBetter unknown={empty} />
       </div>
 
       <div className="kpi">
         <div className="kpi-line">
-          <b className="kpi-value">{v.engineersUsed}</b>
+          <b className="kpi-value">{empty ? UNKNOWN : v.engineersUsed}</b>
           <span className="kpi-unit">{v.engineersTotal ? `из ${v.engineersTotal} инженеров` : 'инженеров'}</span>
           {deltas && <Delta value={v.engineersUsed - before.engineers_used} lowerIsBetter />}
         </div>
         <div className="thin-bar">
           <i style={{ width: `${percent(v.engineersUsed, v.engineersTotal)}%` }} />
         </div>
-        <BaselineLine current={v.engineersUsed} baseline={base((m) => m.engineers_used)} higherIsBetter={false} />
+        <BaselineLine current={v.engineersUsed} baseline={base((m) => m.engineers_used)} higherIsBetter={false} unknown={empty} />
       </div>
 
       <div className="kpi">
         <div className="kpi-line">
-          <b className="kpi-value">{km(v.km, 0)}</b>
+          <b className="kpi-value">{empty ? UNKNOWN : km(v.km, 0)}</b>
           <span className="kpi-unit">км</span>
           {deltas && <Delta value={v.km - before.distance_total_km} digits={1} lowerIsBetter unit=" км" />}
         </div>
         <KmBar km={v.km} baseline={base((m) => m.distance_total_km)} />
         <div className="kpi-legend">
-          <span>{`${v.assigned ? km(v.km / v.assigned, 1) : '0'} км на заявку`}</span>
+          <span>{`${empty ? UNKNOWN : v.assigned ? km(v.km / v.assigned, 1) : '0'} км на заявку`}</span>
         </div>
-        <BaselineLine current={v.km} baseline={base((m) => m.distance_total_km)} higherIsBetter={false} digits={1} unit="км" />
+        <BaselineLine current={v.km} baseline={base((m) => m.distance_total_km)} higherIsBetter={false} digits={1} unit="км" unknown={empty} />
       </div>
     </section>
   )
