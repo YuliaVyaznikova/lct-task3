@@ -59,6 +59,12 @@ function useDismiss(open: boolean, close: () => void) {
   return box
 }
 
+function paramsSummary(params: PlanParamsUi): string {
+  const extra = balancePhaseS(params.objective)
+  const time = extra ? `${params.timeLimit} + ${extra} с` : `${params.timeLimit} с`
+  return `${OBJECTIVE_LABEL[params.objective].toLowerCase()} · ${time}`
+}
+
 export function PlanControl({ brief, params, onParams, plan, busy, onPlan }: PlanControlProps) {
   const [open, setOpen] = useState(false)
   const box = useDismiss(open, () => setOpen(false))
@@ -68,7 +74,8 @@ export function PlanControl({ brief, params, onParams, plan, busy, onPlan }: Pla
     <div className="plan-control" ref={box}>
       <div className="plan-split">
         <button type="button" className="primary plan-btn" disabled={busy || !brief} onClick={onPlan}>
-          Спланировать день
+          <span className="plan-btn-title">Спланировать день</span>
+          <span className="plan-btn-sub">{paramsSummary(params)}</span>
         </button>
         <button
           type="button"

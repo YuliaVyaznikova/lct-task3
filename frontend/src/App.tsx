@@ -710,16 +710,14 @@ export default function App() {
               mine={mine}
               review={review}
               tools={
-                plan && (
-                  <PlanStorage
-                    canSave={!busy}
-                    onCopy={mine || variants.length === 0 ? null : copyPlan}
-                    onSave={saveCurrent}
-                    onList={() => api.savedPlans(scenarioId)}
-                    onLoad={openSaved}
-                    onDelete={removeSaved}
-                  />
-                )
+                <PlanStorage
+                  canSave={!busy && Boolean(plan)}
+                  onCopy={!plan || mine || variants.length === 0 ? null : copyPlan}
+                  onSave={saveCurrent}
+                  onList={() => api.savedPlans(scenarioId)}
+                  onLoad={openSaved}
+                  onDelete={removeSaved}
+                />
               }
               planControl={
                 <PlanControl
