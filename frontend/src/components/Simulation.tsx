@@ -83,56 +83,61 @@ export function SimulationBar({ sim, onReset, lead = null }: SimulationBarProps)
   return (
     <div className="sim-bar">
       {lead}
-      <button
-        type="button"
-        className="primary play"
-        onClick={sim.toggle}
-        disabled={sim.busy}
-        aria-label={sim.playing ? 'Пауза' : 'Пуск'}
-      >
-        {sim.playing ? <PauseGlyph /> : <PlayGlyph />}
-        {sim.resumeIn !== null ? `через ${sim.resumeIn}` : sim.playing ? 'Пауза' : 'Пуск'}
-      </button>
-      <div className="sim-clock" aria-live="off">
-        {sim.clockLabel}
-      </div>
-      <div className="seg" role="radiogroup" aria-label="Скорость">
-        {([30, 60, 120] as Speed[]).map((s) => (
-          <button key={s} type="button" role="radio" aria-checked={sim.speed === s} className={sim.speed === s ? 'on' : ''} onClick={() => sim.setSpeed(s)}>
-            ×{s}
-          </button>
-        ))}
-      </div>
-      <div className="scrub">
-        <div className="scrub-ticks" aria-hidden>
-          {sim.events.map((e) => (
-            <i
-              key={e.id}
-              className={`tick ${e.status}`}
-              style={{ left: `${pct(minutes(e.event.time))}%` }}
-              title={`${e.event.time} ${EVENT_KIND_TITLE[e.event.type]}`}
-            />
+      <div className="sim-controls">
+        <button
+          type="button"
+          className="primary play"
+          onClick={sim.toggle}
+          disabled={sim.busy}
+          aria-label={sim.playing ? 'Пауза' : 'Пуск'}
+        >
+          {sim.playing ? <PauseGlyph /> : <PlayGlyph />}
+          {sim.resumeIn !== null ? `через ${sim.resumeIn}` : sim.playing ? 'Пауза' : 'Пуск'}
+        </button>
+        <div className="sim-clock" aria-live="off">
+          {sim.clockLabel}
+        </div>
+        <div className="seg" role="radiogroup" aria-label="Скорость">
+          {([30, 60, 120] as Speed[]).map((s) => (
+            <button key={s} type="button" role="radio" aria-checked={sim.speed === s} className={sim.speed === s ? 'on' : ''} onClick={() => sim.setSpeed(s)}>
+              ×{s}
+            </button>
           ))}
         </div>
-        <input
-          type="range"
-          min={from}
-          max={to}
-          step={1}
-          value={Math.floor(sim.clock)}
-          disabled={sim.busy}
-          aria-label="Время дня"
-          onChange={(e) => sim.setClock(Number(e.target.value))}
-        />
-        <div className="scrub-scale" aria-hidden>
-          <span>{hhmm(from)}</span>
-          <span>{hhmm(Math.round((from + to) / 2 / 60) * 60)}</span>
-          <span>{hhmm(to)}</span>
+        <div className="scrub">
+          <span className="scrub-end" aria-hidden>
+            {hhmm(from)}
+          </span>
+          <div className="scrub-track">
+            <div className="scrub-ticks" aria-hidden>
+              {sim.events.map((e) => (
+                <i
+                  key={e.id}
+                  className={`tick ${e.status}`}
+                  style={{ left: `${pct(minutes(e.event.time))}%` }}
+                  title={`${e.event.time} ${EVENT_KIND_TITLE[e.event.type]}`}
+                />
+              ))}
+            </div>
+            <input
+              type="range"
+              min={from}
+              max={to}
+              step={1}
+              value={Math.floor(sim.clock)}
+              disabled={sim.busy}
+              aria-label="Время дня"
+              onChange={(e) => sim.setClock(Number(e.target.value))}
+            />
+          </div>
+          <span className="scrub-end" aria-hidden>
+            {hhmm(to)}
+          </span>
         </div>
+        <button type="button" className="ghost" onClick={onReset} disabled={sim.busy}>
+          Сначала
+        </button>
       </div>
-      <button type="button" className="ghost" onClick={onReset} disabled={sim.busy}>
-        Сначала
-      </button>
     </div>
   )
 }

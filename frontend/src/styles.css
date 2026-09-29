@@ -293,7 +293,8 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .sim-toggle { position: relative; padding: 6px 14px; font-weight: 500; }
 .left-stack { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; min-width: 0; }
 .left-stack > .panel { flex: 1; }
-.left-stack > .sim-toggle { width: 100%; padding: 9px 14px; font-size: 14.5px; font-weight: 600; background: var(--signal); border-color: var(--signal); color: #fff; }
+.left-stack > .sim-toggle { width: 100%; background: var(--signal); border-color: var(--signal); color: #fff; }
+.left-stack > .sim-toggle, .sim-bar > .sim-toggle { padding: 9px 14px; font-size: 14.5px; font-weight: 600; text-align: left; }
 .left-stack > .sim-toggle:hover:not(:disabled) { background: var(--signal-ink); border-color: var(--signal-ink); color: #fff; }
 .sim-toggle.on { background: var(--signal-ink); border-color: var(--signal-ink); color: #fff; }
 .sim-toggle.on:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -1143,25 +1144,31 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 
 .workspace { display: grid; grid-template-rows: minmax(0, 1fr); gap: var(--gap); min-height: 0; }
 .workspace.with-top { grid-template-rows: auto minmax(0, 1fr); }
-.sim-bar {
+.sim-bar { display: flex; align-items: stretch; gap: var(--gap); min-width: 0; }
+.sim-bar > .sim-toggle { flex: none; width: var(--left-col); }
+.sim-controls {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 14px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  padding: 8px 14px;
+  padding: 0 8px 0 12px;
   min-width: 0;
 }
-.play { min-width: 104px; justify-content: center; padding: 7px 12px; }
-.sim-clock { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; min-width: 82px; line-height: 1; }
-.scrub { flex: 1; position: relative; padding-top: 10px; min-width: 120px; }
-.scrub-ticks { position: absolute; top: 0; left: 8px; right: 8px; height: 10px; }
-.tick { position: absolute; width: 4px; height: 10px; border-radius: 1px; background: var(--signal); transform: translateX(-50%); }
+.play { min-width: 96px; justify-content: center; padding: 4px 12px; }
+.sim-controls .seg button, .sim-controls .ghost { padding-top: 4px; padding-bottom: 4px; }
+.sim-clock { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; min-width: 64px; line-height: 1; }
+.scrub { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.scrub-end { flex: none; font-size: 12px; color: var(--muted); }
+.scrub-track { flex: 1; position: relative; padding-top: 8px; min-width: 0; }
+.scrub-track input { display: block; width: 100%; margin: 0; }
+.scrub-ticks { position: absolute; top: 0; left: 8px; right: 8px; height: 8px; }
+.tick { position: absolute; width: 4px; height: 8px; border-radius: 1px; background: var(--signal); transform: translateX(-50%); }
 .tick.done { background: var(--good); }
 .tick.failed { background: var(--bad); }
 .tick.running { background: var(--changed); }
-.scrub-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 0 2px; }
 
 .ev {
   display: grid;
@@ -1260,8 +1267,8 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .vb-main { grid-template-columns: auto minmax(0, 1fr); }
   .vc { padding: 7px 9px; gap: 8px; }
   .comparison { grid-template-columns: minmax(0, 1fr); }
-  .sim-bar { gap: 10px; }
-  .sim-clock { font-size: 24px; min-width: 70px; }
+  .sim-controls { gap: 10px; }
+  .sim-clock { font-size: 20px; min-width: 58px; }
   .g-axis, .g-row { grid-template-columns: 132px minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
