@@ -39,14 +39,16 @@ interface BaselineLineProps {
   digits?: number
   unit?: string
   unknown?: boolean
+  canPraise?: boolean
+  canBlame?: boolean
 }
 
-function BaselineLine({ current = 0, baseline, higherIsBetter, digits = 0, unit = '', unknown = false }: BaselineLineProps) {
+function BaselineLine({ current = 0, baseline, higherIsBetter, digits = 0, unit = '', unknown = false, canPraise = true, canBlame = true }: BaselineLineProps) {
   if (baseline === null) {
     return <div className="kpi-base">{unknown ? 'база ?' : NO_BASE}</div>
   }
   const { delta, better } = compareWithBaseline(current, baseline, higherIsBetter)
-  const cls = cx(better === true && 'good-text', better === false && 'bad-text') || undefined
+  const cls = cx(canPraise && better === true && 'good-text', canBlame && better === false && 'bad-text') || undefined
   const unitSuffix = unit && ` ${unit.trim()}`
   return (
     <div className="kpi-base">
@@ -61,10 +63,11 @@ const UNKNOWN = '?'
 interface KmBarProps {
   km: number
   baseline: number | null
+  canBlame: boolean
 }
 
-function KmBar({ km: value, baseline }: KmBarProps) {
-  const over = baseline !== null && value > baseline
+function KmBar({ km: value, baseline, canBlame }: KmBarProps) {
+  const over = canBlame && baseline !== null && value > baseline
   return (
     <div className={cx('thin-bar', over && 'bad')} aria-hidden>
       <i style={{ width: `${baseline ? Math.min(percent(value, baseline), 100) : 0}%` }} />
@@ -76,6 +79,8 @@ export function KpiStrip({ view, empty = false, live, before, baseline }: KpiStr
   const v = view
   const deltas = before && !empty
   const base = (value: (m: Metrics) => number) => (baseline && !empty ? value(baseline) : null)
+  const kmCanPraise = baseline !== null && v.assigned >= baseline.assigned
+  const kmCanBlame = baseline !== null && v.assigned <= baseline.assigned
   return (
     <section className={cx('kpis', live && 'live', empty && 'empty')} aria-label="Сводка плана" aria-live={live ? 'polite' : undefined}>
       <div className="kpi">
@@ -129,11 +134,11 @@ export function KpiStrip({ view, empty = false, live, before, baseline }: KpiStr
           <span className="kpi-unit">км</span>
           {deltas && <Delta value={v.km - before.distance_total_km} digits={1} lowerIsBetter unit=" км" />}
         </div>
-        <KmBar km={v.km} baseline={base((m) => m.distance_total_km)} />
+        <KmBar km={v.km} baseline={base((m) => m.distance_total_km)} canBlame={kmCanBlame} />
         <div className="kpi-legend">
           <span>{`${empty ? UNKNOWN : v.assigned ? km(v.km / v.assigned, 1) : '0'} км на заявку`}</span>
         </div>
-        <BaselineLine current={v.km} baseline={base((m) => m.distance_total_km)} higherIsBetter={false} digits={1} unit="км" unknown={empty} />
+        <BaselineLine current={v.km} baseline={base((m) => m.distance_total_km)} higherIsBetter={false} digits={1} unit="км" unknown={empty} canPraise={kmCanPraise} canBlame={kmCanBlame} />
       </div>
     </section>
   )
