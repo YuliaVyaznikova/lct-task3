@@ -35,6 +35,7 @@ import { usePlanningRequests } from './usePlanningRequests'
 import { useRequiredOrders } from './useRequiredOrders'
 import { useRoadLegs } from './useRoadLegs'
 import { useRoads } from './useRoads'
+import { useScenarioBaseline } from './useScenarioBaseline'
 import { useScenarioCatalog } from './useScenarioCatalog'
 import { useSimulation } from './useSimulation'
 import { useVariantDetails } from './useVariantDetails'
@@ -59,6 +60,7 @@ export default function App() {
   const { scenarioId } = catalog
   const [required, toggleRequired] = useRequiredOrders(scenarioId)
   const [params, setParams] = useState<PlanParamsUi>(DEFAULT_PARAMS)
+  const scenarioBaseline = useScenarioBaseline(scenarioId, params.engineerCount, catalog.scenarioVersion)
   const [preview, setPreview] = useState<Scenario | null>(null)
 
   const [initial, setInitial] = useState<Matched | null>(null)
@@ -562,7 +564,7 @@ export default function App() {
           empty={!kpiView}
           live={Boolean(live.liveProgress)}
           before={kpiBefore}
-          baseline={!history.length && !review && initial ? initial.baseline.metrics : null}
+          baseline={history.length || review ? null : initial?.baseline.metrics ?? scenarioBaseline}
         />
 
         {error && (

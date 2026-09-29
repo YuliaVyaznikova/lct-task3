@@ -543,3 +543,9 @@ def test_event_returns_variants_each_stored_as_plan(client):
         assert fetched["diff"]["metrics_after"] == variant["metrics"]
         assert fetched["diff"]["event"]["type"] == "cancel_order"
     assert client.get(f"/api/plans/{source['id']}").json()["diff"] is None
+
+
+def test_scenario_baseline_is_known_before_planning(client, plan):
+    response = client.get("/api/scenarios/demo/baseline")
+    assert response.status_code == 200, response.text
+    assert response.json()["assigned"] == plan["baseline"]["metrics"]["assigned"]

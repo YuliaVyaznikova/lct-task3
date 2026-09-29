@@ -45,11 +45,14 @@ interface BaselineLineProps {
 
 function BaselineLine({ current = 0, baseline, higherIsBetter, digits = 0, unit = '', unknown = false, canPraise = true, canBlame = true }: BaselineLineProps) {
   if (baseline === null) {
-    return <div className="kpi-base">{unknown ? 'база ?' : NO_BASE}</div>
+    return <div className="kpi-base">{NO_BASE}</div>
+  }
+  const unitSuffix = unit && ` ${unit.trim()}`
+  if (unknown) {
+    return <div className="kpi-base">{`база ${km(baseline, digits)}${unitSuffix}`}</div>
   }
   const { delta, better } = compareWithBaseline(current, baseline, higherIsBetter)
   const cls = cx(canPraise && better === true && 'good-text', canBlame && better === false && 'bad-text') || undefined
-  const unitSuffix = unit && ` ${unit.trim()}`
   return (
     <div className="kpi-base">
       <span className={cls}>{`база ${km(baseline, digits)}${unitSuffix} · ${signed(delta, digits)}`}</span>
@@ -78,7 +81,7 @@ function KmBar({ km: value, baseline, canBlame }: KmBarProps) {
 export function KpiStrip({ view, empty = false, live, before, baseline }: KpiStripProps) {
   const v = view
   const deltas = before && !empty
-  const base = (value: (m: Metrics) => number) => (baseline && !empty ? value(baseline) : null)
+  const base = (value: (m: Metrics) => number) => (baseline ? value(baseline) : null)
   const kmCanPraise = baseline !== null && v.assigned >= baseline.assigned
   const kmCanBlame = baseline !== null && v.assigned <= baseline.assigned
   return (

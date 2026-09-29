@@ -23,7 +23,7 @@ from planner.core import explain as explain_module
 from planner.core import metrics as metrics_module
 from planner.core import replan as replan_module
 from planner.core import solver
-from planner.core.models import Event, Plan, Scenario
+from planner.core.models import Event, Metrics, Plan, Scenario
 from planner.core.validate import Geo
 from planner.ingest import engineers as engineers_module
 
@@ -50,6 +50,13 @@ def plan_job_events(job_id: str) -> StreamingResponse:
     return StreamingResponse(
         job.stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
     )
+
+
+@router.get("/api/scenarios/{scenario_id}/baseline", response_model=Metrics)
+def scenario_baseline(scenario_id: str, engineer_count: int | None = None) -> Metrics:
+    """Показатели базового варианта до расчёта, чтобы KPI сравнивались с базой сразу."""
+    working = _resized_working_copy(scenario_id, engineer_count)
+    return baseline_module.plan(working, Geo(working)).metrics
 
 
 @router.get("/api/plans/{plan_id}", response_model=PlanResponse)
@@ -96,14 +103,14 @@ def explain_order(plan_id: str, order_id: str) -> dict:
     raise HTTPException(404, f"Заявки {order_id} нет в плане {plan_id}")
 
 
-def _resized_working_copy(request: PlanRequest) -> Scenario:
-    working = lookup.load_scenario(request.scenario_id).model_copy(deep=True)
-    if not request.engineer_count or request.engineer_count == len(working.engineers):
+def _resized_working_copy(scenario_id: str, engineer_count: int | None) -> Scenario:
+    working = lookup.load_scenario(scenario_id).model_copy(deep=True)
+    if not engineer_count or engineer_count == len(working.engineers):
         return working
 
     try:
         engineers_module.resize(
-            working, request.engineer_count, region_id=lookup.config_region(working.id)
+            working, engineer_count, region_id=lookup.config_region(working.id)
         )
     except engineers_module.InvariantError as exc:
         raise HTTPException(422, str(exc)) from None
@@ -118,7 +125,7 @@ def _variants_of(keys: tuple[str, ...], plans: list[Plan]) -> list[VariantOut]:
 
 
 def _create_plan(request: PlanRequest, on_progress=None) -> PlanResponse:
-    working = _resized_working_copy(request)
+    working = _resized_working_copy(request.scenario_id, request.engineer_count)
     geo = Geo(working)
 
     if request.params.objective == "auto":

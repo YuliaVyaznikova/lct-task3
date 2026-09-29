@@ -2,6 +2,7 @@ import { humanizeCodes } from './labels'
 import type {
   Candidate,
   JobProgress,
+  Metrics,
   NearestWindow,
   Objective,
   PlanEvent,
@@ -146,6 +147,8 @@ export const api = {
   scenarios: () => request<ScenarioBrief[]>('/scenarios'),
 
   scenario: (id: string) => request<Scenario>(`/scenarios/${id}`),
+  scenarioBaseline: (id: string, engineerCount: number | null, signal?: AbortSignal) =>
+    request<Metrics>(`/scenarios/${id}/baseline${engineerCount ? `?engineer_count=${engineerCount}` : ''}`, { signal }),
 
   workTypes: () => request<{ work_types: WorkType[] }>('/reference').then((r) => r.work_types),
 
