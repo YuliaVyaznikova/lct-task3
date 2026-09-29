@@ -118,6 +118,7 @@ interface CardProps {
   onClick: () => void
   onCompare?: () => void
   comparing?: boolean
+  current?: boolean
 }
 
 function verdictTip(lines: VerdictLine[] | undefined, twinOf: string): string | undefined {
@@ -127,7 +128,7 @@ function verdictTip(lines: VerdictLine[] | undefined, twinOf: string): string | 
   return lines.length ? lines.map((line) => `${line.sign} ${line.text}`).join('\n') : `совпадает с «${twinOf}»`
 }
 
-function Card({ title, note, figures, lines, twinOf = '', idle, on, hover, searching, disabled, hint, mine, spinning, warn, onEnter, onClick, onCompare, comparing = false }: CardProps) {
+function Card({ title, note, figures, lines, twinOf = '', idle, on, hover, searching, disabled, hint, mine, spinning, warn, onEnter, onClick, onCompare, comparing = false, current = false }: CardProps) {
   return (
     <div className="vc-slot">
       <button
@@ -153,7 +154,7 @@ function Card({ title, note, figures, lines, twinOf = '', idle, on, hover, searc
       </button>
       {onCompare && (
         <button type="button" className={cx('vc-compare', comparing && 'on')} aria-pressed={comparing} onClick={onCompare}>
-          {comparing ? 'скрыть ‹' : 'сравнить ›'}
+          {comparing ? 'скрыть ‹' : current ? 'подробнее ›' : 'сравнить ›'}
         </button>
       )}
     </div>
@@ -206,16 +207,17 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
     const twin = earlier.find((v) => v.plan_id !== currentId && isSameOutcome(metrics, v.metrics))
     return twin?.title ?? null
   }
-  const compareFor = (planId: string) => (canCompare && planId !== currentId ? () => onCompare(planId) : undefined)
+  const compareFor = (planId: string) => {
+    if (!canCompare) {
+      return undefined
+    }
+    return planId === currentId ? onToggleSchedule : () => onCompare(planId)
+  }
+  const isOpen = (planId: string) => (planId === currentId ? scheduleOpen : planId === comparing)
   const side = !reviewing && (
     <div className="vb-side">
       {planControl}
       {tools}
-      {canCompare && onToggleSchedule && (
-        <button type="button" className={cx('ghost small vb-schedule', scheduleOpen && 'on')} aria-pressed={scheduleOpen} onClick={onToggleSchedule}>
-          {scheduleOpen ? 'Скрыть' : 'Подробнее'}
-        </button>
-      )}
     </div>
   )
 
@@ -270,7 +272,8 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
                 lines={variant ? linesFor(variant.plan_id, variant.metrics) : undefined}
                 twinOf={(variant && twinOf(variant.plan_id, variant.metrics)) ?? referenceTitle}
                 onCompare={variant ? compareFor(variant.plan_id) : undefined}
-                comparing={Boolean(variant) && variant?.plan_id === comparing}
+                comparing={Boolean(variant) && isOpen(variant!.plan_id)}
+                current={variant?.plan_id === currentId}
                 idle={idle}
                 on={running ? key === watching : !mineActive && variant?.plan_id === currentId}
                 hover={Boolean(hoveredId && variant?.plan_id === hoveredId)}
@@ -291,7 +294,8 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
               lines={linesFor(mine.planId, mine.metrics)}
               twinOf={referenceTitle}
               onCompare={compareFor(mine.planId)}
-              comparing={mine.planId === comparing}
+              comparing={isOpen(mine.planId)}
+              current={mine.planId === currentId}
               on={mineActive}
               hover={hoveredId === mine.planId}
               searching={false}

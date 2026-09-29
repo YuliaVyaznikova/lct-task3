@@ -536,6 +536,12 @@ export default function App() {
     )
   }
 
+  const compareVariant = (planId: string) => {
+    if (tab === 'schedule') {
+      switchTab('map')
+    }
+    details.toggle(planId)
+  }
   const simToggle = (
     <SimToggle on={simMode} disabled={!plan} needsDecision={review !== null} onToggle={() => switchMapMode(simMode ? 'plan' : 'sim')} />
   )
@@ -735,9 +741,9 @@ export default function App() {
               onWatch={live.watchVariant}
               onPeek={live.setPeekKey}
               onReviewDetails={() => eventReview.setDetails(true)}
-              onCompare={details.toggle}
+              onCompare={compareVariant}
               comparing={details.otherId}
-              scheduleOpen={tab === 'schedule'}
+              scheduleOpen={tab === 'schedule' && !details.otherId}
               onToggleSchedule={() => switchTab(tab === 'schedule' ? 'map' : 'schedule')}
             />
           </div>
