@@ -2,33 +2,34 @@
 
 from __future__ import annotations
 
+from planner.core.equipment import describe_needs
 from planner.core.models import (
     SKILL_RU,
     TRANSPORT_RU,
     Engineer,
     Order,
+    Priority,
     ReasonCode,
     Route,
     Unassigned,
+    Violation,
 )
+from planner.core.text import plural
 from planner.core.timeutil import min_to_hhmm
-from planner.core.validate import Geo, StartState, first_blocking_violation
-
-
-def _plural(count: int, one: str, few: str, many: str) -> str:
-    if count % 10 == 1 and count % 100 != 11:
-        return one
-    if 2 <= count % 10 <= 4 and not 12 <= count % 100 <= 14:
-        return few
-    return many
+from planner.core.validate import (
+    Geo,
+    StartState,
+    best_insertion,
+    check_static,
+    first_blocking_violation,
+)
 
 
 def can_serve_alone(geo: Geo, engineer: Engineer, order: Order) -> ReasonCode | None:
     """Может ли инженер выполнить заявку, будь она у него единственной."""
-    if order.skill not in engineer.skills:
-        return ReasonCode.NO_SKILL
-    if order.required_transport is not None and order.required_transport != engineer.transport:
-        return ReasonCode.NO_TRANSPORT
+    mismatch = check_static(engineer, order)
+    if mismatch is not None:
+        return ReasonCode(mismatch.code)
 
     stock = geo.equipment_stock(engineer.id)
     for kind, count in geo.equipment_needs(order.id).items():
@@ -64,8 +65,6 @@ def _no_capable_reason(
 
     blocked = [verdicts[engineer.id] for engineer in with_skill]
     if all(code is ReasonCode.NO_EQUIPMENT for code in blocked):
-        from planner.ingest.equipment import describe_needs
-
         return Unassigned(
             order_id=order.id,
             reason_code=ReasonCode.NO_EQUIPMENT,
@@ -155,6 +154,7 @@ def diagnose(
         order_id=order.id,
         reason_code=ReasonCode.CAPACITY,
         reason=_capacity_reason(geo, order, capable, routes or [], starts),
+        detail=_capacity_detail(geo, order, capable, routes or [], starts),
     )
 
 
@@ -175,7 +175,7 @@ def _capacity_reason(
             f"с навыком «{skill_ru}» заявка {window} не встаёт"
         )
     else:
-        who = _plural(count, "инженера", "инженеров", "инженеров")
+        who = plural(count, "инженера", "инженеров", "инженеров")
         head = (
             f"не удалось разместить в этом расчёте: ни в один из текущих маршрутов "
             f"{count} {who} с навыком «{skill_ru}» заявка {window} не встаёт"
@@ -198,6 +198,88 @@ def _capacity_reason(
     if not details:
         return head
     return head + ": " + "; ".join(details)
+
+
+def _travel_minutes(geo: Geo, engineer: Engineer, order: Order) -> int:
+    return geo.leg(engineer, geo.start_node(engineer), geo.node(order.id))[1]
+
+
+def _blockers(
+    geo: Geo,
+    order: Order,
+    capable: list[Engineer],
+    routes: list[Route],
+    starts: dict[str, StartState] | None,
+) -> list[tuple[Engineer, Violation]]:
+    by_engineer = {route.engineer_id: route for route in routes}
+    found: list[tuple[Engineer, Violation]] = []
+    for engineer in sorted(capable, key=lambda item: _travel_minutes(geo, item, order)):
+        route = by_engineer.get(engineer.id)
+        blocking = first_blocking_violation(
+            geo, engineer, route.order_ids if route else [], order.id, (starts or {}).get(engineer.id)
+        )
+        if blocking is not None:
+            found.append((engineer, blocking))
+    return found
+
+
+def _nearest_blocker_text(
+    order: Order, engineer: Engineer, blocking: Violation, route: Route | None
+) -> str:
+    if blocking.order_id not in (None, order.id):
+        free = f"освобождается в {route.end_time}, " if route and route.stops else ""
+        return (
+            f"ближайший, {engineer.name}, {free}"
+            f"вставка сдвинула бы заявку {blocking.order_id} за конец её окна"
+        )
+    if blocking.code == "SHIFT":
+        return f"ближайший, {engineer.name}, закончит смену раньше, чем выполнит заявку"
+    if blocking.code == "WINDOW":
+        return f"ближайший, {engineer.name}, не успевает к концу окна клиента"
+    return f"ближайший, {engineer.name}: {blocking.text}"
+
+
+def _displaced_ids(order: Order, blockers: list[tuple[Engineer, Violation]]) -> list[str]:
+    ids = [v.order_id for _, v in blockers if v.order_id not in (None, order.id)]
+    return list(dict.fromkeys(ids))
+
+
+def _outranking_ids(geo: Geo, order: Order, displaced: list[str]) -> list[str]:
+    def rank(item: Order) -> tuple[int, int]:
+        return (item.priority is not Priority.URGENT, item.priority_tier)
+
+    return [other for other in displaced if rank(geo.orders[other]) < rank(order)]
+
+
+def _capacity_detail(
+    geo: Geo,
+    order: Order,
+    capable: list[Engineer],
+    routes: list[Route],
+    starts: dict[str, StartState] | None,
+) -> str:
+    """Короткая конкретная причина для заявки, которую поиск не разместил."""
+    count = len(capable)
+    who = plural(count, "инженер", "инженера", "инженеров")
+    busy = plural(count, "занят", "заняты", "заняты")
+    head = (
+        f"В этом расчёте {count} {who} с навыком «{SKILL_RU[order.skill]}» "
+        f"{busy} в окно клиента {order.window_start}–{order.window_end}"
+    )
+    blockers = _blockers(geo, order, capable, routes, starts)
+    if not blockers:
+        return head
+    nearest, blocking = blockers[0]
+    route = {route.engineer_id: route for route in routes}.get(nearest.id)
+    parts = [head + ": " + _nearest_blocker_text(order, nearest, blocking, route)]
+    displaced = _displaced_ids(order, blockers)
+    outranking = _outranking_ids(geo, order, displaced)
+    if outranking:
+        shown = ", ".join(outranking[:3])
+        rest = len(outranking) - 3
+        tail = f" и ещё {rest}" if rest > 0 else ""
+        parts.append(f"место освободилось бы только за счёт более приоритетных заявок: {shown}{tail}")
+    return "; ".join(parts)
 
 
 def diagnose_all(
@@ -241,17 +323,10 @@ def extra_engineers_needed(geo: Geo, unassigned: list[Unassigned]) -> int:
     buckets: list[list[str]] = []
     for order_id in pending:
         for bucket in buckets:
-            placed = best_insertion_position(geo, template, bucket, order_id)
-            if placed is not None:
-                bucket.insert(placed, order_id)
+            found = best_insertion(geo, template, bucket, order_id)
+            if found is not None:
+                bucket.insert(found[0], order_id)
                 break
         else:
             buckets.append([order_id])
     return len(buckets)
-
-
-def best_insertion_position(geo: Geo, engineer: Engineer, order_ids: list[str], candidate: str):
-    from planner.core.validate import best_insertion
-
-    found = best_insertion(geo, engineer, order_ids, candidate)
-    return None if found is None else found[0]

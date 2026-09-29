@@ -7,16 +7,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 DATA_DIR = ROOT / "data"
+EXTRA_DIR = DATA_DIR / "extra"
 RAW_DIR = DATA_DIR / "raw"
 CONFIG_DIR = DATA_DIR / "config"
 CACHE_DIR = DATA_DIR / "cache"
 SCENARIOS_DIR = DATA_DIR / "scenarios"
 RUNTIME_DIR = ROOT / "runtime"
 PLANS_DIR = RUNTIME_DIR / "plans"
+SAVED_DIR = RUNTIME_DIR / "saved"
 
 
 def ensure_dirs() -> None:
-    for path in (CACHE_DIR, SCENARIOS_DIR, PLANS_DIR, CACHE_DIR / "matrices"):
+    for path in (CACHE_DIR, SCENARIOS_DIR, PLANS_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
 

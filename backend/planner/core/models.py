@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from .timeutil import hhmm_to_min
 
@@ -72,11 +72,18 @@ TRANSPORT_RU: dict[Transport, str] = {
     Transport.PUBLIC: "общественный транспорт",
 }
 
-PRIORITY_RU: dict[Priority, str] = {
-    Priority.NORMAL: "обычная",
-    Priority.URGENT: "срочная",
+REASON_RU: dict[ReasonCode, str] = {
+    ReasonCode.NO_SKILL: "нет навыка",
+    ReasonCode.NO_TRANSPORT: "нет нужного транспорта",
+    ReasonCode.NO_EQUIPMENT: "не хватает оборудования",
+    ReasonCode.SHIFT_MISMATCH: "окно не попадает в смены",
+    ReasonCode.UNREACHABLE: "слишком далеко",
+    ReasonCode.CAPACITY: "не хватило мощности",
+    ReasonCode.NO_COORDS: "нет координат",
+    ReasonCode.CANCELLED: "заявка отменена",
+    ReasonCode.ENGINEER_UNAVAILABLE: "исполнитель выбыл",
+    ReasonCode.MANUAL: "снята вручную",
 }
-
 
 class Base(BaseModel):
     model_config = ConfigDict(use_enum_values=False, extra="forbid")
@@ -117,7 +124,7 @@ class Order(Base):
     window_start: HHMM
     window_end: HHMM
     priority: Priority = Priority.NORMAL
-    priority_tier: int = 3
+    priority_tier: int = Field(default=3, ge=1, le=3)
     required_transport: Transport | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
 
@@ -139,10 +146,6 @@ class Order(Base):
             raise ValueError(f"нет координат у заявки {self.id}")
         return self.lat, self.lon
 
-    @property
-    def label(self) -> str:
-        return f"{self.id} ({self.address})"
-
 
 class Engineer(Base):
     """Исполнитель."""
@@ -162,13 +165,6 @@ class Engineer(Base):
     @property
     def shift_end_min(self) -> int:
         return hhmm_to_min(self.shift_end)
-
-    def can_do(self, order: Order) -> bool:
-        if order.skill not in self.skills:
-            return False
-        if order.required_transport is not None and order.required_transport != self.transport:
-            return False
-        return True
 
     @property
     def skills_ru(self) -> str:
@@ -302,6 +298,14 @@ class Unassigned(Base):
     order_id: str
     reason_code: ReasonCode
     reason: str
+    detail: str = ""
+
+    @model_validator(mode="after")
+    def _default_detail(self) -> "Unassigned":
+        """Для причин кроме CAPACITY короткий текст совпадает с полным."""
+        if not self.detail and self.reason_code is not ReasonCode.CAPACITY:
+            self.detail = self.reason
+        return self
 
 
 class Metrics(Base):
@@ -337,6 +341,7 @@ class PlanParams(Base):
     lunch: bool = False
     allow_reschedule: bool = False
     travel_model: str = "haversine"
+    required_orders: list[str] = Field(default_factory=list)
 
 
 class Plan(Base):
@@ -346,6 +351,7 @@ class Plan(Base):
     params: PlanParams = Field(default_factory=PlanParams)
     planned_from: HHMM = "00:00"
     parent_plan_id: str | None = None
+    origin: Literal["solver", "manual", "event"] = "solver"
     event: Event | None = None
     routes: list[Route] = Field(default_factory=list)
     unassigned: list[Unassigned] = Field(default_factory=list)

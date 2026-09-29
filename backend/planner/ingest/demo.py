@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from planner.core import baseline as baseline_module
+from planner.core import equipment as equipment_module
 from planner.core import solver
 from planner.core.models import (
     CancelOrderEvent,
@@ -18,7 +20,6 @@ from planner.core.models import (
 from planner.core.replan import make_urgent_order
 from planner.core.validate import Geo
 from planner.ingest import beeline, engineers as engineers_module
-from planner.ingest import equipment as equipment_module
 
 BASE_REGION = "vostok"
 
@@ -141,13 +142,12 @@ def build(
     base_region: str = BASE_REGION,
     seeds: range = range(1, 51),
     params: PlanParams | None = None,
-    verbose: bool = False,
+    progress: Callable[[str], None] | None = None,
 ) -> tuple[Scenario, list[Requirement]]:
     """Собирает демо-сценарий и подбирает seed, при котором он показателен."""
     from planner.ingest import store
 
     source = store.load(base_region)
-    config = engineers_module.load_config(base_region)
 
     chosen: Scenario | None = None
     report: list[Requirement] = []
@@ -160,15 +160,15 @@ def build(
 
         checks = check_dataset(candidate)
         if not all(check.ok for check in checks):
-            if verbose:
+            if progress:
                 failed = [c.title for c in checks if not c.ok]
-                print(f"  seed {seed}: не подошёл ({', '.join(failed)})")
+                progress(f"  seed {seed}: не подошёл ({', '.join(failed)})")
             continue
 
         conflict = check_conflict(candidate, params)
         checks.append(conflict)
-        if verbose:
-            print(f"  seed {seed}: {conflict.detail}" + ("" if conflict.ok else ", недостаточно"))
+        if progress:
+            progress(f"  seed {seed}: {conflict.detail}" + ("" if conflict.ok else ", недостаточно"))
         if conflict.ok:
             chosen, report = candidate, checks
             break
@@ -187,5 +187,4 @@ def build(
         f"из выгрузки, справочник инженеров и события синтетические "
         f"(seed {chosen.meta.generator_seed})"
     )
-    _ = config
     return chosen, report

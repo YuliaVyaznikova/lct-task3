@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+import logging
+from collections.abc import Callable
 from queue import Queue
 from threading import Lock, Thread
 from time import monotonic
-from typing import Callable
 from uuid import uuid4
 
 from pydantic import BaseModel
 
 PROGRESS_INTERVAL_S = 0.25
+
+logger = logging.getLogger(__name__)
 
 
 def _error_message(error: Exception) -> str:
@@ -37,6 +40,7 @@ class PlanningJob:
             result = work(self.progress)
             self.events.put(("done", result.model_dump(mode="json", by_alias=True)))
         except Exception as exc:
+            logger.exception("фоновый расчёт завершился ошибкой")
             self.events.put(("error", {"detail": _error_message(exc)}))
 
     def stream(self):

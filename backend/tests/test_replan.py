@@ -57,6 +57,7 @@ def day_plan(day):
     return solver.plan(day, Geo(day), FAST)
 
 
+@pytest.mark.slow
 def test_freeze_locks_started_visits(day, day_plan):
     geo = Geo(day)
     at = hhmm_to_min("12:00")
@@ -69,6 +70,7 @@ def test_freeze_locks_started_visits(day, day_plan):
     assert frozen.locked_count == sum(len(s.locked_stops) for s in frozen.starts.values())
 
 
+@pytest.mark.slow
 def test_freeze_returns_future_visits_to_the_pool(day, day_plan):
     geo = Geo(day)
     at = hhmm_to_min("12:00")
@@ -83,6 +85,7 @@ def test_freeze_returns_future_visits_to_the_pool(day, day_plan):
     assert sorted(frozen.pool) == sorted(future + [u.order_id for u in day_plan.unassigned])
 
 
+@pytest.mark.slow
 def test_freeze_sets_position_and_clock(day, day_plan):
     geo = Geo(day)
     frozen = replan.freeze(geo, day_plan, hhmm_to_min("12:00"))
@@ -154,12 +157,14 @@ def test_freeze_waits_until_event_when_last_visit_finished_earlier(day):
     assert frozen.starts["E02"].available_min == hhmm_to_min("12:00")
 
 
+@pytest.mark.slow
 def test_unassigned_orders_get_another_chance(day, day_plan):
     frozen = replan.freeze(Geo(day), day_plan, hhmm_to_min("12:00"))
     for unassigned in day_plan.unassigned:
         assert unassigned.order_id in frozen.pool
 
 
+@pytest.mark.slow
 def test_urgent_order_is_added_and_scheduled(day, day_plan):
     scenario = day.model_copy(deep=True)
     lat, lon = at_km(3)
@@ -176,6 +181,7 @@ def test_urgent_order_is_added_and_scheduled(day, day_plan):
     assert new_plan.parent_plan_id == day_plan.id
 
 
+@pytest.mark.slow
 def test_urgent_order_does_not_shift_engineers_start_points(day, day_plan):
     """Регрессия: добавление заявки сдвигает нумерацию узлов."""
     scenario = day.model_copy(deep=True)
@@ -199,6 +205,7 @@ def test_urgent_order_does_not_shift_engineers_start_points(day, day_plan):
         assert node != after.node(order.id), "инженер не должен стартовать из точки аварии"
 
 
+@pytest.mark.slow
 def test_urgent_order_with_closed_window_is_rejected(day, day_plan):
     scenario = day.model_copy(deep=True)
     lat, lon = at_km(3)
@@ -211,6 +218,7 @@ def test_urgent_order_with_closed_window_is_rejected(day, day_plan):
         )
 
 
+@pytest.mark.slow
 def test_urgent_order_keeps_its_priority(day, day_plan):
     scenario = day.model_copy(deep=True)
     lat, lon = at_km(3)
@@ -221,6 +229,7 @@ def test_urgent_order_keeps_its_priority(day, day_plan):
     assert scenario.order(order.id).priority is Priority.URGENT
 
 
+@pytest.mark.slow
 def test_cancelled_order_disappears_from_the_plan(day, day_plan):
     target = next(
         stop.order_id
@@ -237,6 +246,7 @@ def test_cancelled_order_disappears_from_the_plan(day, day_plan):
     assert target in diff.removed
 
 
+@pytest.mark.slow
 def test_cancelled_order_leaves_the_totals(day, day_plan):
     target = next(
         stop.order_id
@@ -255,6 +265,7 @@ def test_cancelled_order_leaves_the_totals(day, day_plan):
     assert not day.orders_by_id[target].attributes.get("cancelled_at"), "исходный сценарий не трогаем"
 
 
+@pytest.mark.slow
 def test_cancelling_a_started_visit_is_refused(day, day_plan):
     started = next(
         stop.order_id
@@ -273,6 +284,7 @@ def test_cancelling_a_started_visit_is_refused(day, day_plan):
         )
 
 
+@pytest.mark.slow
 def test_cancelling_unknown_order_is_refused(day, day_plan):
     scenario = day.model_copy(deep=True)
     with pytest.raises(replan.ReplanError, match="нет заявки"):
@@ -281,6 +293,7 @@ def test_cancelling_unknown_order_is_refused(day, day_plan):
         )
 
 
+@pytest.mark.slow
 def test_unavailable_engineer_gets_no_new_work(day, day_plan):
     victim = max(day_plan.routes, key=lambda r: len(r.stops)).engineer_id
     scenario = day.model_copy(deep=True)
@@ -296,6 +309,7 @@ def test_unavailable_engineer_gets_no_new_work(day, day_plan):
         assert all(departure_min(route, stop) <= hhmm_to_min("12:00") for stop in route.stops)
 
 
+@pytest.mark.slow
 def test_unavailable_engineer_keeps_completed_work(day, day_plan):
     victim = max(day_plan.routes, key=lambda r: len(r.stops)).engineer_id
     done = [
@@ -317,6 +331,7 @@ def test_unavailable_engineer_keeps_completed_work(day, day_plan):
         assert new_plan.assignment.get(order_id) == victim
 
 
+@pytest.mark.slow
 def test_unavailable_engineer_stays_visible_in_the_plan(day, day_plan):
     """Ни одна заявка не должна пропасть: всё либо назначено, либо объяснено."""
     victim = max(day_plan.routes, key=lambda r: len(r.stops)).engineer_id
@@ -333,6 +348,7 @@ def test_unavailable_engineer_stays_visible_in_the_plan(day, day_plan):
     assert new_plan.metrics.assigned + new_plan.metrics.unassigned == len(scenario.orders)
 
 
+@pytest.mark.slow
 def test_unknown_engineer_is_refused(day, day_plan):
     scenario = day.model_copy(deep=True)
     with pytest.raises(replan.ReplanError, match="нет инженера"):
@@ -345,6 +361,7 @@ def test_unknown_engineer_is_refused(day, day_plan):
         )
 
 
+@pytest.mark.slow
 def test_delay_keeps_position_and_postpones_next_work(day, day_plan):
     scenario = day.model_copy(deep=True)
     geo = Geo(scenario)
@@ -365,6 +382,7 @@ def test_delay_keeps_position_and_postpones_next_work(day, day_plan):
     assert "90 мин" in caption
 
 
+@pytest.mark.slow
 def test_delayed_engineer_starts_no_unlocked_visit_before_release(day, day_plan):
     scenario = day.model_copy(deep=True)
     victim = max(day_plan.routes, key=lambda route: len(route.stops)).engineer_id
@@ -386,6 +404,7 @@ def test_delayed_engineer_starts_no_unlocked_visit_before_release(day, day_plan)
         ]
 
 
+@pytest.mark.slow
 def test_delay_for_unknown_engineer_is_refused(day, day_plan):
     scenario = day.model_copy(deep=True)
     with pytest.raises(replan.ReplanError, match="нет инженера"):
@@ -397,6 +416,7 @@ def test_delay_for_unknown_engineer_is_refused(day, day_plan):
 
 
 @pytest.mark.parametrize("hour", ["10:00", "12:00", "15:00"])
+@pytest.mark.slow
 def test_new_plan_is_always_feasible(day, day_plan, hour):
     target = next(
         (
@@ -414,7 +434,6 @@ def test_new_plan_is_always_feasible(day, day_plan, hour):
     new_plan, _ = replan.replan(
         scenario, day_plan, CancelOrderEvent(time=hour, order_id=target), geo, FAST
     )
-    frozen = replan.freeze(geo, day_plan, hhmm_to_min(hour))
     _, violations = evaluate(
         geo, {r.engineer_id: r.order_ids for r in new_plan.routes}
     )
@@ -425,6 +444,7 @@ def test_new_plan_is_always_feasible(day, day_plan, hour):
     )
 
 
+@pytest.mark.slow
 def test_completed_visits_never_move(day, day_plan):
     at = "12:00"
     before = {
@@ -452,6 +472,7 @@ def test_completed_visits_never_move(day, day_plan):
         assert after[order_id] == value, f"визит {order_id} был начат и не должен меняться"
 
 
+@pytest.mark.slow
 def test_diff_summary_is_readable(day, day_plan):
     target = next(
         stop.order_id
@@ -469,6 +490,7 @@ def test_diff_summary_is_readable(day, day_plan):
     assert diff.metrics_before.assigned == day_plan.metrics.assigned
 
 
+@pytest.mark.slow
 def test_replan_is_stable(day, day_plan):
     """Штраф за смену исполнителя не даёт плану рассыпаться из-за одного события."""
     target = next(
@@ -485,6 +507,7 @@ def test_replan_is_stable(day, day_plan):
     assert len(moved) <= max(2, day_plan.metrics.assigned // 4)
 
 
+@pytest.mark.slow
 def test_replan_on_real_region():
     scenarios = [s for s in store.load_all() if s.id == "vostok"]
     if not scenarios:

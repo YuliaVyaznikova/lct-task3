@@ -16,6 +16,10 @@ from planner.paths import CACHE_DIR
 
 EARTH_RADIUS_KM = 6371.0088
 
+PUBLIC_OSRM = "https://router.project-osrm.org"
+
+OSRM_PROFILE = "driving"
+
 DETOUR_CALIBRATION: tuple[tuple[float, float], ...] = (
     (0.5, 1.74),
     (2.0, 1.61),
@@ -99,7 +103,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(h))
 
 
-def _haversine_matrix(points: list[tuple[float, float]]) -> np.ndarray:
+def haversine_matrix(points: list[tuple[float, float]]) -> np.ndarray:
     lat = np.radians(np.array([p[0] for p in points], dtype=float))
     lon = np.radians(np.array([p[1] for p in points], dtype=float))
     dlat = lat[:, None] - lat[None, :]
@@ -108,12 +112,20 @@ def _haversine_matrix(points: list[tuple[float, float]]) -> np.ndarray:
     return 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0.0, 1.0)))
 
 
+def osrm_cache_key(points: list[tuple[float, float]]) -> str:
+    """Имя файла кэша для ответа OSRM по этим точкам."""
+    payload = json.dumps(
+        [[round(lat, 6), round(lon, 6)] for lat, lon in points], separators=(",", ":")
+    )
+    return hashlib.sha256(f"{OSRM_PROFILE}|{payload}".encode()).hexdigest()[:16]
+
+
 class TravelModel:
     """Расстояния и времена между точками для каждого типа транспорта."""
 
     def __init__(self, points: list[tuple[float, float]]) -> None:
         self.points = points
-        straight = _haversine_matrix(points)
+        straight = haversine_matrix(points)
         self._distance_km = straight * detour_factor(straight)
         np.fill_diagonal(self._distance_km, 0.0)
         self._time_cache: dict[Transport, np.ndarray] = {}
@@ -121,10 +133,6 @@ class TravelModel:
     @property
     def name(self) -> str:
         return "haversine"
-
-    @property
-    def size(self) -> int:
-        return len(self.points)
 
     def distance_m(self) -> np.ndarray:
         """Матрица расстояний в метрах (целые так их ждёт солвер)."""
@@ -154,8 +162,6 @@ class TravelModel:
 class OsrmTravel(TravelModel):
     """Расстояния по реальной дорожной сети из OSRM."""
 
-    PROFILE = "driving"
-
     MAX_POINTS = 100
 
     def __init__(
@@ -163,7 +169,7 @@ class OsrmTravel(TravelModel):
         points: list[tuple[float, float]],
         base_url: str,
         timeout_s: float = 60.0,
-        cache_dir: "Path | None" = None,
+        cache_dir: Path | None = None,
     ) -> None:
         super().__init__(points)
         self.base_url = base_url.rstrip("/")
@@ -176,17 +182,12 @@ class OsrmTravel(TravelModel):
     @property
     def name(self) -> str:
         if not self.connected:
-            return "haversine (osrm недоступен)"
+            return f"haversine (osrm недоступен: {'; '.join(self.errors)})"
         return "osrm (расстояния по дорогам) + профили скоростей"
 
 
-    def _cache_path(self) -> "Path":
-        payload = json.dumps(
-            [[round(lat, 6), round(lon, 6)] for lat, lon in self.points],
-            separators=(",", ":"),
-        )
-        digest = hashlib.sha256(f"{self.PROFILE}|{payload}".encode()).hexdigest()[:16]
-        return self.cache_dir / f"{digest}.npz"
+    def _cache_path(self) -> Path:
+        return self.cache_dir / f"{osrm_cache_key(self.points)}.npz"
 
     def _load(self) -> None:
         if len(self.points) > self.MAX_POINTS:
@@ -222,11 +223,11 @@ class OsrmTravel(TravelModel):
         self._distance_km = distance_km
         self._time_cache.clear()
 
-    def _fetch(self) -> "np.ndarray | None":
+    def _fetch(self) -> np.ndarray | None:
         import httpx
 
         coordinates = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in self.points)
-        url = f"{self.base_url}/table/v1/{self.PROFILE}/{coordinates}"
+        url = f"{self.base_url}/table/v1/{OSRM_PROFILE}/{coordinates}"
         try:
             response = httpx.get(url, params={"annotations": "distance"}, timeout=self.timeout_s)
             response.raise_for_status()
@@ -255,16 +256,15 @@ class OsrmTravel(TravelModel):
 def build(
     points: list[tuple[float, float]], osrm_url: str | None = None
 ) -> TravelModel:
-    """Модель движения: OSRM, если он задан и отвечает, иначе офлайн-оценка."""
+    """Модель движения: OSRM, если он задан, иначе офлайн-оценка."""
     url = osrm_url or os.environ.get("OSRM_URL")
     if not url:
         return TravelModel(points)
-    model = OsrmTravel(points, url)
-    return model if model.connected else TravelModel(points)
+    return OsrmTravel(points, url)
 
 
 def describe() -> str:
-    """Человекочитаемое описание модели идёт в README и в объяснения плана."""
+    """Описание модели движения для справки интерфейса (/api/reference)."""
     factors = ", ".join(f"{d:g} км: ×{f:g}" for d, f in DETOUR_CALIBRATION)
     lines = [
         "Расстояние: по прямой, умноженной на коэффициент извилистости дорог;"
@@ -272,11 +272,9 @@ def describe() -> str:
     ]
     for transport, profile in PROFILES.items():
         parts = []
-        previous = 0.0
         for segment in profile.segments:
             bound = "далее" if segment.upto_km == INF else f"до {segment.upto_km:g} км"
             parts.append(f"{bound}: {segment.speed_kmh:g} км/ч")
-            previous = segment.upto_km
         overhead = f"+{profile.overhead_min:g} мин " if profile.overhead_min else ""
         lines.append(f"  {transport.value}: {overhead}{'; '.join(parts)}")
     return "\n".join(lines)

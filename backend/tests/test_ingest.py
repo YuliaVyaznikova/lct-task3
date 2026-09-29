@@ -8,6 +8,7 @@ import io
 
 import pytest
 
+from planner.core.control import control_brigades
 from planner.core.models import Priority, Skill
 from planner.ingest import beeline
 from planner.ingest.normatives import classify
@@ -46,7 +47,7 @@ def test_office_found(scenarios, region):
 @pytest.mark.parametrize("region", sorted(EXPECTED))
 def test_control_attached(scenarios, region):
     scenario = scenarios[region]
-    assert len(beeline.control_brigades(scenario)) == EXPECTED[region]["brigades"]
+    assert len(control_brigades(scenario)) == EXPECTED[region]["brigades"]
     assert len(beeline.cancelled_orders(scenario)) == EXPECTED[region]["cancelled"]
 
 

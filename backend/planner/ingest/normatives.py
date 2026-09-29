@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from planner.core.models import Priority, Skill
+from planner.core.worktype import first_match
 from planner.paths import CONFIG_DIR
 
 
@@ -59,16 +60,11 @@ def load_rules(path: Path | None = None) -> tuple[_Rule, ...]:
 
 
 def classify(work_type: str, hd_type: str, path: Path | None = None) -> Norm:
-    """Первое сверху правило, у которого совпали оба поля (* любое значение)."""
-    wt = (work_type or "").strip().casefold()
-    hd = (hd_type or "").strip().casefold()
-    for rule in load_rules(path):
-        if rule.work_type != "*" and rule.work_type != wt:
-            continue
-        if rule.hd_match != "*" and rule.hd_match not in hd:
-            continue
+    """Норматив по первому подходящему правилу (см. worktype.first_match)."""
+    rule = first_match(load_rules(path), work_type, hd_type)
+    if rule is not None:
         return rule.norm
-    raise ValueError(f"нет правила для ({work_type!r}, {hd_type!r}), в справочнике должна быть строка *;*")
+    raise ValueError(f"нет правила для ({work_type!r}, {hd_type!r}) в справочнике должна быть строка *;*")
 
 
 def work_types(path: Path | None = None) -> list[dict]:

@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import math
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Iterable
 
 import httpx
 
 from planner.core.models import GeocodeQuality, Order, Scenario
+from planner.core.travel import haversine_km
 from planner.ingest.address import NormalizedAddress, normalize
 from planner.paths import CACHE_DIR, CONFIG_DIR, read_secret
 
@@ -28,6 +29,10 @@ NOMINATIM_DELAY_S = 1.05
 DISTRICT_JITTER_M = 300.0
 
 
+class GeocodeError(RuntimeError):
+    """Адрес не удалось привязать ни к точке, ни к центроиду района."""
+
+
 @dataclass
 class GeoResult:
     lat: float
@@ -36,14 +41,6 @@ class GeoResult:
     provider: str
     step: str
     detail: str = ""
-
-
-def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
-    lat1, lon1 = math.radians(a[0]), math.radians(a[1])
-    lat2, lon2 = math.radians(b[0]), math.radians(b[1])
-    dlat, dlon = lat2 - lat1, lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * 6371.0088 * math.asin(math.sqrt(h))
 
 
 class Cache:
@@ -314,7 +311,7 @@ def _plausible(
         limit = (
             MAX_KM_FROM_OFFICE_MOSCOW if addr.city == "Москва" else MAX_KM_FROM_OFFICE_REGION
         )
-        distance = haversine_km((result.lat, result.lon), office)
+        distance = haversine_km(result.lat, result.lon, *office)
         if distance > limit:
             return f"{distance:.0f} км от офиса при пределе {limit:.0f}"
     if district_point is not None:
@@ -323,7 +320,7 @@ def _plausible(
             if addr.city == "Москва"
             else MAX_KM_FROM_DISTRICT_REGION
         )
-        distance = haversine_km((result.lat, result.lon), district_point)
+        distance = haversine_km(result.lat, result.lon, *district_point)
         if distance > limit:
             return f"{distance:.0f} км от центра района при пределе {limit:.0f}"
     return None
@@ -385,7 +382,7 @@ def geocode_one(
         lat, lon = _jitter(district_point[0], district_point[1], key)
         result = GeoResult(lat, lon, GeocodeQuality.DISTRICT, "district", "7", district)
     if result is None:
-        raise RuntimeError(f"не удалось определить координаты и нет центроида района: {raw_address!r}")
+        raise GeocodeError(f"не удалось определить координаты и нет центроида района: {raw_address!r}")
     cache.put(key, result)
     return result, rejected
 

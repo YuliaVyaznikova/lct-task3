@@ -35,7 +35,6 @@ _GENITIVE_TAIL = re.compile(r"(иной|овой|евой|ёвой|ыной)$", 
 
 CITIES = ("Домодедово", "Кашира", "Ступино", "Москва")
 
-MOSCOW_REGION_CITIES = ("Домодедово", "Кашира", "Ступино")
 
 _CITY_PREFIXES = (
     "г.город ",
@@ -58,13 +57,8 @@ class NormalizedAddress:
     house: str
     settlement: str = ""
 
-    @property
-    def query_no_house(self) -> str:
-        parts = [self.region if self.region != self.city else "", self.city, self.settlement, self.street]
-        return ", ".join(p for p in parts if p)
 
-
-def _strip_city(text: str) -> tuple[str, str, str]:
+def _strip_city(text: str) -> tuple[str, str, str, str]:
     """Отделяет город и регион от остатка адреса."""
     rest = text
     settlement = ""

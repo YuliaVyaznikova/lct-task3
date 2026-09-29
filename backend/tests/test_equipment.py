@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from planner.core import solver
+from planner.core import equipment, solver
 from planner.core.models import PlanParams, ReasonCode, Skill
 from planner.core.reasons import diagnose
 from planner.core.validate import Geo, evaluate, evaluate_route
-from planner.ingest import equipment, store
+from planner.ingest import store
 from tests.conftest import make_engineer, make_order, make_scenario
 
 FAST = PlanParams(objective="min_engineers", time_limit_s=3)
@@ -69,6 +69,7 @@ def test_route_cannot_exceed_the_morning_stock():
     assert any("не хватает оборудования" in v.text for v in violations)
 
 
+@pytest.mark.slow
 def test_solver_respects_the_stock():
     stock = equipment.load().stock["router"]
     orders = [
@@ -128,6 +129,7 @@ def test_real_orders_carry_their_needs(demo):
         assert all(count > 0 for count in order.attributes["equipment"].values())
 
 
+@pytest.mark.slow
 def test_real_plan_never_exceeds_the_stock(demo):
     geo = Geo(demo)
     plan = solver.plan(demo, geo, FAST)
@@ -141,6 +143,7 @@ def test_real_plan_never_exceeds_the_stock(demo):
             assert count <= stock.get(kind, 0), f"{route.engineer_id}: {kind} {count} > {stock}"
 
 
+@pytest.mark.slow
 def test_constraint_actually_binds(demo):
     """Ограничение должно работать, а не украшать: хоть у кого-то запас исчерпан."""
     geo = Geo(demo)
@@ -157,6 +160,7 @@ def test_constraint_actually_binds(demo):
     assert at_limit > 0, "если запас никому не мешает, ограничение ничего не значит"
 
 
+@pytest.mark.slow
 def test_equipment_check_appears_in_the_card(demo):
     from planner.core import explain
 
@@ -166,3 +170,9 @@ def test_equipment_check_appears_in_the_card(demo):
     for card in plan.explanations.values():
         texts = [check["text"] for check in card["checks"]]
         assert any(text.startswith("Оборудование") for text in texts)
+
+
+def test_missing_configuration_is_an_error(tmp_path):
+    """Без файла ограничение по оборудованию раньше молча отключалось."""
+    with pytest.raises(FileNotFoundError):
+        equipment.load(tmp_path / "equipment.yaml")

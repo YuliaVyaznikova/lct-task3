@@ -67,6 +67,7 @@ def test_reference_lists_dictionaries(client):
     assert "км/ч" in body["travel_model"]
 
 
+@pytest.mark.slow
 def test_plan_returns_both_variants_and_comparison(plan):
     assert plan["optimized"]["kind"] == "optimized"
     assert plan["baseline"]["kind"] == "baseline"
@@ -74,6 +75,7 @@ def test_plan_returns_both_variants_and_comparison(plan):
     assert keys[:2] == ["engineers_used", "distance_total_km"]
 
 
+@pytest.mark.slow
 def test_plan_beats_baseline_on_demo(plan):
     """Ради этого демо-набор и подбирался: выигрыш по обеим обязательным метрикам."""
     ours = plan["optimized"]["metrics"]
@@ -115,6 +117,7 @@ def test_unknown_scenario_in_plan_request(client):
     assert response.status_code == 404
 
 
+@pytest.mark.slow
 def test_cancel_event_produces_diff(client, plan):
     plan_id = plan["optimized"]["id"]
     target = next(
@@ -136,6 +139,7 @@ def test_cancel_event_produces_diff(client, plan):
     assert body["diff"]["locked_stops"] > 0
 
 
+@pytest.mark.slow
 def test_urgent_event_is_scheduled(client, plan):
     plan_id = plan["optimized"]["id"]
     anchor = plan["scenario"]["orders"][0]
@@ -160,6 +164,7 @@ def test_urgent_event_is_scheduled(client, plan):
     assert "API-SOS-1" in body["diff"]["added"]
 
 
+@pytest.mark.slow
 def test_urgent_order_stays_usable_after_replanning(client):
     """Регрессия: заявка, добавленная событием, должна быть полноценной."""
     created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
@@ -204,6 +209,7 @@ def test_urgent_order_stays_usable_after_replanning(client):
     assert len(covered) == len(response.json()["scenario"]["orders"])
 
 
+@pytest.mark.slow
 def test_engineer_unavailable_event(client, plan):
     plan_id = plan["optimized"]["id"]
     victim = max(plan["optimized"]["routes"], key=lambda r: len(r["stops"]))["engineer_id"]
@@ -234,6 +240,7 @@ def test_impossible_event_gives_conflict(client, plan):
     assert "уже выполняется" in response.json()["detail"]
 
 
+@pytest.mark.slow
 def test_manual_move_to_another_engineer(client):
     created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
     plan_id = created["optimized"]["id"]
@@ -275,6 +282,7 @@ def test_candidates_endpoint_returns_ordered_rows(client, plan):
     )
 
 
+@pytest.mark.slow
 def test_planning_job_stream_and_variant_selection(client):
     response = client.post(
         "/api/plans/jobs",
@@ -315,6 +323,7 @@ def test_manual_move_to_unsuitable_engineer_is_refused(client, plan):
     assert response.json()["detail"]
 
 
+@pytest.mark.slow
 def test_manual_unassign(client):
     created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
     plan_id = created["optimized"]["id"]
@@ -389,6 +398,7 @@ def test_scenarios_report_the_minimum_brigade_count(client):
         assert item["engineers_min"] <= item["engineers"]
 
 
+@pytest.mark.slow
 def test_plan_with_custom_brigade_count(client):
     response = client.post(
         "/api/plans", json={"scenario_id": "demo", "params": FAST, "engineer_count": 8}
@@ -401,6 +411,7 @@ def test_plan_with_custom_brigade_count(client):
     assert body["optimized"]["metrics"]["engineers_used"] <= 8
 
 
+@pytest.mark.slow
 def test_custom_brigade_count_does_not_change_the_saved_scenario(client):
     before = client.get("/api/scenarios/demo").json()
     client.post("/api/plans", json={"scenario_id": "demo", "params": FAST, "engineer_count": 7})
@@ -416,6 +427,7 @@ def test_too_few_brigades_is_a_readable_error(client):
     assert "не меньше 9" in response.json()["detail"]
 
 
+@pytest.mark.slow
 def test_reschedule_flag_passes_through_the_api(client):
     response = client.post(
         "/api/plans",
@@ -425,3 +437,109 @@ def test_reschedule_flag_passes_through_the_api(client):
     body = response.json()
     assert body["optimized"]["params"]["allow_reschedule"] is True
     assert body["optimized"]["metrics"]["rescheduled"] == 0, "первичный план окно не двигает"
+
+
+def test_geometry_legs_for_scenario_sequence(client, monkeypatch):
+    from planner.core import geometry
+
+    scenario = scenario_store.load("demo")
+    engineer = scenario.engineers[0]
+    order_ids = [scenario.orders[0].id, scenario.orders[1].id]
+    requested = []
+
+    def fake_fetch(legs, base_url=None, chains=None):
+        requested.append(set(legs))
+        return {leg: [[leg[0][0], leg[0][1]], [leg[1][0], leg[1][1]]] for leg in legs}
+
+    monkeypatch.setattr(geometry, "fetch_legs", fake_fetch)
+    body = client.post(
+        "/api/geometry/legs",
+        json={"scenario_id": "demo", "routes": {engineer.id: order_ids + ["missing"], "ghost": order_ids}},
+    ).json()
+
+    assert body["available"] is True
+    legs = body["legs"][engineer.id]
+    assert len(legs) == 3
+    assert legs[0][0] == list(engineer.start.coords if engineer.start.has_coords else scenario.office.coords)
+    assert legs[0][-1] == list(scenario.orders[0].coords)
+    assert legs[2] is None
+    assert body["legs"]["ghost"] == [None, None]
+    assert len(requested[0]) == 2
+
+
+def test_geometry_legs_unavailable_service_gives_empty_legs(client, monkeypatch):
+    from planner.core import geometry
+
+    scenario = scenario_store.load("demo")
+    monkeypatch.setattr(geometry, "fetch_legs", lambda legs, base_url=None, chains=None: {leg: None for leg in legs})
+    body = client.post(
+        "/api/geometry/legs",
+        json={"scenario_id": "demo", "routes": {scenario.engineers[0].id: [scenario.orders[0].id]}},
+    ).json()
+    assert body["available"] is False
+    assert body["legs"][scenario.engineers[0].id] == [None]
+
+
+def test_geometry_legs_need_a_scope(client):
+    assert client.post("/api/geometry/legs", json={"routes": {}}).status_code == 422
+    assert client.post("/api/geometry/legs", json={"scenario_id": "нет", "routes": {}}).status_code == 404
+
+
+@pytest.mark.slow
+def test_manual_edit_creates_new_plan_and_keeps_source(client):
+    created = client.post("/api/plans", json={"scenario_id": "demo", "params": FAST}).json()
+    source = created["optimized"]
+    order_id = next(r for r in source["routes"] if r["stops"])["stops"][0]["order_id"]
+
+    response = client.post(
+        f"/api/plans/{source['id']}/manual", json={"order_id": order_id, "engineer_id": None}
+    )
+    assert response.status_code == 200, response.text
+    edited = response.json()["optimized"]
+    assert edited["id"] != source["id"]
+    assert edited["origin"] == "manual"
+    assert edited["parent_plan_id"] == source["id"]
+    assert client.get(f"/api/plans/{edited['id']}").json()["optimized"]["id"] == edited["id"]
+
+    untouched = client.get(f"/api/plans/{source['id']}").json()["optimized"]
+    assert untouched["origin"] == "solver"
+    assert untouched["metrics"] == source["metrics"]
+    assert untouched["routes"] == source["routes"]
+
+    again = client.post(
+        f"/api/plans/{edited['id']}/manual", json={"order_id": order_id, "engineer_id": None}
+    ).json()["optimized"]
+    assert again["id"] not in {source["id"], edited["id"]}
+    assert again["parent_plan_id"] == edited["id"]
+    assert again["origin"] == "manual"
+
+
+@pytest.mark.slow
+def test_event_returns_variants_each_stored_as_plan(client):
+    created = client.post(
+        "/api/plans", json={"scenario_id": "demo", "params": {"objective": "auto", "time_limit_s": 3}}
+    ).json()
+    source = created["optimized"]
+    target = next(
+        s["order_id"] for r in source["routes"] for s in r["stops"] if s["departure"] > "11:10"
+    )
+    response = client.post(
+        f"/api/plans/{source['id']}/events",
+        json={"type": "cancel_order", "time": "11:10", "order_id": target},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    variants = body["variants"]
+    assert [v["key"] for v in variants] == [v["key"] for v in created["variants"]]
+    assert len(variants) == 3
+    assert body["plan"]["id"] in {v["plan_id"] for v in variants}
+    for variant in variants:
+        fetched = client.get(f"/api/plans/{variant['plan_id']}").json()
+        assert fetched["optimized"]["origin"] == "event"
+        assert fetched["optimized"]["parent_plan_id"] == source["id"]
+        assert fetched["optimized"]["metrics"] == variant["metrics"]
+        assert fetched["diff"]["after_plan_id"] == variant["plan_id"]
+        assert fetched["diff"]["before_plan_id"] == source["id"]
+        assert fetched["diff"]["metrics_after"] == variant["metrics"]
+        assert fetched["diff"]["event"]["type"] == "cancel_order"
+    assert client.get(f"/api/plans/{source['id']}").json()["diff"] is None

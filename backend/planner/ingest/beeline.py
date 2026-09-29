@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import io
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,8 +22,6 @@ ENCODINGS = ("utf-8-sig", "cp1251")
 DELIMITERS = (";", ",", "\t")
 
 OFFICE_PREFIX = "адрес оф"
-
-CANCEL_LEAD_MIN = 50
 
 FULL_DAY_WINDOW_MIN = 20 * 60
 
@@ -116,6 +113,63 @@ def _split_orders_and_office(rows: list[list[str]]) -> tuple[list[list[str]], st
     return orders, office
 
 
+def _column_indexes(header: list[str], file_name: str) -> dict[str, int | None]:
+    idx = {
+        "external_id": _column_index(header, "Заявка"),
+        "work_type": _column_index(header, "Тип заявки BK"),
+        "hd_type": _column_index(header, "Тип заявки HD"),
+        "start": _column_index(header, "Начало"),
+        "end": _column_index(header, "Окончание"),
+        "district": _column_index(header, "Район"),
+        "address": _column_index(header, "Адрес"),
+        "connection": _column_index(header, "Подключение"),
+        "gigabit": _column_index(header, "Гигабитное подключение"),
+    }
+    for required in ("work_type", "hd_type", "start", "end", "address"):
+        if idx[required] is None:
+            raise IngestError(f"в {file_name} нет обязательной колонки «{required}»")
+    return idx
+
+
+def _parse_order(
+    row: list[str], idx: dict[str, int | None], spec: RegionSpec, number: int, file_name: str
+) -> tuple[Order, str]:
+    work_type = _cell(row, idx["work_type"])
+    hd_type = _cell(row, idx["hd_type"])
+    norm = classify(work_type, hd_type)
+
+    start_date, window_start = parse_ru_datetime(_cell(row, idx["start"]))
+    end_date, window_end = parse_ru_datetime(_cell(row, idx["end"]))
+    if end_date != start_date:
+        raise IngestError(f"окно заявки пересекает сутки: строка {number} в {file_name}")
+
+    attributes: dict[str, object] = {}
+    connection = _cell(row, idx["connection"])
+    if connection:
+        attributes["connection"] = connection
+    gigabit = _cell(row, idx["gigabit"])
+    if gigabit:
+        attributes["gigabit"] = gigabit.casefold() == "да"
+    attributes["normative"] = norm.name
+
+    order = Order(
+        id=f"{spec.code}-{number:03d}",
+        external_id=_cell(row, idx["external_id"]),
+        address=_cell(row, idx["address"]),
+        district=_cell(row, idx["district"]),
+        skill=norm.skill,
+        work_type=work_type,
+        description=hd_type,
+        duration_min=norm.duration_min,
+        window_start=min_to_hhmm(window_start),
+        window_end=min_to_hhmm(window_end),
+        priority=norm.priority,
+        priority_tier=norm.priority_tier,
+        attributes=attributes,
+    )
+    return order, start_date
+
+
 def load_region(
     synthetic_csv: Path,
     control_csv: Path | None = None,
@@ -133,60 +187,14 @@ def load_region(
             f"не найдена строка с адресом офиса (префикс «{OFFICE_PREFIX}…») в {synthetic_csv}"
         )
 
-    idx = {
-        "external_id": _column_index(header, "Заявка"),
-        "work_type": _column_index(header, "Тип заявки BK"),
-        "hd_type": _column_index(header, "Тип заявки HD"),
-        "start": _column_index(header, "Начало"),
-        "end": _column_index(header, "Окончание"),
-        "district": _column_index(header, "Район"),
-        "address": _column_index(header, "Адрес"),
-        "connection": _column_index(header, "Подключение"),
-        "gigabit": _column_index(header, "Гигабитное подключение"),
-    }
-    for required in ("work_type", "hd_type", "start", "end", "address"):
-        if idx[required] is None:
-            raise IngestError(f"в {synthetic_csv.name} нет обязательной колонки «{required}»")
+    idx = _column_indexes(header, synthetic_csv.name)
 
     orders: list[Order] = []
     date: str | None = None
     for number, row in enumerate(order_rows, start=1):
-        work_type = _cell(row, idx["work_type"])
-        hd_type = _cell(row, idx["hd_type"])
-        norm = classify(work_type, hd_type)
-
-        start_date, window_start = parse_ru_datetime(_cell(row, idx["start"]))
-        end_date, window_end = parse_ru_datetime(_cell(row, idx["end"]))
-        date = date or start_date
-        if end_date != start_date:
-            raise IngestError(f"окно заявки пересекает сутки: строка {number} в {synthetic_csv.name}")
-
-        attributes: dict[str, object] = {}
-        connection = _cell(row, idx["connection"])
-        if connection:
-            attributes["connection"] = connection
-        gigabit = _cell(row, idx["gigabit"])
-        if gigabit:
-            attributes["gigabit"] = gigabit.casefold() == "да"
-        attributes["normative"] = norm.name
-
-        orders.append(
-            Order(
-                id=f"{spec.code}-{number:03d}",
-                external_id=_cell(row, idx["external_id"]),
-                address=_cell(row, idx["address"]),
-                district=_cell(row, idx["district"]),
-                skill=norm.skill,
-                work_type=work_type,
-                description=hd_type,
-                duration_min=norm.duration_min,
-                window_start=min_to_hhmm(window_start),
-                window_end=min_to_hhmm(window_end),
-                priority=norm.priority,
-                priority_tier=norm.priority_tier,
-                attributes=attributes,
-            )
-        )
+        order, order_date = _parse_order(row, idx, spec, number, synthetic_csv.name)
+        date = date or order_date
+        orders.append(order)
 
     scenario = Scenario(
         id=spec.id,
@@ -260,16 +268,6 @@ def cancelled_orders(scenario: Scenario) -> list[Order]:
     return [o for o in scenario.orders if o.attributes.get("control_status") == "Отменена"]
 
 
-def control_brigades(scenario: Scenario) -> list[str]:
-    """Бригады из контроля в порядке появления ориентир для числа инженеров."""
-    seen: list[str] = []
-    for order in scenario.orders:
-        brigade = order.attributes.get("control_engineer")
-        if isinstance(brigade, str) and brigade and brigade not in seen:
-            seen.append(brigade)
-    return seen
-
-
 def _guess_spec(path: Path) -> RegionSpec:
     name = path.name.casefold()
     for spec in sorted(REGIONS, key=lambda s: -len(s.name)):
@@ -294,9 +292,3 @@ def load_all(raw_dir: Path | None = None) -> list[Scenario]:
         scenarios.append(load_region(synthetic, control, spec=spec))
     return scenarios
 
-
-_SUFFIX_RE = re.compile(r"\s+")
-
-
-def normalize_whitespace(value: str) -> str:
-    return _SUFFIX_RE.sub(" ", value).strip()

@@ -70,7 +70,7 @@ def test_registered_transit_matrices_match_old_arc_formulas():
 
 def test_solution_callback_publishes_validator_metrics(toy, toy_geo):
     updates: list[dict] = []
-    plan = solver.plan(
+    solver.plan(
         toy, toy_geo,
         PlanParams(objective="min_engineers", time_limit_s=2, no_improve_s=1),
         on_progress=updates.append,

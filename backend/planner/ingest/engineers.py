@@ -10,7 +10,6 @@ from typing import Any
 import yaml
 
 from planner.core.models import Engineer, Order, Point, Scenario, Skill, Transport
-from planner.core.timeutil import hhmm_to_min
 from planner.paths import CONFIG_DIR
 
 MAX_ATTEMPTS = 100
@@ -41,7 +40,6 @@ class EngineerConfig:
     required_transport_share: float
     min_cars: int
     remote_bases: list[RemoteBase] = field(default_factory=list)
-    extra: dict[str, Any] = field(default_factory=dict)
 
 
 class InvariantError(RuntimeError):
@@ -343,12 +341,3 @@ def summary(engineers: list[Engineer]) -> str:
         f"владельцев навыка {dict(by_skill)}; смены {dict(by_shift)}"
     )
 
-
-def latest_finish(scenario: Scenario) -> int:
-    """Самое позднее допустимое окончание работ для проверки длины смен."""
-    return max(o.window_end_min + o.duration_min for o in scenario.orders)
-
-
-def shift_covers_all_windows(scenario: Scenario) -> bool:
-    latest = max(hhmm_to_min(e.shift_end) for e in scenario.engineers)
-    return latest >= max(o.window_end_min for o in scenario.orders)

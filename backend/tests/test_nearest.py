@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from planner.api import app as api
+from planner.api import lookup
 from planner.api.candidates import nearest_window
 from planner.core import solver
 from planner.core.models import PlanParams, Priority, Skill
@@ -73,7 +74,7 @@ def test_incident_is_never_offered_an_earlier_window():
 
 def test_endpoint_returns_the_hint(monkeypatch):
     scenario = morning_only()
-    monkeypatch.setattr(api, "_load_scenario", lambda _: scenario)
+    monkeypatch.setattr(lookup, "load_scenario", lambda _: scenario)
     client = TestClient(api.app)
     created = client.post("/api/plans", json={"scenario_id": scenario.id, "params": QUICK.model_dump()}).json()
 

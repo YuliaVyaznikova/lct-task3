@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from planner.core import explain as explain_module
 from planner.core import solver
@@ -26,6 +26,7 @@ from planner.core.models import (
     Stop,
     UrgentOrderEvent,
 )
+from planner.core.text import plural
 from planner.core.timeutil import hhmm_to_min, min_to_hhmm
 from planner.core.validate import Geo, StartState, check_static, evaluate_route
 
@@ -277,10 +278,8 @@ def replan(
 ) -> tuple[Plan, Diff]:
     """Пересчитывает план после события."""
     geo = geo or Geo(scenario)
-    search_params = params or plan.params.model_copy(update={"time_limit_s": DEFAULT_EVENT_BUDGET_S})
-    search_params = search_params.model_copy(update={"stability_weight_m": _stability_for(event)})
+    search_params = _search_params(plan, event, params)
     at_min = hhmm_to_min(event.time)
-
     frozen = freeze(geo, plan, at_min)
     geo, pool, caption = apply_event(scenario, geo, frozen, event, at_min)
     remap_starts(geo, frozen)
@@ -299,7 +298,57 @@ def replan(
         on_progress=on_progress,
         seed=seed,
     )
+    return _finish(geo, plan, new_plan, event, frozen, caption, at_min)
+
+
+def replan_variants(
+    scenario: Scenario,
+    plan: Plan,
+    event: Event,
+    objectives: tuple[str, ...],
+    plan_ids: list[str],
+    geo: Geo | None = None,
+    params: PlanParams | None = None,
+    on_progress: Callable[[dict], None] | None = None,
+) -> list[tuple[Plan, Diff]]:
+    """Пересчитывает план после события по каждой цели из общего замороженного состояния."""
+    geo = geo or Geo(scenario)
+    search_params = _search_params(plan, event, params)
+    at_min = hhmm_to_min(event.time)
+    frozen = freeze(geo, plan, at_min)
+    geo, pool, caption = apply_event(scenario, geo, frozen, event, at_min)
+    remap_starts(geo, frozen)
+
+    if len(objectives) == 1:
+        attempts = [solver.plan(
+            scenario, geo, search_params.model_copy(update={"objective": objectives[0]}),
+            plan_id=plan_ids[0], starts=frozen.starts, order_ids=pool,
+            previous=plan.assignment, on_progress=on_progress,
+        )]
+    else:
+        attempts = solver.parallel_plans(
+            scenario, search_params, objectives, plan_ids[0], frozen.starts, pool,
+            plan.assignment, on_progress,
+        )
+    results = []
+    for attempt, attempt_id in zip(attempts, plan_ids):
+        attempt.id = attempt_id
+        results.append(_finish(geo, plan, attempt, event, frozen, caption, at_min))
+    return results
+
+
+def _search_params(plan: Plan, event: Event, params: PlanParams | None) -> PlanParams:
+    """Параметры поиска после события: бюджет события и вес устойчивости."""
+    base = params or plan.params.model_copy(update={"time_limit_s": DEFAULT_EVENT_BUDGET_S})
+    return base.model_copy(update={"stability_weight_m": _stability_for(event)})
+
+
+def _finish(
+    geo: Geo, plan: Plan, new_plan: Plan, event: Event, frozen: Frozen, caption: str, at_min: int
+) -> tuple[Plan, Diff]:
+    """Помечает новый план происхождением, объясняет его и строит разницу."""
     new_plan.parent_plan_id = plan.id
+    new_plan.origin = "event"
     new_plan.event = event
     new_plan.planned_from = min_to_hhmm(at_min)
     explain_module.attach(geo, new_plan, frozen.starts)
@@ -395,6 +444,41 @@ def build_diff(before: Plan, after: Plan, event: Event, locked: int, caption: st
     )
 
 
+def _id_list_sentence(prefix: str, order_ids: list[str]) -> str:
+    """Предложение со списком заявок, длинный список обрезается тремя."""
+    ellipsis = "…" if len(order_ids) > 3 else ""
+    return f"{prefix}: {', '.join(order_ids[:3])}{ellipsis}."
+
+
+def _change_sentences(
+    changed: list[Change], newly_assigned: list[str], newly_unassigned: list[str]
+) -> list[str]:
+    """Предложения о переназначенных, сдвинутых, добавленных и выпавших заявках."""
+    moved = [c for c in changed if c.from_engineer != c.to_engineer]
+    shifted = [c for c in changed if c.from_engineer == c.to_engineer]
+    sentences: list[str] = []
+    if moved:
+        first = moved[0]
+        sentences.append(
+            f"Переназначено {len(moved)} "
+            f"{plural(len(moved), 'заявка', 'заявки', 'заявок')} "
+            f"(например, {first.order_id}: {first.from_engineer} → {first.to_engineer}, "
+            f"начало {first.from_start} → {first.to_start})."
+        )
+    if shifted:
+        sentences.append(
+            f"У {len(shifted)} {plural(len(shifted), 'заявки', 'заявок', 'заявок')} "
+            "сдвинулось время начала."
+        )
+    if newly_assigned:
+        sentences.append(_id_list_sentence("Удалось разместить ранее неназначенные", newly_assigned))
+    if newly_unassigned:
+        sentences.append(_id_list_sentence("Выпали из плана", newly_unassigned))
+    if not sentences:
+        sentences.append("Остальной план не изменился.")
+    return sentences
+
+
 def _summary(
     before: Plan,
     after: Plan,
@@ -404,45 +488,17 @@ def _summary(
     locked: int,
     caption: str,
 ) -> str:
-    from planner.core.reasons import _plural
-
     parts = [f"Событие: {caption}."]
     parts.append(
         f"Зафиксировано {locked} "
-        f"{_plural(locked, 'визит', 'визита', 'визитов')}, к которым выехали до события."
+        f"{plural(locked, 'визит', 'визита', 'визитов')}, к которым выехали до события."
     )
 
-    moved = [c for c in changed if c.from_engineer != c.to_engineer]
-    shifted = [c for c in changed if c.from_engineer == c.to_engineer]
-    if moved:
-        first = moved[0]
-        parts.append(
-            f"Переназначено {len(moved)} "
-            f"{_plural(len(moved), 'заявка', 'заявки', 'заявок')} "
-            f"(например, {first.order_id}: {first.from_engineer} → {first.to_engineer}, "
-            f"начало {first.from_start} → {first.to_start})."
-        )
-    if shifted:
-        parts.append(
-            f"У {len(shifted)} {_plural(len(shifted), 'заявки', 'заявок', 'заявок')} "
-            "сдвинулось время начала."
-        )
-    if newly_assigned:
-        parts.append(
-            f"Удалось разместить ранее неназначенные: {', '.join(newly_assigned[:3])}"
-            + ("…" if len(newly_assigned) > 3 else "") + "."
-        )
-    if newly_unassigned:
-        parts.append(
-            f"Выпали из плана: {', '.join(newly_unassigned[:3])}"
-            + ("…" if len(newly_unassigned) > 3 else "") + "."
-        )
-    if not moved and not shifted and not newly_assigned and not newly_unassigned:
-        parts.append("Остальной план не изменился.")
+    parts.extend(_change_sentences(changed, newly_assigned, newly_unassigned))
 
     if after.metrics.rescheduled:
         count = after.metrics.rescheduled
-        word = _plural(count, "заявке", "заявкам", "заявкам")
+        word = plural(count, "заявке", "заявкам", "заявкам")
         parts.append(
             f"По {count} {word} пришлось сдвинуть обещанное клиенту время, "
             "службе поддержки нужно предупредить клиентов."

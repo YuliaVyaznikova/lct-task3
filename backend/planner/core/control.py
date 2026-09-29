@@ -16,6 +16,7 @@ from planner.core.models import (
     Transport,
     Violation,
 )
+from planner.core.text import plural
 from planner.core.validate import Geo, evaluate
 
 CONTROL_ATTRIBUTE = "control_engineer"
@@ -36,20 +37,18 @@ class ControlReference:
         return sum(1 for violation in self.violations if violation.code == "WINDOW")
 
     def summary(self) -> str:
-        from planner.core.reasons import _plural
-
         if not self.brigades:
             return "В выгрузке нет контрольного распределения для этого участка."
 
         count = len(self.brigades)
-        word = _plural(count, "бригада", "бригады", "бригад")
+        word = plural(count, "бригада", "бригады", "бригад")
         text = (
             f"Фактически заявки выполняли {count} {word}, "
             f"суммарный пробег около {self.metrics.distance_total_km:.0f} км "
             f"({self.metrics.distance_per_order_km:.1f} км на заявку)."
         )
         if self.late_starts:
-            visits = _plural(self.late_starts, "визит", "визита", "визитов")
+            visits = plural(self.late_starts, "визит", "визита", "визитов")
             text += (
                 f" При этом {self.late_starts} {visits} начинались позже окна, "
                 "обещанного клиенту, то есть ручное распределение не укладывается "
@@ -60,6 +59,16 @@ class ControlReference:
 
 def has_control(scenario: Scenario) -> bool:
     return any(order.attributes.get(CONTROL_ATTRIBUTE) for order in scenario.orders)
+
+
+def control_brigades(scenario: Scenario) -> list[str]:
+    """Бригады из контроля в порядке появления ориентир для числа инженеров."""
+    seen: list[str] = []
+    for order in scenario.orders:
+        brigade = order.attributes.get(CONTROL_ATTRIBUTE)
+        if isinstance(brigade, str) and brigade and brigade not in seen:
+            seen.append(brigade)
+    return seen
 
 
 def brigade_engineers(scenario: Scenario, names: list[str]) -> list[Engineer]:
@@ -84,8 +93,6 @@ def brigade_engineers(scenario: Scenario, names: list[str]) -> list[Engineer]:
 
 def build(scenario: Scenario) -> ControlReference:
     """Восстанавливает фактические маршруты бригад и считает их метрики."""
-    from planner.ingest.beeline import control_brigades
-
     names = control_brigades(scenario)
     if not names:
         empty = Plan(id="control", scenario_id=scenario.id, kind="baseline")

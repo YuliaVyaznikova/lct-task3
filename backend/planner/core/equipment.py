@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from planner.core.models import Order, Scenario
+from planner.core.worktype import first_match
 from planner.paths import CONFIG_DIR
 
 
@@ -36,8 +37,6 @@ class EquipmentConfig:
 @lru_cache(maxsize=4)
 def load(path: Path | None = None) -> EquipmentConfig:
     path = path or CONFIG_DIR / "equipment.yaml"
-    if not path.is_file():
-        return EquipmentConfig()
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     rules = tuple(
         Rule(
@@ -56,16 +55,8 @@ def load(path: Path | None = None) -> EquipmentConfig:
 
 def needs_for(work_type: str, hd_type: str, config: EquipmentConfig | None = None) -> dict[str, int]:
     """Что нужно взять с собой для этой заявки."""
-    config = config or load()
-    work = (work_type or "").strip().casefold()
-    hd = (hd_type or "").strip().casefold()
-    for rule in config.rules:
-        if rule.work_type != "*" and rule.work_type != work:
-            continue
-        if rule.hd_match != "*" and rule.hd_match not in hd:
-            continue
-        return dict(rule.items)
-    return {}
+    rule = first_match((config or load()).rules, work_type, hd_type)
+    return dict(rule.items) if rule is not None else {}
 
 
 def order_needs(order: Order, config: EquipmentConfig | None = None) -> dict[str, int]:

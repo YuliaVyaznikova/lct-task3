@@ -7,8 +7,6 @@ import re
 _HHMM = re.compile(r"^(\d{1,2}):(\d{2})$")
 _DT = re.compile(r"^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$")
 
-DAY_MIN = 24 * 60
-
 
 def hhmm_to_min(value: str) -> int:
     """'9:05' / '09:05' -> 545."""

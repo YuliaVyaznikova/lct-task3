@@ -38,10 +38,8 @@ def test_scenario_without_control_is_handled():
 
 @pytest.mark.parametrize("region", REGIONS)
 def test_brigades_match_the_control_file(scenarios, region):
-    from planner.ingest.beeline import control_brigades
-
     reference = control.build(scenarios[region])
-    assert reference.brigades == control_brigades(scenarios[region])
+    assert reference.brigades == control.control_brigades(scenarios[region])
     assert reference.metrics.engineers_used == len(reference.brigades)
 
 
@@ -74,6 +72,7 @@ def test_manual_distribution_misses_windows(scenarios):
 
 
 @pytest.mark.parametrize("region", REGIONS)
+@pytest.mark.slow
 def test_our_plan_never_misses_a_window(scenarios, region):
     """В отличие от факта, наш план не нарушает окон ни разу."""
     scenario = scenarios[region]
@@ -87,6 +86,7 @@ def test_our_plan_never_misses_a_window(scenarios, region):
 
 
 @pytest.mark.parametrize("region", ["vostok", "yugocentr"])
+@pytest.mark.slow
 def test_compact_regions_beat_the_manual_plan_on_mileage(scenarios, region):
     """На компактных московских участках маршруты короче фактических."""
     scenario = scenarios[region]
@@ -96,6 +96,7 @@ def test_compact_regions_beat_the_manual_plan_on_mileage(scenarios, region):
     assert ours.metrics.distance_per_order_km < reference.metrics.distance_per_order_km
 
 
+@pytest.mark.slow
 def test_yugo_vostok_pays_for_stricter_constraints(scenarios):
     """На Юго-Востоке мы проигрываем факту по километрам и это осознанная цена."""
     scenario = scenarios["yugo-vostok"]
@@ -123,6 +124,7 @@ def test_yugo_vostok_pays_for_stricter_constraints(scenarios):
     )
 
 
+@pytest.mark.slow
 def test_our_plan_breaks_no_windows_unlike_the_manual_one(scenarios):
     scenario = scenarios["yugo-vostok"]
     geo = Geo(scenario)
@@ -133,6 +135,7 @@ def test_our_plan_breaks_no_windows_unlike_the_manual_one(scenarios):
             assert stop.start <= orders[stop.order_id].window_end
 
 
+@pytest.mark.slow
 def test_comparison_rows_are_limited_to_comparable_metrics(scenarios):
     scenario = scenarios["vostok"]
     reference = control.build(scenario)

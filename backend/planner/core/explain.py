@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
+from planner.core.equipment import describe_needs
 from planner.core.models import (
-    PRIORITY_RU,
+    REASON_RU,
     SKILL_RU,
     TRANSPORT_RU,
     Engineer,
@@ -14,12 +15,13 @@ from planner.core.models import (
     Route,
     Stop,
 )
-from planner.core.reasons import _plural
-from planner.core.timeutil import fmt_minutes, hhmm_to_min
+from planner.core.text import plural
+from planner.core.timeutil import fmt_minutes
 from planner.core.validate import (
     Geo,
     StartState,
     best_insertion,
+    check_static,
     evaluate_route,
     first_blocking_violation,
 )
@@ -43,9 +45,6 @@ class OrderExplanation:
     alternatives: list[str] = field(default_factory=list)
     why: str = ""
 
-    def to_dict(self) -> dict:
-        return asdict(self)
-
 
 def _previous_point(geo: Geo, route: Route, stop: Stop, start: StartState | None = None) -> str:
     position = route.stops.index(stop)
@@ -63,8 +62,6 @@ def _previous_point(geo: Geo, route: Route, stop: Stop, start: StartState | None
 
 
 def _equipment_check(geo: Geo, route: Route, stop: Stop) -> str:
-    from planner.ingest.equipment import describe_needs
-
     needs = geo.equipment_needs(stop.order_id)
     taken: dict[str, int] = {}
     for earlier in route.stops[: route.stops.index(stop) + 1]:
@@ -160,9 +157,7 @@ def _alternatives(
     for engineer in geo.scenario.engineers:
         if engineer.id == chosen.id:
             continue
-        if order.skill not in engineer.skills or (
-            order.required_transport is not None and order.required_transport != engineer.transport
-        ):
+        if check_static(engineer, order) is not None:
             no_skill += 1
             continue
 
@@ -181,7 +176,7 @@ def _alternatives(
     lines = [text for _, text in cheaper[:MAX_ALTERNATIVES]]
     lines += blocked[: max(0, MAX_ALTERNATIVES - len(lines))]
     if no_skill:
-        word = _plural(no_skill, "инженер", "инженера", "инженеров")
+        word = plural(no_skill, "инженер", "инженера", "инженеров")
         lines.append(f"ещё {no_skill} {word} не подходят по навыку или транспорту")
 
     why = _alternative_reason(
@@ -260,7 +255,7 @@ def explain_route(geo: Geo, route: Route) -> str:
             districts.append(district)
 
     count = len(route.stops)
-    word = _plural(count, "заявка", "заявки", "заявок")
+    word = plural(count, "заявка", "заявки", "заявок")
     text = (
         f"{engineer.name} ({TRANSPORT_RU[engineer.transport]}): {count} {word}, "
         f"{route.distance_km:.1f} км, {fmt_minutes(route.travel_min)} в пути"
@@ -286,21 +281,13 @@ def explain_plan(geo: Geo, plan: Plan) -> str:
     if plan.unassigned:
         from collections import Counter
 
-        by_reason = Counter(u.reason_code.value for u in plan.unassigned)
-        titles = {
-            "CAPACITY": "не хватило мощности",
-            "NO_SKILL": "нет навыка",
-            "NO_TRANSPORT": "нет нужного транспорта",
-            "SHIFT_MISMATCH": "окно не попадает в смены",
-            "UNREACHABLE": "слишком далеко",
-            "NO_COORDS": "нет координат",
-        }
+        by_reason = Counter(u.reason_code for u in plan.unassigned)
         listed = ", ".join(
-            f"{titles.get(code, code)}: {count}" for code, count in by_reason.most_common()
+            f"{REASON_RU[code]}: {count}" for code, count in by_reason.most_common()
         )
         parts.append(f"Не назначено {len(plan.unassigned)}: {listed}.")
         if m.extra_engineers_needed:
-            word = _plural(m.extra_engineers_needed, "инженер", "инженера", "инженеров")
+            word = plural(m.extra_engineers_needed, "инженер", "инженера", "инженеров")
             parts.append(
                 f"Чтобы выполнить всё, нужно ещё {m.extra_engineers_needed} {word}."
             )
@@ -317,7 +304,7 @@ def explain_plan(geo: Geo, plan: Plan) -> str:
 def attach(geo: Geo, plan: Plan, starts: dict[str, StartState] | None = None) -> Plan:
     """Наполняет план объяснениями всех трёх уровней."""
     plan.explanations = {
-        stop.order_id: explain_order(geo, plan, stop.order_id, starts).to_dict()
+        stop.order_id: asdict(explain_order(geo, plan, stop.order_id, starts))
         for route in plan.routes
         for stop in route.stops
     }
@@ -339,15 +326,3 @@ def timeline_summary(geo: Geo, route: Route) -> list[str]:
         )
     return lines
 
-
-def describe_order(order: Order) -> str:
-    return (
-        f"{order.id} · {order.work_type} / {order.description} · "
-        f"{SKILL_RU[order.skill]} · {PRIORITY_RU[order.priority]} · "
-        f"окно {order.window_start}–{order.window_end} · {order.duration_min} мин · "
-        f"{order.district}, {order.address}"
-    )
-
-
-def minutes_between(start: str, finish: str) -> int:
-    return hhmm_to_min(finish) - hhmm_to_min(start)

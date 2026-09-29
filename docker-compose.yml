@@ -8,3 +8,8 @@ services:
       # Ключ геокодера нужен только для пересборки данных из сырых CSV.
       # Готовые сценарии с координатами уже лежат в data/scenarios.
       DADATA_KEY: "${DADATA_KEY:-}"
+    volumes:
+      - saved-plans:/app/runtime/saved
+
+volumes:
+  saved-plans:

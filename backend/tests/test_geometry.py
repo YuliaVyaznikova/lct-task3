@@ -20,6 +20,7 @@ def plan(toy, toy_geo):
     return solver.plan(toy, toy_geo, FAST)
 
 
+@pytest.mark.slow
 def test_route_points_start_from_the_engineers_own_point(toy, toy_geo, plan):
     """Линия начинается там же, где начинается маршрут, у инженера, не у офиса."""
     route = next(r for r in plan.routes if r.stops)
@@ -32,6 +33,7 @@ def test_route_points_start_from_the_engineers_own_point(toy, toy_geo, plan):
         assert point == toy_geo.orders[stop.order_id].coords
 
 
+@pytest.mark.slow
 def test_route_points_respect_a_remote_base(toy, plan):
     remote = toy.engineers[0].model_copy(
         update={"start": Point(address="выездная база", lat=55.9, lon=37.9)}
@@ -45,6 +47,7 @@ def test_route_points_respect_a_remote_base(toy, plan):
     assert geometry.route_points(geo, rebuilt, remote.id)[0] == (55.9, 37.9)
 
 
+@pytest.mark.slow
 def test_engineer_without_stops_has_no_line(toy_geo, plan):
     idle = [r.engineer_id for r in plan.routes if not r.stops]
     for engineer_id in idle:
@@ -99,6 +102,30 @@ def test_broken_cache_does_not_crash(monkeypatch, tmp_path):
     assert error
 
 
+def test_unwritable_cache_is_logged(monkeypatch, tmp_path, caplog):
+    """Линия всё равно возвращается, но потерю кэша видно в журнале."""
+    blocker = tmp_path / "file"
+    blocker.write_text("", encoding="utf-8")
+    monkeypatch.setattr(geometry, "_cache_path", lambda _points: blocker / "line.json")
+
+    import httpx
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"code": "Ok", "routes": [{"geometry": {"coordinates": [[37.60, 55.70], [37.62, 55.71]]}}]}
+
+    monkeypatch.setattr(httpx, "get", lambda *args, **kwargs: Response())
+
+    line, error = geometry.fetch_line([(55.70, 37.60), (55.71, 37.62)], UNREACHABLE)
+    assert line == [[55.70, 37.60], [55.71, 37.62]]
+    assert error is None
+    assert "не сохранена в кэш" in caplog.text
+
+
+@pytest.mark.slow
 def test_build_degrades_gracefully(toy_geo, plan):
     """Недоступный маршрутизатор это прямые линии на карте, а не ошибка."""
     result = geometry.build(toy_geo, plan, UNREACHABLE)
@@ -142,6 +169,7 @@ def test_build_reports_nothing_to_draw(toy, toy_geo):
     assert "нет маршрутов" in " ".join(result.errors)
 
 
+@pytest.mark.slow
 def test_geometry_never_touches_the_plan(toy_geo, plan):
     """Оформление не имеет права менять расчёт."""
     before = plan.model_dump()
@@ -171,3 +199,105 @@ def test_coordinates_are_returned_in_map_order(monkeypatch, tmp_path):
     line, error = geometry.fetch_line([(55.70, 37.60), (55.71, 37.62)], "http://osrm.local")
     assert error is None
     assert line == [[55.70, 37.60], [55.71, 37.62]]
+
+
+@pytest.fixture
+def isolated_cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(geometry, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(geometry, "_service_down_until", 0.0)
+    return tmp_path
+
+
+def test_sequence_legs_follow_the_route_endpoints(toy):
+    engineer = toy.engineers[0]
+    legs = geometry.sequence_legs(toy, {engineer.id: ["A", "B"], "ghost": ["A"]})
+
+    orders = toy.orders_by_id
+    assert legs[engineer.id] == [
+        (engineer.start.coords, orders["A"].coords),
+        (orders["A"].coords, orders["B"].coords),
+    ]
+    assert legs["ghost"] == [None]
+
+
+def test_sequence_legs_skip_unknown_orders(toy):
+    engineer = toy.engineers[0]
+    legs = geometry.sequence_legs(toy, {engineer.id: ["A", "missing", "B"]})[engineer.id]
+    assert legs[0] is not None
+    assert legs[1] is None and legs[2] is None
+
+
+def test_fetch_legs_requests_each_leg_once_and_caches(monkeypatch, isolated_cache):
+    import httpx
+
+    calls = []
+
+    class Reply:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "code": "Ok",
+                "routes": [{"geometry": {"coordinates": [[37.6, 55.7], [37.61, 55.705], [37.62, 55.71]]}}],
+            }
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return Reply()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    leg = ((55.70, 37.60), (55.71, 37.62))
+
+    first = geometry.fetch_legs({leg}, "http://osrm.test")
+    assert first[leg] == [[55.7, 37.6], [55.705, 37.61], [55.71, 37.62]]
+    assert len(calls) == 1
+
+    again = geometry.fetch_legs({leg}, "http://osrm.test")
+    assert again[leg] == first[leg]
+    assert len(calls) == 1
+
+
+def test_fetch_legs_take_a_chain_in_one_request_and_cache_each_leg(monkeypatch, isolated_cache):
+    import httpx
+
+    calls = []
+    road = [[37.60, 55.70], [37.605, 55.702], [37.61, 55.705], [37.615, 55.708], [37.62, 55.71]]
+
+    class Reply:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"code": "Ok", "routes": [{"geometry": {"coordinates": road}}]}
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return Reply()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    first = ((55.70, 37.60), (55.705, 37.61))
+    second = ((55.705, 37.61), (55.71, 37.62))
+
+    found = geometry.fetch_legs({first, second}, "http://osrm.test", chains=[[first, second]])
+    assert len(calls) == 1
+    assert found[first] == [[55.702, 37.605]]
+    assert found[second] == [[55.708, 37.615]]
+
+    again = geometry.fetch_legs({first, second}, "http://osrm.test")
+    assert len(calls) == 1
+    assert again == found
+
+
+def test_fetch_legs_leave_unreachable_legs_empty_and_pause(monkeypatch, isolated_cache):
+    leg = ((55.70, 37.60), (55.71, 37.62))
+    assert geometry.fetch_legs({leg}, UNREACHABLE) == {leg: None}
+    assert geometry.time.monotonic() < geometry._service_down_until
+
+    import httpx
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("во время паузы сервис не опрашивается")
+
+    monkeypatch.setattr(httpx, "get", refuse)
+    assert geometry.fetch_legs({leg}, "http://osrm.test") == {leg: None}

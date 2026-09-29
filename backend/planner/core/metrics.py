@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from planner.core.models import Metrics, Plan, Priority, Route, Scenario, Unassigned
+from planner.core.models import Metrics, Priority, Route, Scenario, Unassigned
 from planner.core.timeutil import hhmm_to_min
 
 LATE_RISK_MARGIN_MIN = 15
@@ -41,18 +41,14 @@ def compute(
 
     utilization: dict[str, float] = {}
     for route in used:
-        engineer = engineers.get(route.engineer_id)
-        if engineer is None:
-            continue
+        engineer = engineers[route.engineer_id]
         shift = max(engineer.shift_end_min - engineer.shift_start_min, 1)
         utilization[route.engineer_id] = round((route.work_min + route.travel_min) / shift, 3)
 
     late_risk = 0
     for route in routes:
         for stop in route.stops:
-            order = orders.get(stop.order_id)
-            if order is None:
-                continue
+            order = orders[stop.order_id]
             if order.window_end_min - hhmm_to_min(stop.start) < LATE_RISK_MARGIN_MIN:
                 late_risk += 1
 
@@ -95,7 +91,6 @@ class MetricRow:
     baseline: float
     delta: float
     better: bool | None
-    higher_is_better: bool
 
 
 COMPARISON_ROWS: tuple[tuple[str, str, bool], ...] = (
@@ -130,7 +125,6 @@ def compare(ours: Metrics, baseline: Metrics) -> list[MetricRow]:
                 baseline=b,
                 delta=delta,
                 better=better,
-                higher_is_better=higher_is_better,
             )
         )
     return rows
@@ -158,7 +152,3 @@ def is_better(ours: Metrics, baseline: Metrics) -> bool:
         return ours.engineers_used < baseline.engineers_used
     return ours.distance_total_km < baseline.distance_total_km
 
-
-def attach(plan: Plan, scenario: Scenario, extra_engineers_needed: int = 0) -> Plan:
-    plan.metrics = compute(scenario, plan.routes, plan.unassigned, extra_engineers_needed)
-    return plan
