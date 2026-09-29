@@ -15,7 +15,7 @@ export interface PlanParamsUi {
 export const DEFAULT_PARAMS: PlanParamsUi = {
   objective: 'auto',
   timeLimit: 20,
-  lunch: true,
+  lunch: false,
   allowReschedule: false,
   engineerCount: null,
 }
