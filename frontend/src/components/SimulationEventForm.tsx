@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api'
+import { displayAddress } from '../derive'
 import type { LatLon } from '../geo'
 import type { EngineerState } from '../sim'
 import { departureMin, hhmm, minutes } from '../time'
@@ -182,7 +183,7 @@ export function SimulationEventForm({
                 {scenario.orders.map((order) => (
                   <option key={order.id} value={order.id}>
                     {order.district ? `${order.district}, ` : ''}
-                    {order.address}
+                    {displayAddress(order.address)}
                   </option>
                 ))}
               </select>

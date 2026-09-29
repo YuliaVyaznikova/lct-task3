@@ -125,8 +125,8 @@ export function humanizeCodes(text: string): string {
 export const OBJECTIVE_LABEL: Record<Objective, string> = {
   auto: 'Автоматически',
   min_engineers: 'Меньше инженеров',
-  min_distance: 'Меньше пробега',
-  balanced: 'Равномерная загрузка',
+  min_distance: 'Меньший пробег',
+  balanced: 'Ровная загрузка',
 }
 
 export const percent = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0)
