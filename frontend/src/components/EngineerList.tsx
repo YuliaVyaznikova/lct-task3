@@ -3,10 +3,11 @@ import { useEngineerColor } from '../colors'
 import { matchesFilter, toggled, type EngineerFilter } from '../engineer-filter'
 import { ordersById, placeLabel } from '../derive'
 import { km, SKILL_SHORT, TRANSPORT_RU } from '../labels'
-import { STATUS_RU, type EngineerState } from '../sim'
+import { dayRange, STATUS_RU, type EngineerState } from '../sim'
 import { startPlaces, type LatLon } from '../geo'
 import type { Engineer, Plan, Scenario, Skill, Transport } from '../types'
 import { LockIcon } from './common'
+import { MiniSchedule } from './MiniSchedule'
 import { PLACE_TITLE, PlaceMark } from './PlaceCard'
 import { TransportIcon } from './TransportIcon'
 
@@ -74,6 +75,7 @@ export function EngineerList({
   const visitsOf = (id: string) =>
     liveRoutes ? liveRoutes[id]?.length ?? 0 : plan?.routes.find((r) => r.engineer_id === id)?.stops.length ?? 0
   const used = scenario.engineers.filter((e) => visitsOf(e.id) > 0).length
+  const range = dayRange(scenario, plan?.routes ?? [])
   const places = startPlaces(scenario).filter((place) => place.engineers.length > 0)
   const ordered = (engineers: Engineer[]) =>
     [...engineers].sort((a, b) => Number(unavailable.has(a.id)) - Number(unavailable.has(b.id)))
@@ -81,7 +83,6 @@ export function EngineerList({
   const renderEngineer = (engineer: Engineer) => {
     const route = plan?.routes.find((r) => r.engineer_id === engineer.id)
     const visits = visitsOf(engineer.id)
-    const load = plan && !liveRoutes ? plan.metrics.utilization_by_engineer[engineer.id] ?? 0 : null
     const frozen = route?.stops.some((s) => s.locked) ?? false
     const off = unavailable.has(engineer.id)
     const state = simStates?.[engineer.id]
@@ -111,13 +112,7 @@ export function EngineerList({
             </span>
           </span>
           <span className="eng-load">
-            {load !== null ? (
-              <span className="load-bar" title={`Загрузка смены ${Math.round(load * 100)}%`}>
-                <i style={{ width: `${Math.min(100, Math.round(load * 100))}%`, background: color }} />
-              </span>
-            ) : (
-              <span className="load-bar empty" />
-            )}
+            <MiniSchedule engineer={engineer} route={liveRoutes ? undefined : route} range={range} color={color} />
             <span className="eng-shift">
               {engineer.shift_start}–{engineer.shift_end}
             </span>

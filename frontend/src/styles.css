@@ -562,7 +562,7 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .eng-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 12px minmax(0, 1fr) 64px 30px;
+  grid-template-columns: 12px minmax(0, 1fr) 112px 30px;
   gap: 8px;
   align-items: center;
   border: none;
@@ -591,8 +591,12 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .eng-name-text { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 .eng-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .eng-load { display: flex; flex-direction: column; gap: 3px; }
-.load-bar { display: block; height: 5px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
-.load-bar i { display: block; height: 100%; border-radius: 3px; }
+.mini { position: relative; display: block; height: 10px; }
+.mini i { position: absolute; top: 0; height: 100%; }
+.mini .mini-shift { background: #dfe5ea; border-radius: 2px; }
+.mini .mini-travel { top: 4px; height: 2px; background: #5f6b77; }
+.mini .mini-work { border-radius: 2px; min-width: 2px; }
+.mini .mini-lunch { background: repeating-linear-gradient(45deg, #f59e0b 0 2px, #fef08a 2px 4px); border-radius: 2px; }
 .eng-shift { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .eng-visits { font-size: 13px; font-weight: 600; text-align: right; }
 .eng-detail { padding: 2px 12px 8px 32px; background: var(--signal-soft); }
@@ -1246,7 +1250,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .kpi-unit { font-size: 14.5px; }
   .kpi-legend, .kpi-base { font-size: 12.5px; }
   .plan-grid { grid-template-columns: 232px minmax(0, 1fr) 292px; }
-  .eng-row { grid-template-columns: 11px minmax(0, 1fr) 52px 26px; gap: 6px; padding: 7px 10px; }
+  .eng-row { grid-template-columns: 11px minmax(0, 1fr) 96px 26px; gap: 6px; padding: 7px 10px; }
   .vb-main { grid-template-columns: auto minmax(0, 1fr); }
   .vc { padding: 7px 9px; gap: 8px; }
   .comparison { grid-template-columns: minmax(0, 1fr); }
