@@ -117,6 +117,7 @@ export function streamJob<T>(jobId: string, handlers: JobHandlers<T>): Promise<T
       }
       handlers.onProgress(progress)
     })
+    source.addEventListener('cancelled', () => settleAndClose(() => reject(new DOMException('cancelled', 'AbortError'))))
     source.addEventListener('done', (e) => {
       settleAndClose(() => {
         try {
@@ -160,6 +161,7 @@ export const api = {
 
   planJob: (r: PlanRequest, signal?: AbortSignal) =>
     request<{ job_id: string }>('/plans/jobs', { method: 'POST', signal, body: planRequestBody(r) }),
+  cancelJob: (jobId: string) => request<{ status: string }>(`/plans/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' }),
 
   getPlan: (planId: string) => request<PlanResponse>(`/plans/${planId}`),
 

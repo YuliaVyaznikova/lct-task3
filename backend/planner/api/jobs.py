@@ -6,11 +6,13 @@ import json
 import logging
 from collections.abc import Callable
 from queue import Queue
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from time import monotonic
 from uuid import uuid4
 
 from pydantic import BaseModel
+
+from planner.core import cancel
 
 PROGRESS_INTERVAL_S = 0.25
 
@@ -25,6 +27,7 @@ class PlanningJob:
     def __init__(self) -> None:
         self.events: Queue[tuple[str, dict]] = Queue()
         self.last_progress_at: dict[str | None, float] = {}
+        self.stop = Event()
 
     def progress(self, payload: dict) -> None:
         now = monotonic()
@@ -36,18 +39,25 @@ class PlanningJob:
         self.events.put(("progress", payload))
 
     def run(self, work: Callable[[Callable[[dict], None]], BaseModel]) -> None:
+        cancel.bind(self.stop)
         try:
             result = work(self.progress)
+            cancel.check()
             self.events.put(("done", result.model_dump(mode="json", by_alias=True)))
+        except cancel.Cancelled:
+            logger.info("фоновый расчёт остановлен")
+            self.events.put(("cancelled", {}))
         except Exception as exc:
             logger.exception("фоновый расчёт завершился ошибкой")
             self.events.put(("error", {"detail": _error_message(exc)}))
+        finally:
+            cancel.bind(None)
 
     def stream(self):
         while True:
             kind, payload = self.events.get()
             yield f"event: {kind}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
-            if kind in {"done", "error"}:
+            if kind in {"done", "error", "cancelled"}:
                 return
 
 
@@ -63,6 +73,9 @@ class JobRegistry:
             self._jobs[job_id] = job
         Thread(target=job.run, args=(work,), daemon=True).start()
         return job_id
+
+    def cancel(self, job_id: str) -> None:
+        self.get(job_id).stop.set()
 
     def get(self, job_id: str) -> PlanningJob:
         with self._lock:

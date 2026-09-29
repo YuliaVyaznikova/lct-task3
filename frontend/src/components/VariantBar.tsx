@@ -27,6 +27,7 @@ interface VariantBarProps {
   onPeek?: (key: string | null) => void
   onReviewDetails?: () => void
   onCompare?: (planId: string) => void
+  onCancel?: () => void
   comparing?: string | null
   scheduleOpen?: boolean
   onToggleSchedule?: () => void
@@ -169,7 +170,7 @@ function dropNote(dropped: string[], scenario: Scenario): string {
   return `снимает ${shown.join(', ')}${dropped.length > 2 ? '…' : ''}`
 }
 
-export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, comparing = null, scheduleOpen = false, onToggleSchedule, locked = false }: VariantBarProps) {
+export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, onCancel, comparing = null, scheduleOpen = false, onToggleSchedule, locked = false }: VariantBarProps) {
   const elapsed = useElapsed(job?.startedAt ?? null)
   const running = job !== null
   const idle = !running && review === null && variants.length === 0 && ownMine === null
@@ -236,6 +237,11 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
                   <span className="vb-progress-time">
                     {Math.floor(elapsed)} из {job.budgetS} с
                   </span>
+                  {job.kind === 'plan' && onCancel && (
+                    <button type="button" className="icon vb-cancel" onClick={onCancel} aria-label="Остановить расчёт" title="Остановить расчёт">
+                      ×
+                    </button>
+                  )}
                 </span>
                 <span className="vb-track">
                   <i style={{ width: `${share * 100}%` }} />

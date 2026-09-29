@@ -843,7 +843,9 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .vb-text b { font-size: 14.5px; }
 .vb-progress { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; width: 240px; padding-right: 4px; }
 .vb-progress-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 13px; }
-.vb-progress-time { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vb-progress-time { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vb-cancel { align-self: center; width: 22px; height: 22px; padding: 0; font-size: 18px; line-height: 1; color: var(--muted); }
+.vb-cancel:hover:not(:disabled) { color: var(--bad); }
 .vb-progress-note { min-height: 16px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vb-track { display: block; height: 8px; background: var(--line-soft); border-radius: 4px; overflow: hidden; position: relative; }
 .vb-track i { display: block; height: 100%; background: var(--signal); transition: width 0.25s linear; }
