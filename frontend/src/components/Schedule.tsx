@@ -223,6 +223,7 @@ export function Schedule(props: ScheduleProps) {
         <section className="sched-table">
           <div className="sched-head">
             <h2>Маршруты</h2>
+            {!showGantt && <ExpandControls expanded={expanded} view={view} onView={setView} onToggle={() => setExpanded(!expanded)} />}
             {props.selectedEngineer && (
               <button type="button" className="ghost small" onClick={() => props.onSelectEngineer(null)}>
                 Все инженеры
