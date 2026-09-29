@@ -141,7 +141,7 @@ export function Comparison({ matched }: ComparisonProps) {
     <div className="comparison">
       <div className="cmp-col">
         <div className="cmp-meta muted small">
-          {PLAN_TITLE[optimized.origin ?? 'solver']} {optimized.id} · базовый {baseline.id}
+          {PLAN_TITLE[optimized.origin ?? 'solver']} и базовый вариант
         </div>
 
         <p className="verdict-line">По сравнению с базовым вариантом {verdict(m, b, 'план')}</p>
@@ -226,10 +226,10 @@ export function Comparison({ matched }: ComparisonProps) {
             <tr className="total">
               <td>Итого</td>
               <td className="num mono">
-                <b>{km(m.distance_total_km)}</b> км · {m.assigned} заявок
+                <b>{km(m.distance_total_km)}</b> км · {m.assigned} {plural(m.assigned, 'заявка', 'заявки', 'заявок')}
               </td>
               <td className="num mono">
-                {km(b.distance_total_km)} км · {b.assigned} заявок
+                {km(b.distance_total_km)} км · {b.assigned} {plural(b.assigned, 'заявка', 'заявки', 'заявок')}
               </td>
               <td />
             </tr>
@@ -285,7 +285,7 @@ function controlBlock(control: ControlReference, m: Metrics, optimized: Plan) {
           {control.summary && <p className="small">{control.summary}</p>}
           {control.covered_orders !== m.assigned && (
             <p className="small muted">
-              Факт покрывает {control.covered_orders} заявок, план {m.assigned}.
+              Факт покрывает {control.covered_orders} {plural(control.covered_orders, 'заявку', 'заявки', 'заявок')}, план {m.assigned}.
             </p>
           )}
         </>

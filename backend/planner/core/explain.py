@@ -15,7 +15,7 @@ from planner.core.models import (
     Route,
     Stop,
 )
-from planner.core.text import plural
+from planner.core.text import decimal, plural
 from planner.core.timeutil import fmt_minutes
 from planner.core.validate import (
     Geo,
@@ -116,7 +116,7 @@ def explain_order(
     start = (starts or {}).get(engineer.id)
     travel = (
         f"Переезд {_previous_point(geo, route, stop, start)}: "
-        f"{stop.travel_km:.1f} км, {fmt_minutes(stop.travel_min)}"
+        f"{decimal(stop.travel_km)} км, {fmt_minutes(stop.travel_min)}"
     )
 
     alternatives, why = _alternatives(geo, plan, order, engineer, starts)
@@ -170,7 +170,7 @@ def _alternatives(
             if violation is not None:
                 blocked.append(f"{engineer.name}: {violation.text}")
             continue
-        cheaper.append((found[1], f"{engineer.name}: +{found[1]:.1f} км к его маршруту"))
+        cheaper.append((found[1], f"{engineer.name}: +{decimal(found[1])} км к его маршруту"))
 
     cheaper.sort(key=lambda item: item[0])
     lines = [text for _, text in cheaper[:MAX_ALTERNATIVES]]
@@ -200,19 +200,19 @@ def _alternative_reason(
         own = _own_increment(geo, chosen_route, chosen, order_id, start)
         if own is not None and own <= best_delta + 0.05:
             return (
-                f"В маршруте {chosen.name} заявка добавляет {own:.1f} км, это не больше, "
-                f"чем у проверенных альтернатив (лучшая добавила бы {best_delta:.1f} км)."
+                f"В маршруте {chosen.name} заявка добавляет {decimal(own)} км, это не больше, "
+                f"чем у проверенных альтернатив (лучшая добавила бы {decimal(best_delta)} км)."
             )
         if own is not None:
             return (
-                f"В маршруте {chosen.name} заявка добавляет {own:.1f} км, у другого инженера "
-                f"вставка стоила бы {best_delta:.1f} км. План выбирается целиком: сначала "
+                f"В маршруте {chosen.name} заявка добавляет {decimal(own)} км, у другого инженера "
+                f"вставка стоила бы {decimal(best_delta)} км. План выбирается целиком: сначала "
                 f"число выполненных заявок, затем число инженеров, затем общий пробег, "
                 f"поэтому отдельная заявка не обязательно стоит у самого дешёвого исполнителя."
             )
         return (
             f"Другие подходящие инженеры тоже могли бы её взять; "
-            f"лучшая альтернатива добавила бы {best_delta:.1f} км."
+            f"лучшая альтернатива добавила бы {decimal(best_delta)} км."
         )
     if blocked:
         return (
@@ -258,7 +258,7 @@ def explain_route(geo: Geo, route: Route) -> str:
     word = plural(count, "заявка", "заявки", "заявок")
     text = (
         f"{engineer.name} ({TRANSPORT_RU[engineer.transport]}): {count} {word}, "
-        f"{route.distance_km:.1f} км, {fmt_minutes(route.travel_min)} в пути"
+        f"{decimal(route.distance_km)} км, {fmt_minutes(route.travel_min)} в пути"
     )
     if route.wait_min:
         text += f", {fmt_minutes(route.wait_min)} ожидания"
@@ -296,7 +296,7 @@ def explain_plan(geo: Geo, plan: Plan) -> str:
 
     parts.append(
         f"Суммарный пробег {m.distance_total_km:.0f} км "
-        f"({m.distance_per_order_km:.1f} км на заявку)."
+        f"({decimal(m.distance_per_order_km)} км на заявку)."
     )
     return " ".join(parts)
 

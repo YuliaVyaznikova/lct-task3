@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 
 from planner.core.models import Transport
+from planner.core.text import short_number
 from planner.paths import CACHE_DIR
 
 EARTH_RADIUS_KM = 6371.0088
@@ -265,7 +266,7 @@ def build(
 
 def describe() -> str:
     """Описание модели движения для справки интерфейса (/api/reference)."""
-    factors = ", ".join(f"{d:g} км: ×{f:g}" for d, f in DETOUR_CALIBRATION)
+    factors = ", ".join(f"{short_number(d)} км: ×{short_number(f)}" for d, f in DETOUR_CALIBRATION)
     lines = [
         "Расстояние: по прямой, умноженной на коэффициент извилистости дорог;"
         f" коэффициент откалиброван по реальной сети ({factors})."
@@ -273,8 +274,8 @@ def describe() -> str:
     for transport, profile in PROFILES.items():
         parts = []
         for segment in profile.segments:
-            bound = "далее" if segment.upto_km == INF else f"до {segment.upto_km:g} км"
-            parts.append(f"{bound}: {segment.speed_kmh:g} км/ч")
+            bound = "далее" if segment.upto_km == INF else f"до {short_number(segment.upto_km)} км"
+            parts.append(f"{bound}: {short_number(segment.speed_kmh)} км/ч")
         overhead = f"+{profile.overhead_min:g} мин " if profile.overhead_min else ""
         lines.append(f"  {transport.value}: {overhead}{'; '.join(parts)}")
     return "\n".join(lines)

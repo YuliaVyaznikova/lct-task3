@@ -6,6 +6,7 @@ import pytest
 
 from planner.core import baseline, explain, reasons, solver
 from planner.core.models import PlanParams, Point, Priority, ReasonCode, Skill, Transport, Unassigned
+from planner.core.text import decimal
 from planner.core.validate import Geo
 from planner.ingest import store
 from tests.conftest import at_km, make_engineer, make_order, make_scenario
@@ -65,7 +66,7 @@ def test_alternatives_are_ranked_by_added_distance():
     card = plan.explanations["A"]
     assert card["alternatives"], "должны быть перечислены другие инженеры"
     added = [
-        float(text.split("+")[1].split(" км")[0])
+        float(text.split("+")[1].split(" км")[0].replace(",", "."))
         for text in card["alternatives"]
         if "+" in text and "км" in text
     ]
@@ -219,7 +220,7 @@ def test_route_summary_is_short_and_factual(explained, toy_geo):
     for engineer_id, text in explained.route_explanations.items():
         route = next(r for r in explained.routes if r.engineer_id == engineer_id)
         assert toy_geo.engineers[engineer_id].name in text
-        assert f"{route.distance_km:.1f} км" in text
+        assert f"{decimal(route.distance_km)} км" in text
         assert len(text) < 400, "маршрутная сводка не должна превращаться в портянку"
 
 

@@ -16,7 +16,7 @@ from planner.core.models import (
     Transport,
     Violation,
 )
-from planner.core.text import plural
+from planner.core.text import decimal, plural
 from planner.core.validate import Geo, evaluate
 
 CONTROL_ATTRIBUTE = "control_engineer"
@@ -45,15 +45,12 @@ class ControlReference:
         text = (
             f"Фактически заявки выполняли {count} {word}, "
             f"суммарный пробег около {self.metrics.distance_total_km:.0f} км "
-            f"({self.metrics.distance_per_order_km:.1f} км на заявку)."
+            f"({decimal(self.metrics.distance_per_order_km)} км на заявку)."
         )
         if self.late_starts:
             visits = plural(self.late_starts, "визит", "визита", "визитов")
-            text += (
-                f" При этом {self.late_starts} {visits} начинались позже окна, "
-                "обещанного клиенту, то есть ручное распределение не укладывается "
-                "в собственные нормативы."
-            )
+            started = plural(self.late_starts, "начался", "начались", "начались")
+            text += f" При этом {self.late_starts} {visits} {started} позже окна, обещанного клиенту."
         return text
 
 
