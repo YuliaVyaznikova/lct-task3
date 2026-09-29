@@ -7,27 +7,27 @@ export type ColorMode = 'engineer' | 'office' | 'transport'
 
 const TRANSPORT_COLORS: Record<Transport, string> = {
   car: '#1f63d1',
-  foot: '#23984b',
-  bike: '#e58a00',
+  foot: '#1d7f3e',
+  bike: '#b06200',
   public: '#7d4cc9',
 }
 
 const PALETTE = [
   '#1f63d1',
-  '#d63b2f',
-  '#23984b',
-  '#e58a00',
+  '#cc3a2d',
+  '#1d7f3e',
+  '#b06200',
   '#7d4cc9',
-  '#0e97ad',
-  '#d23f94',
-  '#6e8c00',
+  '#0b7f93',
+  '#b3367b',
+  '#5b7500',
   '#8a5528',
   '#1d3c8f',
   '#9c1d45',
   '#565c64',
-  '#e0674a',
-  '#4d9de0',
-  '#58a868',
+  '#b8472a',
+  '#2d6aa8',
+  '#357546',
 ]
 
 export function engineerColor(engineerIds: string[], engineerId: string): string {
