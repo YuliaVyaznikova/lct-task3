@@ -118,7 +118,7 @@ def _manual_unassigned(
                 )
             )
         else:
-            unassigned.append(diagnose(geo, order, routes))
+            unassigned.append(diagnose(geo, order, routes, lunch=record.plan.params.lunch))
 
     return unassigned
 

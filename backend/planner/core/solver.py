@@ -655,7 +655,7 @@ def plan(
             "солвер вернул недопустимый план: " + "; ".join(v.text for v in violations[:3])
         )
 
-    unassigned = reasons.diagnose_all(geo, result.unassigned_ids, routes, starts)
+    unassigned = reasons.diagnose_all(geo, result.unassigned_ids, routes, starts, params.lunch)
     planned_from = (
         min_to_hhmm(min(s.available_min for s in starts.values()))
         if starts

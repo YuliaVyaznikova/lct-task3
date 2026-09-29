@@ -132,6 +132,7 @@ def diagnose(
     order: Order,
     routes: list[Route] | None = None,
     starts: dict[str, StartState] | None = None,
+    lunch: bool = False,
 ) -> Unassigned:
     """Определяет причину и формулирует её для диспетчера."""
     if not order.has_coords:
@@ -153,8 +154,8 @@ def diagnose(
     return Unassigned(
         order_id=order.id,
         reason_code=ReasonCode.CAPACITY,
-        reason=_capacity_reason(geo, order, capable, routes or [], starts),
-        detail=_capacity_detail(geo, order, capable, routes or [], starts),
+        reason=_capacity_reason(geo, order, capable, routes or [], starts, lunch),
+        detail=_capacity_detail(geo, order, capable, routes or [], starts, lunch),
     )
 
 
@@ -164,6 +165,7 @@ def _capacity_reason(
     capable: list[Engineer],
     routes: list[Route],
     starts: dict[str, StartState] | None,
+    lunch: bool,
 ) -> str:
     by_engineer = {route.engineer_id: route for route in routes}
     count = len(capable)
@@ -186,7 +188,7 @@ def _capacity_reason(
         route = by_engineer.get(engineer.id)
         order_ids = route.order_ids if route else []
         blocking = first_blocking_violation(
-            geo, engineer, order_ids, order.id, (starts or {}).get(engineer.id)
+            geo, engineer, order_ids, order.id, (starts or {}).get(engineer.id), lunch
         )
         if blocking is None:
             continue
@@ -200,8 +202,11 @@ def _capacity_reason(
     return head + ": " + "; ".join(details)
 
 
-def _travel_minutes(geo: Geo, engineer: Engineer, order: Order) -> int:
-    return geo.leg(engineer, geo.start_node(engineer), geo.node(order.id))[1]
+def _minutes_from_route(geo: Geo, engineer: Engineer, order: Order, route: Route | None) -> int:
+    """Сколько ехать до заявки от ближайшей точки маршрута инженера или от его старта."""
+    target = geo.node(order.id)
+    points = [geo.start_node(engineer)] + [geo.node(stop.order_id) for stop in (route.stops if route else [])]
+    return min(geo.leg(engineer, point, target)[1] for point in points)
 
 
 def _blockers(
@@ -210,13 +215,15 @@ def _blockers(
     capable: list[Engineer],
     routes: list[Route],
     starts: dict[str, StartState] | None,
+    lunch: bool,
 ) -> list[tuple[Engineer, Violation]]:
     by_engineer = {route.engineer_id: route for route in routes}
     found: list[tuple[Engineer, Violation]] = []
-    for engineer in sorted(capable, key=lambda item: _travel_minutes(geo, item, order)):
+    nearest_first = sorted(capable, key=lambda item: _minutes_from_route(geo, item, order, by_engineer.get(item.id)))
+    for engineer in nearest_first:
         route = by_engineer.get(engineer.id)
         blocking = first_blocking_violation(
-            geo, engineer, route.order_ids if route else [], order.id, (starts or {}).get(engineer.id)
+            geo, engineer, route.order_ids if route else [], order.id, (starts or {}).get(engineer.id), lunch
         )
         if blocking is not None:
             found.append((engineer, blocking))
@@ -224,19 +231,19 @@ def _blockers(
 
 
 def _nearest_blocker_text(
-    order: Order, engineer: Engineer, blocking: Violation, route: Route | None
+    order: Order, engineer: Engineer, blocking: Violation, route: Route | None, minutes: int
 ) -> str:
+    distance = "по этому же адресу" if minutes == 0 else f"в {minutes} мин езды"
+    nearest = f"ближе всех проходит маршрут «{engineer.name}» ({distance})"
     if blocking.order_id not in (None, order.id):
-        free = f"освобождается в {route.end_time}, " if route and route.stops else ""
-        return (
-            f"ближайший, {engineer.name}, {free}"
-            f"вставка сдвинула бы заявку {blocking.order_id} за конец её окна"
-        )
+        return f"{nearest}, но вставка сдвинула бы заявку {blocking.order_id} из этого маршрута за конец её окна"
     if blocking.code == "SHIFT":
-        return f"ближайший, {engineer.name}, закончит смену раньше, чем выполнит заявку"
+        return f"{nearest}, но смена закончится раньше, чем работа по заявке"
     if blocking.code == "WINDOW":
-        return f"ближайший, {engineer.name}, не успевает к концу окна клиента"
-    return f"ближайший, {engineer.name}: {blocking.text}"
+        return f"{nearest}, но к концу окна клиента не успеть"
+    if blocking.code == "LUNCH":
+        return f"{nearest}, но тогда не помещается обед"
+    return f"{nearest}, но {blocking.text}"
 
 
 def _displaced_ids(order: Order, blockers: list[tuple[Engineer, Violation]]) -> list[str]:
@@ -257,6 +264,7 @@ def _capacity_detail(
     capable: list[Engineer],
     routes: list[Route],
     starts: dict[str, StartState] | None,
+    lunch: bool,
 ) -> str:
     """Короткая конкретная причина для заявки, которую поиск не разместил."""
     count = len(capable)
@@ -266,12 +274,13 @@ def _capacity_detail(
         f"В этом расчёте {count} {who} с навыком «{SKILL_RU[order.skill]}» "
         f"{busy} в окно клиента {order.window_start}–{order.window_end}"
     )
-    blockers = _blockers(geo, order, capable, routes, starts)
+    blockers = _blockers(geo, order, capable, routes, starts, lunch)
     if not blockers:
         return head
     nearest, blocking = blockers[0]
     route = {route.engineer_id: route for route in routes}.get(nearest.id)
-    parts = [head + ": " + _nearest_blocker_text(order, nearest, blocking, route)]
+    minutes = _minutes_from_route(geo, nearest, order, route)
+    parts = [head + ": " + _nearest_blocker_text(order, nearest, blocking, route, minutes)]
     displaced = _displaced_ids(order, blockers)
     outranking = _outranking_ids(geo, order, displaced)
     if outranking:
@@ -287,8 +296,9 @@ def diagnose_all(
     order_ids: list[str],
     routes: list[Route] | None = None,
     starts: dict[str, StartState] | None = None,
+    lunch: bool = False,
 ) -> list[Unassigned]:
-    return [diagnose(geo, geo.orders[order_id], routes, starts) for order_id in order_ids]
+    return [diagnose(geo, geo.orders[order_id], routes, starts, lunch) for order_id in order_ids]
 
 
 def extra_engineers_needed(geo: Geo, unassigned: list[Unassigned]) -> int:
