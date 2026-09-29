@@ -1,6 +1,6 @@
 import { cx } from '../classes'
 import { useEngineerColor } from '../colors'
-import { addressWithoutCity, cityOf, stopsByOrder } from '../derive'
+import { addressWithoutCity, orderCity, stopsByOrder } from '../derive'
 import { effectiveTier, engineerName, SKILL_SHORT, TIER_LABEL } from '../labels'
 import { minutes } from '../time'
 import type { Engineer, Order, Plan, Scenario, Unassigned } from '../types'
@@ -148,7 +148,7 @@ function cancelledAt(order: Order): string | undefined {
 function groupByCity(orders: Order[]): CityPart[] {
   const byCity = new Map<string, Order[]>()
   for (const order of orders) {
-    const city = cityOf(order.address)
+    const city = orderCity(order)
     byCity.set(city, [...(byCity.get(city) ?? []), order])
   }
   return [...byCity].map(([city, inCity]) => ({ city, orders: inCity }))

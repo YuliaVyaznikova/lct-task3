@@ -235,14 +235,26 @@ export function placeLabel(address: string): string {
 }
 
 export function displayAddress(address: string): string {
-  const rest = addressWithoutCity(address)
-  return rest === address ? address : `${cityOf(address)}, ${rest}`
+  if (!address.includes(',')) {
+    return address
+  }
+  return `${cityOf(address)}, ${addressWithoutCity(address)}`
+}
+
+const MOSCOW = /^москва(\s|$)/i
+
+export function orderCity(order: Pick<Order, 'address' | 'district'>): string {
+  const head = cityOf(order.address)
+  if (MOSCOW.test(head)) {
+    return 'Москва'
+  }
+  return order.district || head
 }
 
 export function addressWithoutCity(address: string): string {
   const comma = address.indexOf(',')
   if (comma < 0) {
-    return address
+    return address.replace(/^москва\s+/i, '')
   }
   const rest = address.slice(comma + 1).trim()
   return rest || address

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { addressWithoutCity, cityOf, displayAddress, placeLabel } from '../src/derive'
+import { addressWithoutCity, cityOf, displayAddress, orderCity, placeLabel } from '../src/derive'
 
 describe('город заявки', () => {
   it('выделяет город из адреса с префиксом Город', () => {
@@ -28,8 +28,8 @@ describe('адрес без города', () => {
     expect(addressWithoutCity('Домодедово, проезд.Советский 1-й, д. 1А')).toBe('проезд.Советский 1-й, д. 1А')
   })
 
-  it('возвращает исходный адрес без запятой', () => {
-    expect(addressWithoutCity('Москва Бирюлевская ул. д. 44')).toBe('Москва Бирюлевская ул. д. 44')
+  it('убирает город из адреса без запятой', () => {
+    expect(addressWithoutCity('Москва Бирюлевская ул. д. 44')).toBe('Бирюлевская ул. д. 44')
   })
 })
 
@@ -49,5 +49,17 @@ describe('подпись места старта', () => {
 
   it('показывает адрес офиса без города', () => {
     expect(placeLabel('г. Москва, ул Бирюлёвская, д 1с1')).toBe('ул Бирюлёвская, д 1с1')
+  })
+})
+
+describe('город заявки для группировки', () => {
+  it('берёт район для адресов области', () => {
+    expect(orderCity({ address: 'МО, г. Кашира Центральная ул. д. 21', district: 'Кашира' })).toBe('Кашира')
+    expect(orderCity({ address: 'обл.Московская область, г.Домодедово, ул.Жуковского', district: 'Домодедово' })).toBe('Домодедово')
+  })
+
+  it('сводит все московские адреса в Москву', () => {
+    expect(orderCity({ address: 'Город Москва, ул.Малышева, д. 13', district: 'Царицыно' })).toBe('Москва')
+    expect(orderCity({ address: 'Москва Бирюлевская ул. д. 44', district: 'Бирюлево Восточное' })).toBe('Москва')
   })
 })
