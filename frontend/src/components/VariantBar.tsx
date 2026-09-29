@@ -240,13 +240,11 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
                 <span className="vb-track">
                   <i style={{ width: `${share * 100}%` }} />
                 </span>
-                <span className="vb-progress-note">
-                  {job.kind === 'event' && job.last && (
-                    <>
-                      {job.last.assigned}/{job.last.total} заявок · {job.last.engineers_used} инж. · {km(job.last.distance_km, 0)} км
-                    </>
-                  )}
-                </span>
+                {job.kind === 'event' && job.last && (
+                  <span className="vb-progress-note">
+                    {job.last.assigned}/{job.last.total} заявок · {job.last.engineers_used} инж. · {km(job.last.distance_km, 0)} км
+                  </span>
+                )}
               </span>
             </div>
           )
