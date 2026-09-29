@@ -8,8 +8,9 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile
 
 from planner.api import lookup
+from planner.api.jobs import jobs
 from planner.api.schemas import ScenarioBrief
-from planner.core import travel
+from planner.core import cancel, travel
 from planner.core.models import SKILL_RU, TRANSPORT_RU, ReasonCode, Scenario
 from planner.ingest import beeline
 from planner.ingest import engineers as engineers_module
@@ -56,18 +57,36 @@ async def upload_scenario(
     seed: int = 42,
 ) -> Scenario:
     """Загрузка своих данных: CSV в формате выгрузки билайна либо готовый JSON-сценарий."""
+    scenario, is_csv = await _read_upload(synthetic, control)
+    return _finish_upload(scenario, is_csv, seed)
+
+
+@router.post("/api/scenarios/upload/jobs")
+async def upload_scenario_job(
+    synthetic: UploadFile,
+    control: UploadFile | None = None,
+    seed: int = 42,
+) -> dict[str, str]:
+    """Та же загрузка фоновой задачей: поиск адресов присылает прогресс в поток событий расчёта."""
+    scenario, is_csv = await _read_upload(synthetic, control)
+    return {"job_id": jobs.submit(lambda progress: _finish_upload(scenario, is_csv, seed, progress))}
+
+
+async def _read_upload(synthetic: UploadFile, control: UploadFile | None) -> tuple[Scenario, bool]:
     raw = await synthetic.read()
     name = synthetic.filename or "upload.csv"
-
     if name.lower().endswith(".json"):
-        scenario = _parse_json_scenario(raw)
-    else:
-        control_raw = await control.read() if control is not None else None
-        control_name = (control.filename if control else None) or "control.csv"
-        scenario = _parse_csv_scenario(name, raw, control_name, control_raw)
-        _geocode(scenario)
-        engineers_module.populate(scenario, seed=seed, region_id=lookup.config_region(scenario.id))
+        return _parse_json_scenario(raw), False
+    control_raw = await control.read() if control is not None else None
+    control_name = (control.filename if control else None) or "control.csv"
+    return _parse_csv_scenario(name, raw, control_name, control_raw), True
 
+
+def _finish_upload(scenario: Scenario, is_csv: bool, seed: int, progress=None) -> Scenario:
+    if is_csv:
+        _geocode(scenario, progress)
+        engineers_module.populate(scenario, seed=seed, region_id=lookup.config_region(scenario.id))
+    cancel.check()
     _save_upload(scenario)
     return scenario
 
@@ -111,13 +130,19 @@ def _parse_csv_scenario(
             raise HTTPException(422, f"Не удалось прочитать выгрузку: {exc}") from None
 
 
-def _geocode(scenario: Scenario) -> None:
+def _geocode(scenario: Scenario, progress=None) -> None:
     cache = geocode_module.Cache()
+
+    def on_located(done: int, total: int) -> None:
+        cancel.check()
+        if progress is not None:
+            progress({"stage": "geocode", "done": done, "total": total})
+
     try:
         geocode_module.apply_to_scenario(
-            scenario, geocode_module.Providers(), geocode_module.Districts(), cache
+            scenario, geocode_module.Providers(), geocode_module.Districts(), cache,
+            on_located=on_located,
         )
-        cache.save()
     except geocode_module.GeocodeError as exc:
         raise HTTPException(
             422,
@@ -125,6 +150,8 @@ def _geocode(scenario: Scenario) -> None:
             f"{exc}. Проверьте формат файла или соберите сценарий командой "
             "python -m planner.cli build && python -m planner.cli geocode.",
         ) from None
+    finally:
+        cache.save()
 
 
 def _save_upload(scenario: Scenario) -> None:
@@ -132,5 +159,6 @@ def _save_upload(scenario: Scenario) -> None:
     free = scenario_store.free_id(scenario.id)
     if free != scenario.id:
         scenario.id = free
-        scenario.name = f"{scenario.name} ({free.rsplit('-', 1)[1]})"
+        if scenario.name in scenario_store.names():
+            scenario.name = f"{scenario.name} ({free.rsplit('-', 1)[1]})"
     scenario_store.save(scenario)

@@ -41,6 +41,20 @@ def load(scenario_id: str, directory: Path | None = None) -> Scenario:
     return Scenario.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+def names(directory: Path | None = None) -> set[str]:
+    """Названия сохранённых сценариев; файлы без названия пропускаются."""
+    directory = directory or SCENARIOS_DIR
+    found: set[str] = set()
+    for path in directory.glob("*.json") if directory.is_dir() else []:
+        try:
+            name = json.loads(path.read_text(encoding="utf-8")).get("name")
+        except (ValueError, AttributeError):
+            continue
+        if isinstance(name, str):
+            found.add(name)
+    return found
+
+
 def load_all(directory: Path | None = None) -> list[Scenario]:
     directory = directory or SCENARIOS_DIR
     if not directory.is_dir():

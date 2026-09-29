@@ -569,6 +569,8 @@ export default function App() {
           onScenario={catalog.setScenarioId}
           onUpload={catalog.upload}
           uploading={catalog.uploading}
+          uploadProgress={catalog.uploadProgress}
+          onCancelUpload={catalog.cancelUpload}
           plan={plan}
           busy={busy}
           tab={tab}

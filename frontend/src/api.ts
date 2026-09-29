@@ -87,13 +87,13 @@ const planRequestBody = (r: PlanRequest) =>
     engineer_count: r.engineerCount,
   })
 
-export interface JobHandlers<T> {
-  onProgress: (progress: JobProgress) => void
+export interface JobHandlers<T, P = JobProgress> {
+  onProgress: (progress: P) => void
   signal?: AbortSignal
   parse?: (data: unknown) => T
 }
 
-export function streamJob<T>(jobId: string, handlers: JobHandlers<T>): Promise<T> {
+export function streamJob<T, P = JobProgress>(jobId: string, handlers: JobHandlers<T, P>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const source = new EventSource(`${BASE}/plans/jobs/${encodeURIComponent(jobId)}/events`)
     let settled = false
@@ -109,7 +109,7 @@ export function streamJob<T>(jobId: string, handlers: JobHandlers<T>): Promise<T
       settleAndClose(() => reject(new DOMException('aborted', 'AbortError'))),
     )
     source.addEventListener('progress', (e) => {
-      let progress: JobProgress
+      let progress: P
       try {
         progress = JSON.parse(e.data)
       } catch {
@@ -157,6 +157,12 @@ export const api = {
     const form = new FormData()
     form.append('synthetic', file)
     return request<Scenario>('/scenarios/upload', { method: 'POST', body: form })
+  },
+
+  uploadJob: (file: File, signal?: AbortSignal) => {
+    const form = new FormData()
+    form.append('synthetic', file)
+    return request<{ job_id: string }>('/scenarios/upload/jobs', { method: 'POST', body: form, signal })
   },
 
   planJob: (r: PlanRequest, signal?: AbortSignal) =>

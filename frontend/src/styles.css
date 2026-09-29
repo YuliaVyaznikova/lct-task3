@@ -256,6 +256,7 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 .area select { border-color: transparent; font-weight: 600; font-size: 14.5px; width: auto; max-width: 240px; padding: 4px 6px; cursor: pointer; }
 .area select:hover { border-color: var(--line); }
 .tb-date { flex: none; color: var(--muted); font-size: 13px; white-space: nowrap; border-left: 1px solid var(--line); padding-left: 14px; }
+.tb-upload { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .tb-tabs { display: flex; height: 52px; flex: none; margin-left: 12px; }
 .tb-tabs button {
