@@ -246,7 +246,7 @@ interface MapViewProps {
 }
 
 const EMPTY = new Set<string>()
-const HOVER_DIM_OPACITY = 0.12
+const DIM_OPACITY = 0.12
 
 type VisitInfo = { engineerId: string; n: number }
 type StopInfo = Stop & { engineerId: string }
@@ -443,7 +443,7 @@ function MapViewInner({
               pathOptions={{
                 color,
                 weight: isAffected ? 2.5 : focus === id || hoverEngineer === id ? 5 : 3,
-                opacity: isAffected ? 0.5 : faded(id) ? (hoverEngineer ? HOVER_DIM_OPACITY : 0.4) : hoverEngineer === id ? 1 : sim ? 0.7 : 0.8,
+                opacity: isAffected ? 0.5 : faded(id) ? DIM_OPACITY : hoverEngineer === id ? 1 : sim ? 0.7 : 0.8,
                 dashArray: isAffected ? '6 7' : undefined,
               }}
               bubblingMouseEvents={false}
@@ -523,7 +523,7 @@ function MapViewInner({
             mods.push('selected')
           }
           if (faded(info.engineerId) && !selected) {
-            mods.push(hoverEngineer ? 'faint' : 'dim')
+            mods.push('faint')
           }
           if (sim && simDone.has(order.id)) {
             mods.push('done')
@@ -533,7 +533,7 @@ function MapViewInner({
               key={`o-${order.id}`}
               position={p}
               icon={visitIcon(info.n, color, mods)}
-              zIndexOffset={selected ? 1000 : mods.includes('dim') || mods.includes('faint') ? -500 : 0}
+              zIndexOffset={selected ? 1000 : mods.includes('faint') ? -500 : 0}
               eventHandlers={{ click: () => toggleOrder(order.id) }}
             >
               {tooltip}
