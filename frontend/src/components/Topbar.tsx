@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 
 import { api } from '../api'
-import type { Plan, ScenarioBrief, Tab } from '../types'
+import type { Plan, ScenarioBrief, Tab, UploadProgress } from '../types'
+import { StopGlyph } from './common'
 
 export const TABS: [Tab, string][] = [
   ['map', 'Карта'],
@@ -15,6 +16,8 @@ interface TopbarProps {
   onScenario: (id: string) => void
   onUpload: (file: File) => void
   uploading: boolean
+  uploadProgress: UploadProgress | null
+  onCancelUpload: () => void
   plan: Plan | null
   busy: boolean
   tab: Tab
@@ -31,7 +34,7 @@ function formatDate(date: string) {
   return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })
 }
 
-export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading, plan, busy, tab, onTab, lockedTabs, simNeedsDecision }: TopbarProps) {
+export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading, uploadProgress, onCancelUpload, plan, busy, tab, onTab, lockedTabs, simNeedsDecision }: TopbarProps) {
   const file = useRef<HTMLInputElement>(null)
   const brief = scenarios.find((s) => s.id === scenarioId)
   return (
@@ -72,7 +75,16 @@ export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading,
             }
           }}
         />
-        {brief && <span className="tb-date">{uploading ? 'Загружаем файл…' : formatDate(brief.date)}</span>}
+        {uploading ? (
+          <span className="tb-date tb-upload" role="status">
+            {uploadProgress ? `Ищем адреса: ${uploadProgress.done} из ${uploadProgress.total}` : 'Загружаем файл…'}
+            <button type="button" className="tb-stop" onClick={onCancelUpload} aria-label="Остановить загрузку" title="Остановить загрузку">
+              <StopGlyph />
+            </button>
+          </span>
+        ) : (
+          brief && <span className="tb-date">{formatDate(brief.date)}</span>
+        )}
       </div>
 
       <nav className="tb-tabs" role="tablist" aria-label="Разделы">

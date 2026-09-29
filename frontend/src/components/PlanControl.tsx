@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { api } from '../api'
 import { OBJECTIVE_LABEL } from '../labels'
+import { balancePhaseS } from '../usePlanningRequests'
 import type { Objective, Plan, ScenarioBrief } from '../types'
 
 export interface PlanParamsUi {
@@ -58,6 +59,12 @@ function useDismiss(open: boolean, close: () => void) {
   return box
 }
 
+function paramsSummary(params: PlanParamsUi): string {
+  const extra = balancePhaseS(params.objective)
+  const time = extra ? `${params.timeLimit} + ${extra} с` : `${params.timeLimit} с`
+  return `${OBJECTIVE_LABEL[params.objective].toLowerCase()} · ${time}`
+}
+
 export function PlanControl({ brief, params, onParams, plan, busy, onPlan }: PlanControlProps) {
   const [open, setOpen] = useState(false)
   const box = useDismiss(open, () => setOpen(false))
@@ -67,7 +74,8 @@ export function PlanControl({ brief, params, onParams, plan, busy, onPlan }: Pla
     <div className="plan-control" ref={box}>
       <div className="plan-split">
         <button type="button" className="primary plan-btn" disabled={busy || !brief} onClick={onPlan}>
-          Спланировать день
+          <span className="plan-btn-title">Спланировать день</span>
+          <span className="plan-btn-sub">{paramsSummary(params)}</span>
         </button>
         <button
           type="button"
@@ -96,6 +104,7 @@ export function PlanControl({ brief, params, onParams, plan, busy, onPlan }: Pla
           <label className="field">
             <span className="field-label">
               Время на расчёт <b>{params.timeLimit} с</b>
+              {balancePhaseS(params.objective) > 0 && ` + ${balancePhaseS(params.objective)} с на ровную загрузку`}
             </span>
             <input type="range" min={5} max={90} value={params.timeLimit} onChange={(e) => set({ timeLimit: Number(e.target.value) })} />
           </label>

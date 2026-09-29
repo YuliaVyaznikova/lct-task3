@@ -12,6 +12,7 @@ from time import monotonic
 import numpy as np
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
+from planner.core import cancel
 from planner.core import metrics as metrics_module
 from planner.core import reasons
 from planner.core import zones
@@ -554,7 +555,7 @@ class _IdleLimit(pywrapcp.SearchMonitor):
     def BeginNextDecision(self, decision) -> None:
         now = monotonic()
         self.tracker.publish_pending(now)
-        if self.tracker.is_idle(now):
+        if self.tracker.is_idle(now) or cancel.requested():
             self.solver().FinishCurrentSearch()
 
 
@@ -735,6 +736,7 @@ def parallel_plans(
         for worker in workers:
             worker.start()
         while len(results) + len(errors) < len(workers):
+            cancel.check()
             try:
                 kind, objective, payload = queue.get(timeout=0.2)
             except Empty:

@@ -19,6 +19,7 @@ from planner.api.schemas import (
 )
 from planner.api.store import PlanRecord, next_plan_id, store
 from planner.core import baseline as baseline_module
+from planner.core import cancel
 from planner.core import explain as explain_module
 from planner.core import metrics as metrics_module
 from planner.core import replan as replan_module
@@ -39,6 +40,15 @@ def create_plan(request: PlanRequest) -> PlanResponse:
 def create_plan_job(request: PlanRequest) -> dict[str, str]:
     lookup.load_scenario(request.scenario_id)
     return {"job_id": jobs.submit(lambda progress: _create_plan(request, progress))}
+
+
+@router.post("/api/plans/jobs/{job_id}/cancel")
+def cancel_plan_job(job_id: str) -> dict[str, str]:
+    try:
+        jobs.cancel(job_id)
+    except KeyError:
+        raise HTTPException(404, f"Расчёт {job_id} не найден") from None
+    return {"status": "cancelled"}
 
 
 @router.get("/api/plans/jobs/{job_id}/events")
@@ -133,6 +143,7 @@ def _create_plan(request: PlanRequest, on_progress=None) -> PlanResponse:
         attempts = solver.parallel_plans(
             working, request.params, solver.AUTO_OBJECTIVES, "optimized", on_progress=on_progress
         )
+        cancel.check()
         attempts.append(solver.balance(
             working, geo, request.params, attempts[1], "balanced", on_progress=on_progress
         ))
@@ -141,6 +152,7 @@ def _create_plan(request: PlanRequest, on_progress=None) -> PlanResponse:
         keys = (request.params.objective,)
         attempts = [solver.plan(working, geo, request.params, on_progress=on_progress)]
         best = attempts[0]
+    cancel.check()
 
     for attempt in attempts:
         attempt.id = next_plan_id()

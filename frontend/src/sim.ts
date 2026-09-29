@@ -169,7 +169,7 @@ export function dayRange(scenario: Scenario, routes: Route[]): [number, number] 
   const starts = scenario.engineers.map((e) => minutes(e.shift_start))
   const ends = scenario.engineers.map((e) => minutes(e.shift_end))
   const finishes = routes.flatMap((r) => r.stops.map((s) => minutes(s.finish)))
-  const from = Math.min(...starts, 9 * 60)
+  const from = starts.length ? Math.min(...starts) : 9 * 60
   const to = Math.max(...ends, ...finishes, 18 * 60)
   return [Math.floor(from / 30) * 30, Math.ceil(to / 30) * 30]
 }

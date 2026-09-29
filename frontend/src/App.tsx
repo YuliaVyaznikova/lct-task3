@@ -153,6 +153,12 @@ export default function App() {
     [clearPlanState, setVariantPlans, setHoverVariant],
   )
 
+  const stoppedRef = useRef(false)
+  const stopRun = useCallback(() => {
+    stoppedRef.current = true
+    cancelPlan()
+  }, [cancelPlan])
+
   const run = useCallback(async () => {
     const request: PlanRequest = {
       scenarioId,
@@ -166,6 +172,8 @@ export default function App() {
     setError(null)
     map.clearSelection()
     map.setCandidate(null)
+    const before = { variants, mine }
+    stoppedRef.current = false
     setVariants([])
     setMine(null)
     setHoverVariant(null)
@@ -184,11 +192,15 @@ export default function App() {
       }
     } catch (e) {
       if (isAbort(e)) {
+        if (stoppedRef.current) {
+          setVariants(before.variants)
+          setMine(before.mine)
+        }
         return
       }
       setError(`План не построен: ${stripStatus((e as Error).message)}`)
     }
-  }, [scenarioId, params, required, scenario, requestPlan, accept, variants, plan?.id, live.watchVariant, live.watchRef, map.clearSelection, map.setCandidate, setHoverVariant])
+  }, [scenarioId, params, required, scenario, requestPlan, accept, variants, mine, plan?.id, live.watchVariant, live.watchRef, map.clearSelection, map.setCandidate, setHoverVariant])
 
   const selectVariant = useCallback(
     async (planId: string) => {
@@ -557,6 +569,8 @@ export default function App() {
           onScenario={catalog.setScenarioId}
           onUpload={catalog.upload}
           uploading={catalog.uploading}
+          uploadProgress={catalog.uploadProgress}
+          onCancelUpload={catalog.cancelUpload}
           plan={plan}
           busy={busy}
           tab={tab}
@@ -710,16 +724,14 @@ export default function App() {
               mine={mine}
               review={review}
               tools={
-                plan && (
-                  <PlanStorage
-                    canSave={!busy}
-                    onCopy={mine || variants.length === 0 ? null : copyPlan}
-                    onSave={saveCurrent}
-                    onList={() => api.savedPlans(scenarioId)}
-                    onLoad={openSaved}
-                    onDelete={removeSaved}
-                  />
-                )
+                <PlanStorage
+                  canSave={!busy && Boolean(plan)}
+                  onCopy={!plan || mine || variants.length === 0 ? null : copyPlan}
+                  onSave={saveCurrent}
+                  onList={() => api.savedPlans(scenarioId)}
+                  onLoad={openSaved}
+                  onDelete={removeSaved}
+                />
               }
               planControl={
                 <PlanControl
@@ -742,6 +754,7 @@ export default function App() {
               onPeek={live.setPeekKey}
               onReviewDetails={() => eventReview.setDetails(true)}
               onCompare={compareVariant}
+              onCancel={stopRun}
               comparing={details.otherId}
               scheduleOpen={tab === 'schedule' && !details.otherId}
               onToggleSchedule={() => switchTab(tab === 'schedule' ? 'map' : 'schedule')}

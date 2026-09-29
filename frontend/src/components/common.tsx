@@ -69,6 +69,14 @@ interface LockIconProps {
   title?: string
 }
 
+export function StopGlyph() {
+  return (
+    <svg className="stop-glyph" viewBox="0 0 16 16" aria-hidden>
+      <path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function LockIcon({ title }: LockIconProps) {
   return (
     <svg className="lock" viewBox="0 0 12 12" width="11" height="11" aria-label={title} role="img">

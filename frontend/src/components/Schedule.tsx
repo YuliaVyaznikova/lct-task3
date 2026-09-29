@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { candidateDeltaKm, engineerName, SCHEDULE_VIEWS, shiftedVisits, signed, type ScheduleView } from '../labels'
 import type { Candidate, Plan, Scenario } from '../types'
+import { useStoredChoice } from '../useStoredChoice'
 import { Gantt } from './Gantt'
 import type { AssignResult } from './JobPanel'
 import { RouteTable } from './RouteTable'
@@ -26,6 +27,8 @@ interface ScheduleProps {
 }
 
 const noChanges = new Set<string>()
+const VIEW_KEYS = SCHEDULE_VIEWS.map(([key]) => key)
+const FLAGS = [true, false] as const
 
 type Drop =
   | { orderId: string; engineerId: string; state: 'loading' }
@@ -42,8 +45,8 @@ export function Schedule(props: ScheduleProps) {
   const carriedId = useRef<string | null>(null)
   const layout = useRef<HTMLDivElement>(null)
   const [share, setShare, resetShare] = useSplitShare('schedule-split', 0.56)
-  const [expanded, setExpanded] = useState(false)
-  const [view, setView] = useState<ScheduleView>('both')
+  const [expanded, setExpanded] = useStoredChoice<boolean>('schedule-expanded', FLAGS, false)
+  const [view, setView] = useStoredChoice<ScheduleView>('schedule-view', VIEW_KEYS, 'both')
   const name = (id: string) => engineerName(scenario.engineers, id)
   const showGantt = !expanded || view !== 'routes'
   const showTable = !expanded || view !== 'gantt'
@@ -129,7 +132,6 @@ export function Schedule(props: ScheduleProps) {
         <section className="sched-gantt">
           <div className="sched-head">
             <h2>Расписание</h2>
-            <ExpandControls expanded={expanded} view={view} onView={setView} onToggle={() => setExpanded(!expanded)} />
             <div className="legend">
               <span>
                 <i className="sw work" /> работа
@@ -152,6 +154,7 @@ export function Schedule(props: ScheduleProps) {
                 </span>
               )}
             </div>
+            <ExpandControls expanded={expanded} view={view} onView={setView} onToggle={() => setExpanded(!expanded)} />
           </div>
           {drop && (
             <div className={`drop-card ${drop.state}`} role="status">

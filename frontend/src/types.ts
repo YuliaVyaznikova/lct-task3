@@ -252,6 +252,12 @@ export interface JobProgress {
   routes: Record<string, string[]>
 }
 
+export interface UploadProgress {
+  stage: 'geocode'
+  done: number
+  total: number
+}
+
 export interface NearestWindow {
   available: boolean
   window_start: string | null

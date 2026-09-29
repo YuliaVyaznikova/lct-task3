@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { addressWithoutCity, cityOf, displayAddress, orderCity, placeLabel } from '../src/derive'
+import { addressInCity, addressWithoutCity, cityOf, displayAddress, orderCity, placeLabel } from '../src/derive'
 
 describe('город заявки', () => {
   it('выделяет город из адреса с префиксом Город', () => {
@@ -62,5 +62,19 @@ describe('город заявки для группировки', () => {
   it('сводит все московские адреса в Москву', () => {
     expect(orderCity({ address: 'Город Москва, ул.Малышева, д. 13', district: 'Царицыно' })).toBe('Москва')
     expect(orderCity({ address: 'Москва Бирюлевская ул. д. 44', district: 'Бирюлево Восточное' })).toBe('Москва')
+  })
+})
+
+describe('адрес внутри группы города', () => {
+  it('не повторяет город из заголовка группы', () => {
+    expect(addressInCity('г. Кашира Центральная ул. д. 19', 'Кашира')).toBe('Центральная ул. д. 19')
+    expect(addressInCity('МО, г. Кашира Центральная ул. д. 21', 'Кашира')).toBe('Центральная ул. д. 21')
+    expect(addressInCity('обл.Московская область, г.Домодедово, ул.Жуковского', 'Домодедово')).toBe('ул.Жуковского')
+    expect(addressInCity('Город Москва, ул.Малышева, д. 13', 'Москва')).toBe('ул.Малышева, д. 13')
+  })
+
+  it('оставляет адрес, если город в нём не назван', () => {
+    expect(addressInCity('Каширское ш. д. 5', 'Кашира')).toBe('Каширское ш. д. 5')
+    expect(addressInCity('г. Видное, ул. Школьная, д. 1', 'Ленинский')).toBe('ул. Школьная, д. 1')
   })
 })

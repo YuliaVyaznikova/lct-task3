@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
+import time
 
+import pytest
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 from planner.api import lookup, plans
@@ -26,6 +28,41 @@ def test_job_stream_has_progress_and_done_events():
     assert '"assigned": 1' in chunks[0]
     assert chunks[-1].startswith("event: done\ndata: ")
     assert '"value": 3' in chunks[-1]
+
+
+def test_cancelled_job_ends_with_cancelled_event():
+    class Result(BaseModel):
+        value: int
+
+    job = PlanningJob()
+    job.stop.set()
+    job.run(lambda progress: Result(value=3))
+    chunks = list(job.stream())
+    assert chunks[-1].startswith("event: cancelled\n")
+
+
+def test_cancel_stops_the_solver_search(toy, monkeypatch):
+    monkeypatch.setattr(lookup, "load_scenario", lambda _: toy)
+    request = schemas.PlanRequest(
+        scenario_id=toy.id,
+        params=PlanParams(objective="min_engineers", time_limit_s=30, no_improve_s=30),
+    )
+    job_id = plans.create_plan_job(request)["job_id"]
+    plans.cancel_plan_job(job_id)
+    job = jobs.get(job_id)
+    started = time.monotonic()
+    while True:
+        kind, _ = job.events.get(timeout=30)
+        if kind in {"done", "error", "cancelled"}:
+            break
+    assert kind == "cancelled"
+    assert time.monotonic() - started < 10
+
+
+def test_cancel_route_reports_unknown_job():
+    with pytest.raises(HTTPException) as error:
+        plans.cancel_plan_job("missing")
+    assert error.value.status_code == 404
 
 
 def test_auto_plan_stores_three_selectable_variants(toy, monkeypatch):
@@ -68,6 +105,7 @@ def test_event_job_and_selection_routes_are_registered():
     paths = set(app.openapi()["paths"])
     assert "/api/plans/{plan_id}/events/jobs" in paths
     assert "/api/plans/jobs/{job_id}/events" in paths
+    assert "/api/plans/jobs/{job_id}/cancel" in paths
     assert "/api/plans/{plan_id}/select" in paths
 
 

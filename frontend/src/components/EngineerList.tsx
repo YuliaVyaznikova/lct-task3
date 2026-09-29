@@ -98,11 +98,13 @@ export function EngineerList({
         onMouseLeave={() => onHover(null)}
       >
         <button type="button" className="eng-row" onClick={() => onSelect(isSelected ? null : engineer.id)} aria-expanded={isSelected}>
-          <i className="eng-dot" style={{ background: visits || state ? color : 'transparent', borderColor: color }} />
+          <i className="eng-dot" style={{ background: visits ? color : 'transparent', borderColor: color }} />
           <span className="eng-main">
             <span className="eng-name">
               <span className="eng-name-text">{engineer.name}</span>
               {frozen && <LockIcon title="Есть зафиксированные визиты" />}
+            </span>
+            <span className="eng-kind">
               <TransportIcon transport={engineer.transport} />
               {state ? (
                 <span className={`status s-${state.status}`}>{STATUS_RU[state.status]}</span>

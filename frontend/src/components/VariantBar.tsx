@@ -4,7 +4,7 @@ import { cx } from '../classes'
 import { km, MINE_TITLE, VARIANT_NOTE, VARIANT_ORDER, VARIANT_TITLE } from '../labels'
 import type { EventReview } from '../derive'
 import type { BarVariant, Metrics, MineVariant, RunningJob, Scenario } from '../types'
-import { useElapsed } from './common'
+import { StopGlyph, useElapsed } from './common'
 import { droppedLabel, ReviewCard } from './ReviewCard'
 import { verdictAgainst } from '../variant-diff'
 
@@ -27,6 +27,7 @@ interface VariantBarProps {
   onPeek?: (key: string | null) => void
   onReviewDetails?: () => void
   onCompare?: (planId: string) => void
+  onCancel?: () => void
   comparing?: string | null
   scheduleOpen?: boolean
   onToggleSchedule?: () => void
@@ -169,7 +170,7 @@ function dropNote(dropped: string[], scenario: Scenario): string {
   return `снимает ${shown.join(', ')}${dropped.length > 2 ? '…' : ''}`
 }
 
-export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, comparing = null, scheduleOpen = false, onToggleSchedule, locked = false }: VariantBarProps) {
+export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, onCancel, comparing = null, scheduleOpen = false, onToggleSchedule, locked = false }: VariantBarProps) {
   const elapsed = useElapsed(job?.startedAt ?? null)
   const running = job !== null
   const idle = !running && review === null && variants.length === 0 && ownMine === null
@@ -214,10 +215,17 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
     return planId === currentId ? onToggleSchedule : () => onCompare(planId)
   }
   const isOpen = (planId: string) => (planId === currentId ? scheduleOpen : planId === comparing)
+  const stoppable = job?.kind === 'plan' && onCancel !== undefined
   const side = !reviewing && (
-    <div className="vb-side">
+    <div className={cx('vb-side', stoppable && 'stoppable')}>
       {planControl}
-      {tools}
+      {stoppable ? (
+        <button type="button" className="vb-stop" onClick={onCancel} aria-label="Остановить расчёт" title="Остановить расчёт">
+          <StopGlyph />
+        </button>
+      ) : (
+        tools
+      )}
     </div>
   )
 
@@ -240,13 +248,11 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
                 <span className="vb-track">
                   <i style={{ width: `${share * 100}%` }} />
                 </span>
-                <span className="vb-progress-note">
-                  {job.kind === 'event' && job.last && (
-                    <>
-                      {job.last.assigned}/{job.last.total} заявок · {job.last.engineers_used} инж. · {km(job.last.distance_km, 0)} км
-                    </>
-                  )}
-                </span>
+                {job.kind === 'event' && job.last && (
+                  <span className="vb-progress-note">
+                    {job.last.assigned}/{job.last.total} заявок · {job.last.engineers_used} инж. · {km(job.last.distance_km, 0)} км
+                  </span>
+                )}
               </span>
             </div>
           )

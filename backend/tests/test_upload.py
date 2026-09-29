@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -169,3 +170,69 @@ def test_a_geocoding_bug_is_not_blamed_on_the_file(client, isolated_store, monke
     monkeypatch.setattr(geocode, "apply_to_scenario", bug)
     with pytest.raises(KeyError):
         upload(client, RAW_EXPORT.name, RAW_EXPORT.read_bytes(), "text/csv")
+
+
+def _job_events(job_id: str) -> list[tuple[str, dict]]:
+    from planner.api.jobs import jobs
+
+    job = jobs.get(job_id)
+    events = []
+    while True:
+        kind, payload = job.events.get(timeout=30)
+        events.append((kind, payload))
+        if kind in {"done", "error", "cancelled"}:
+            return events
+
+
+def _fake_geocoder(monkeypatch, before_each=lambda: None):
+    from planner.ingest import geocode
+
+    def locate(scenario, *args, on_located=None, **kwargs):
+        for index, order in enumerate(scenario.orders, start=1):
+            before_each()
+            order.lat, order.lon = scenario.office.lat or 55.7, scenario.office.lon or 37.6
+            on_located(index, len(scenario.orders))
+
+    monkeypatch.setattr(geocode, "apply_to_scenario", locate)
+
+
+@pytest.mark.skipif(not RAW_EXPORT.is_file(), reason="нет data/raw с выгрузкой")
+def test_upload_job_reports_geocoding_progress(client, isolated_store, monkeypatch):
+    _fake_geocoder(monkeypatch)
+    response = client.post(
+        "/api/scenarios/upload/jobs",
+        files={"synthetic": (RAW_EXPORT.name, RAW_EXPORT.read_bytes(), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+    events = _job_events(response.json()["job_id"])
+    progress = [payload for kind, payload in events if kind == "progress"]
+    assert progress and progress[0]["stage"] == "geocode" and progress[0]["total"] == 66
+    kind, scenario = events[-1]
+    assert kind == "done"
+    assert scenario["id"] == "vostok" and scenario["engineers"]
+
+
+@pytest.mark.skipif(not RAW_EXPORT.is_file(), reason="нет data/raw с выгрузкой")
+def test_cancelled_upload_job_saves_nothing(client, isolated_store, monkeypatch):
+    from planner.api.jobs import jobs
+
+    _fake_geocoder(monkeypatch, before_each=lambda: time.sleep(0.05))
+    response = client.post(
+        "/api/scenarios/upload/jobs",
+        files={"synthetic": (RAW_EXPORT.name, RAW_EXPORT.read_bytes(), "text/csv")},
+    )
+    job_id = response.json()["job_id"]
+    jobs.cancel(job_id)
+    assert _job_events(job_id)[-1][0] == "cancelled"
+    assert not list(isolated_store.glob("*.json"))
+
+
+def test_dated_upload_keeps_its_name_without_a_number(client, isolated_store, small_scenario):
+    body = small_scenario.model_dump_json().encode("utf-8")
+    assert upload(client, "scenario.json", body, "application/json").status_code == 200
+    dated = small_scenario.model_copy(update={"name": "Загруженный набор 28.09.2026"})
+
+    response = upload(client, "scenario.json", dated.model_dump_json().encode("utf-8"), "application/json")
+
+    assert response.json()["id"] == "uploaded-2"
+    assert response.json()["name"] == "Загруженный набор 28.09.2026"

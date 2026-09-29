@@ -1,6 +1,6 @@
 import { cx } from '../classes'
 import { useEngineerColor } from '../colors'
-import { addressWithoutCity, orderCity, stopsByOrder } from '../derive'
+import { addressInCity, addressWithoutCity, orderCity, stopsByOrder } from '../derive'
 import { effectiveTier, engineerName, SKILL_SHORT, TIER_LABEL } from '../labels'
 import { minutes } from '../time'
 import type { Engineer, Order, Plan, Scenario, Unassigned } from '../types'
@@ -99,6 +99,7 @@ export function JobQueue({ scenario, plan, filter, onFilter, selectedOrder, onSe
                         <QueueRow
                           key={order.id}
                           order={order}
+                          groupCity={hasSubgroups ? part.city : null}
                           ref_={refs[order.id]}
                           unassigned={unassigned.get(order.id)}
                           hasPlan={Boolean(plan)}
@@ -156,6 +157,7 @@ function groupByCity(orders: Order[]): CityPart[] {
 
 interface QueueRowProps {
   order: Order
+  groupCity: string | null
   ref_: ReturnType<typeof stopsByOrder>[string] | undefined
   unassigned: Unassigned | undefined
   hasPlan: boolean
@@ -168,7 +170,7 @@ interface QueueRowProps {
   onToggleRequired: () => void
 }
 
-function QueueRowBottom({ order, ref_: ref, unassigned, engineers }: QueueRowProps) {
+function QueueRowBottom({ order, groupCity, ref_: ref, unassigned, engineers }: QueueRowProps) {
   const colorOf = useEngineerColor()
   if (ref) {
     return (
@@ -201,7 +203,7 @@ function QueueRowBottom({ order, ref_: ref, unassigned, engineers }: QueueRowPro
   return (
     <span className="q-bottom">
       <span className="muted">
-        {SKILL_SHORT[order.skill]} · {order.duration_min} мин · {order.district}
+        {[SKILL_SHORT[order.skill], `${order.duration_min} мин`, order.district !== groupCity && order.district].filter(Boolean).join(' · ')}
       </span>
     </span>
   )
@@ -225,7 +227,7 @@ function QueueRow(p: QueueRowProps) {
           <RequiredToggle on={p.required} onToggle={p.onToggleRequired} compact />
         </span>
         <span className="q-addr">
-          <AddressLink onGo={p.onGo}>{addressWithoutCity(order.address)}</AddressLink>
+          <AddressLink onGo={p.onGo}>{p.groupCity ? addressInCity(order.address, p.groupCity) : addressWithoutCity(order.address)}</AddressLink>
         </span>
         <QueueRowBottom {...p} />
       </button>

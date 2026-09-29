@@ -429,6 +429,7 @@ def apply_to_scenario(
     cache: Cache,
     overrides: dict[str, tuple[float, float]] | None = None,
     progress: Callable[[str], None] | None = None,
+    on_located: Callable[[int, int], None] | None = None,
 ) -> list[tuple[Order, GeoResult, list[str]]]:
     """Проставляет координаты офису и всем заявкам сценария."""
     office_result, _ = geocode_one(
@@ -448,6 +449,8 @@ def apply_to_scenario(
         report.append((order, result, log))
         if progress:
             progress(f"  [{index:>3}/{len(scenario.orders)}] {result.quality.value:<8} {order.address}")
+        if on_located:
+            on_located(index, len(scenario.orders))
     providers_used = {r.provider for _, r, _ in report}
     scenario.meta.geocoder = "+".join(sorted(providers_used))
     return report
