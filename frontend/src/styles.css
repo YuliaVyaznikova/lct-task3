@@ -803,6 +803,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .cand-dock .shifted li { grid-template-columns: 58px 1fr auto; }
 
 .variant-bar {
+  --vc-min: 104px;
   --bar-pad-x: 16px;
   --bar-gap: 12px;
   display: flex;
@@ -830,7 +831,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
 .tb-stop { width: 26px; height: 26px; border-radius: var(--radius-s); }
 .tb-stop .stop-glyph { width: 14px; height: 14px; }
 .vb-side .popover, .vb-side .ps-pop { left: 0; right: auto; }
-.vb-main { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.vb-main { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: var(--vc-min); }
 .vb-main.reviewing { flex-direction: column; align-items: stretch; gap: 8px; }
 .vb-main.reviewing .review-card { flex: none; max-height: 232px; overflow-y: auto; overscroll-behavior: contain; }
 .variant-bar.deciding { box-shadow: inset 4px 0 0 var(--signal); align-items: start; }
@@ -875,7 +876,7 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   padding: 8px 12px;
   border-radius: 8px;
   min-width: 0;
-  min-height: 104px;
+  min-height: var(--vc-min);
 }
 .vc:disabled { opacity: 1; }
 .vc.on { border-color: var(--signal); background: var(--signal-soft); box-shadow: inset 0 0 0 1px var(--signal); }
@@ -1312,10 +1313,10 @@ button.link.eng-name-inline:hover { color: var(--signal); }
   .tier-bar, .thin-bar { margin: 4px 0; }
   .kpi-base { min-height: 0; margin-top: 0; font-size: 12.5px; }
   .main { padding: var(--gap) 12px 10px; }
-  .variant-bar { --bar-pad-x: 12px; --bar-gap: 10px; padding-top: 8px; padding-bottom: 8px; }
+  .variant-bar { --vc-min: 83px; --bar-pad-x: 12px; --bar-gap: 10px; padding-top: 8px; padding-bottom: 8px; }
   .plan-btn { padding: 6px 12px; font-size: 14px; }
   .plan-arrow { padding: 6px 10px; }
-  .vc { min-height: 83px; padding: 6px 10px; }
+  .vc { padding: 6px 10px; }
   .vc-lines { font-size: 12px; margin-top: 0; }
   .vc-lines > :nth-child(n + 3) { display: none; }
   .vc-note { min-height: 0; }
