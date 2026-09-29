@@ -256,6 +256,22 @@ export function orderCity(order: Pick<Order, 'address' | 'district'>): string {
   return order.district || head
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export function addressInCity(address: string, city: string): string {
+  const cityHead = new RegExp(`^(?:г\\.?\\s*)?(?:город\\s+)?${escapeRegExp(city)}(?:\\s*,\\s*|\\s+)(?=\\S)`, 'i')
+  const parts = address.split(',').map((part) => part.trim())
+  for (let index = 0; index < parts.length; index++) {
+    const rest = parts.slice(index).join(', ')
+    if (cityHead.test(rest)) {
+      return rest.replace(cityHead, '')
+    }
+  }
+  return addressWithoutCity(address)
+}
+
 export function addressWithoutCity(address: string): string {
   if (MOSCOW_HEAD.test(address)) {
     return address.replace(MOSCOW_HEAD, '')
