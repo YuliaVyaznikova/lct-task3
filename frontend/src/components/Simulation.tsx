@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { ordersById } from '../derive'
 import type { LatLon } from '../geo'
@@ -74,13 +74,15 @@ export function useSimulationView({ sim, plan, scenario, geometry, enabled }: Si
 interface SimulationBarProps {
   sim: Simulation
   onReset: () => void
+  lead?: ReactNode
 }
 
-export function SimulationBar({ sim, onReset }: SimulationBarProps) {
+export function SimulationBar({ sim, onReset, lead = null }: SimulationBarProps) {
   const [from, to] = sim.range
   const pct = (t: number) => ((t - from) / (to - from)) * 100
   return (
     <div className="sim-bar">
+      {lead}
       <button
         type="button"
         className="primary play"

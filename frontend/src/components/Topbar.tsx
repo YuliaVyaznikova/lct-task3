@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 
 import { api } from '../api'
-import type { MapMode, Plan, ScenarioBrief, Tab } from '../types'
+import type { Plan, ScenarioBrief, Tab } from '../types'
 
 export const TABS: [Tab, string][] = [
   ['map', 'Карта'],
@@ -21,10 +21,6 @@ interface TopbarProps {
   onTab: (tab: Tab) => void
   lockedTabs: boolean
   simNeedsDecision: boolean
-  mode: MapMode
-  onMode: (mode: MapMode) => void
-  simLocked: boolean
-  needsDecision: boolean
 }
 
 function formatDate(date: string) {
@@ -35,7 +31,7 @@ function formatDate(date: string) {
   return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })
 }
 
-export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading, plan, busy, tab, onTab, lockedTabs, simNeedsDecision, mode, onMode, simLocked, needsDecision }: TopbarProps) {
+export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading, plan, busy, tab, onTab, lockedTabs, simNeedsDecision }: TopbarProps) {
   const file = useRef<HTMLInputElement>(null)
   const brief = scenarios.find((s) => s.id === scenarioId)
   return (
@@ -106,20 +102,6 @@ export function Topbar({ scenarios, scenarioId, onScenario, onUpload, uploading,
             Выгрузка
           </a>
         )}
-        <button
-          type="button"
-          className={`sim-toggle ${mode === 'sim' ? 'on' : ''}`}
-          aria-pressed={mode === 'sim'}
-          disabled={simLocked}
-          onClick={() => onMode(mode === 'sim' ? 'plan' : 'sim')}
-        >
-          Симуляция
-          {needsDecision && mode !== 'sim' && (
-            <span className="tab-alert" role="status">
-              нужно решение
-            </span>
-          )}
-        </button>
       </div>
     </header>
   )

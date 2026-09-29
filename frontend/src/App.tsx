@@ -13,6 +13,7 @@ import { PlanStorage } from './components/PlanStorage'
 import { EventReviewSchedule } from './components/ReviewSchedule'
 import { Schedule } from './components/Schedule'
 import { EventsPanel, SimulationBar, StatusLegend, useSimulationView } from './components/Simulation'
+import { SimToggle } from './components/SimToggle'
 import { SwitchConfirm } from './components/SwitchConfirm'
 import { Topbar } from './components/Topbar'
 import { VariantBar } from './components/VariantBar'
@@ -533,6 +534,9 @@ export default function App() {
     )
   }
 
+  const simToggle = (
+    <SimToggle on={simMode} disabled={!plan} needsDecision={review !== null} onToggle={() => switchMapMode(simMode ? 'plan' : 'sim')} />
+  )
   const showEmptyCompare = tab === 'compare' && !compared.shown
   const showMapLoading = tab === 'map' && !mapScenario
 
@@ -551,10 +555,6 @@ export default function App() {
           onTab={switchTab}
           lockedTabs={!plan}
           simNeedsDecision={review !== null && tab !== 'map'}
-          mode={activeMapMode}
-          onMode={switchMapMode}
-          simLocked={!plan}
-          needsDecision={review !== null}
         />
 
         <KpiStrip
@@ -583,24 +583,27 @@ export default function App() {
           {tab === 'map' && workspaceScenario && (
             <Workspace
               busy={!simMode && job !== null}
-              top={simMode && <SimulationBar sim={sim} onReset={resetToInitial} />}
+              top={simMode && <SimulationBar sim={sim} onReset={resetToInitial} lead={simToggle} />}
               left={
-                <EngineerList
-                  scenario={workspaceScenario}
-                  plan={workspacePlan}
-                  liveRoutes={simMode ? null : liveRoutes}
-                  selected={selectedEngineer}
-                  selectedOrder={selectedOrder}
-                  onSelect={map.selectEngineer}
-                  onSelectOrder={map.selectOrder}
-                  unavailable={simMode ? simView.unavailable : unavailable}
-                  simStates={simMode ? simView.byId : null}
-                  group={simMode ? simView.group : null}
-                  onGoToPlace={map.focusPlace}
-                  filter={map.engineerFilter}
-                  onFilter={map.setEngineerFilter}
-                  onHover={map.setHoverEngineer}
-                />
+                <div className="left-stack">
+                  {!simMode && simToggle}
+                  <EngineerList
+                    scenario={workspaceScenario}
+                    plan={workspacePlan}
+                    liveRoutes={simMode ? null : liveRoutes}
+                    selected={selectedEngineer}
+                    selectedOrder={selectedOrder}
+                    onSelect={map.selectEngineer}
+                    onSelectOrder={map.selectOrder}
+                    unavailable={simMode ? simView.unavailable : unavailable}
+                    simStates={simMode ? simView.byId : null}
+                    group={simMode ? simView.group : null}
+                    onGoToPlace={map.focusPlace}
+                    filter={map.engineerFilter}
+                    onFilter={map.setEngineerFilter}
+                    onHover={map.setHoverEngineer}
+                  />
+                </div>
               }
               map={
                 <MapView

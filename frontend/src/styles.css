@@ -289,6 +289,9 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
 
 .tb-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: none; position: relative; }
 .sim-toggle { position: relative; padding: 6px 14px; font-weight: 500; }
+.left-stack { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; min-width: 0; }
+.left-stack > .panel { flex: 1; }
+.left-stack > .sim-toggle { width: 100%; padding: 9px 14px; font-size: 14.5px; }
 .sim-toggle.on { background: var(--signal-ink); border-color: var(--signal-ink); color: #fff; }
 .sim-toggle.on:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: #fff; }
 .sim-toggle .tab-alert { top: -8px; }
