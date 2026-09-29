@@ -343,7 +343,7 @@ min  Σ_o drop(o)·[o пропущена] + F·|{e : маршрут непуст
 - Квалификация и транспорт: `routing.SetAllowedVehiclesForIndex(allowed(o), node)`. Если список `allowed(o)` пуст, узел в модель не добавляется, а причина ставится предфильтром, см. раздел 10.2.
 - Минимум инженеров: `SetFixedCostOfAllVehicles(F)`.
 - Срочность: `Time.SetCumulVarSoftUpperBound(node, shift_start_min_over_allowed, w_u)`.
-- Обед относится к should: `Time.SetBreakIntervalsOfVehicle([IntervalVar с 13:00 до 14:00 длительностью 45 минут, гибкий], v, node_durations)`.
+- Обед относится к should: `Time.SetBreakIntervalsOfVehicle([IntervalVar в окне обеда инженера длительностью 45 минут, гибкий], v, node_durations)`.
 - Поиск: `PATH_CHEAPEST_ARC` вместе с `GUIDED_LOCAL_SEARCH`, `time_limit` берётся из параметров, по умолчанию 10 секунд, для демо 5. При перепланировании начальное решение читается через `ReadAssignmentFromRoutes(prev_routes_filtered, True)`.
 - Результат превращается в список маршрутов, то есть порядок `order_id` по инженерам, и уходит в валидатор из раздела 8, который пересчитывает все времена и метрики. Солвер никогда не пишет времена в `Plan` напрямую.
 
