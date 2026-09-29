@@ -399,6 +399,15 @@ def test_8_1_reacts_correctly_to_intraday_change(demo, demo_plan):
         assert after[order_id] == value
 
 
+def test_8_1_cancellation_does_not_bring_out_another_engineer(demo, demo_plan):
+    """Инженер, уже работающий с утра, ничего не стоит, поэтому отмена не перекладывает его заявки на нового человека."""
+    cancel = next(event for event in demo.events if event.type == "cancel_order")
+    working = demo.model_copy(deep=True)
+    new_plan, _ = replan.replan(working, demo_plan, cancel, Geo(working), FAST)
+    assert new_plan.metrics.engineers_used <= demo_plan.metrics.engineers_used
+    assert new_plan.metrics.distance_total_km <= demo_plan.metrics.distance_total_km + 0.5
+
+
 def test_8_1_run_is_reproducible_from_readme():
     """Команды из README должны существовать в интерфейсе командной строки."""
     from planner import cli

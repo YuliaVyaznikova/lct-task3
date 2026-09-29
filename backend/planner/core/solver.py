@@ -385,7 +385,9 @@ def solve(
     )
 
     if params.objective == "min_engineers":
-        routing.SetFixedCostOfAllVehicles(ENGINEER_FIXED_COST)
+        for vehicle, engineer in enumerate(engineers):
+            already_out = engineer.id in starts and bool(starts[engineer.id].locked_stops)
+            routing.SetFixedCostOfVehicle(0 if already_out else ENGINEER_FIXED_COST, vehicle)
 
     if params.objective == "balanced":
         _add_load_balance(routing, engineers, starts, time_callback_indices)
