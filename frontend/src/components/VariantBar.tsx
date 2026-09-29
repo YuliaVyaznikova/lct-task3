@@ -215,10 +215,17 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
     return planId === currentId ? onToggleSchedule : () => onCompare(planId)
   }
   const isOpen = (planId: string) => (planId === currentId ? scheduleOpen : planId === comparing)
+  const stoppable = job?.kind === 'plan' && onCancel !== undefined
   const side = !reviewing && (
-    <div className="vb-side">
+    <div className={cx('vb-side', stoppable && 'stoppable')}>
       {planControl}
-      {tools}
+      {stoppable ? (
+        <button type="button" className="vb-stop" onClick={onCancel} aria-label="Остановить расчёт" title="Остановить расчёт">
+          ×
+        </button>
+      ) : (
+        tools
+      )}
     </div>
   )
 
@@ -237,11 +244,6 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
                   <span className="vb-progress-time">
                     {Math.floor(elapsed)} из {job.budgetS} с
                   </span>
-                  {job.kind === 'plan' && onCancel && (
-                    <button type="button" className="icon vb-cancel" onClick={onCancel} aria-label="Остановить расчёт" title="Остановить расчёт">
-                      ×
-                    </button>
-                  )}
                 </span>
                 <span className="vb-track">
                   <i style={{ width: `${share * 100}%` }} />
