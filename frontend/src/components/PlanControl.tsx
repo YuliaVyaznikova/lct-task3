@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { api } from '../api'
 import { OBJECTIVE_LABEL } from '../labels'
+import { balancePhaseS } from '../usePlanningRequests'
 import type { Objective, Plan, ScenarioBrief } from '../types'
 
 export interface PlanParamsUi {
@@ -96,6 +97,7 @@ export function PlanControl({ brief, params, onParams, plan, busy, onPlan }: Pla
           <label className="field">
             <span className="field-label">
               Время на расчёт <b>{params.timeLimit} с</b>
+              {balancePhaseS(params.objective) > 0 && ` + ${balancePhaseS(params.objective)} с на ровную загрузку`}
             </span>
             <input type="range" min={5} max={90} value={params.timeLimit} onChange={(e) => set({ timeLimit: Number(e.target.value) })} />
           </label>

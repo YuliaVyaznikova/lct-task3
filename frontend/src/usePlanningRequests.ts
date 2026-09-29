@@ -2,9 +2,13 @@ import { useCallback, useRef, useState } from 'react'
 
 import { api, ApiError, streamJob, type PlanRequest } from './api'
 import { VARIANT_ORDER } from './labels'
-import type { JobProgress, Plan, PlanEvent, PlanResponse, ReplanResponse, RunningJob } from './types'
+import type { JobProgress, Objective, Plan, PlanEvent, PlanResponse, ReplanResponse, RunningJob } from './types'
 
 const BALANCE_PHASE_S = 6
+
+export function balancePhaseS(objective: Objective): number {
+  return objective === 'auto' || objective === 'balanced' ? BALANCE_PHASE_S : 0
+}
 
 function parseReplan(data: unknown): ReplanResponse {
   const body = data as Partial<ReplanResponse>
@@ -40,7 +44,7 @@ export function usePlanningRequests() {
       kind: 'plan',
       label: 'Идёт расчёт',
       startedAt: Date.now(),
-      budgetS: request.objective === 'auto' || request.objective === 'balanced' ? request.timeLimit + BALANCE_PHASE_S : request.timeLimit,
+      budgetS: request.timeLimit + balancePhaseS(request.objective),
       last: null,
       byVariant: {},
       expected: request.objective === 'auto' ? VARIANT_ORDER : [request.objective],
