@@ -223,9 +223,14 @@ export function changedOrders(record: EventRecord | null): Set<string> {
   return new Set([...record.changes.changed.map((change) => change.orderId), ...record.changes.added.map((ref) => ref.stop.order_id)])
 }
 
+const CITY_PREFIX = /^(?:г\.\s*)?(?:город\s+)?/i
+const MOSCOW_HEAD = /^(?:г\.\s*)?(?:город\s+)?москва\s+(?=[^,\s])/i
+
 export function cityOf(address: string): string {
-  const head = address.split(',')[0].trim()
-  return head.replace(/^(?:г\.\s*)?(?:Город\s+)?/i, '')
+  if (MOSCOW_HEAD.test(address)) {
+    return 'Москва'
+  }
+  return address.split(',')[0].trim().replace(CITY_PREFIX, '')
 }
 
 const BASE_PREFIX = /^выездная база:\s*/i
@@ -235,7 +240,7 @@ export function placeLabel(address: string): string {
 }
 
 export function displayAddress(address: string): string {
-  if (!address.includes(',')) {
+  if (!address.includes(',') && !MOSCOW_HEAD.test(address)) {
     return address
   }
   return `${cityOf(address)}, ${addressWithoutCity(address)}`
@@ -252,9 +257,12 @@ export function orderCity(order: Pick<Order, 'address' | 'district'>): string {
 }
 
 export function addressWithoutCity(address: string): string {
+  if (MOSCOW_HEAD.test(address)) {
+    return address.replace(MOSCOW_HEAD, '')
+  }
   const comma = address.indexOf(',')
   if (comma < 0) {
-    return address.replace(/^москва\s+/i, '')
+    return address
   }
   const rest = address.slice(comma + 1).trim()
   return rest || address
