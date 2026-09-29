@@ -735,6 +735,8 @@ export default function App() {
               onReviewDetails={() => eventReview.setDetails(true)}
               onCompare={details.toggle}
               comparing={details.otherId}
+              scheduleOpen={tab === 'schedule'}
+              onToggleSchedule={() => switchTab(tab === 'schedule' ? 'map' : 'schedule')}
             />
           </div>
         </main>

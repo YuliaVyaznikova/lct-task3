@@ -28,6 +28,8 @@ interface VariantBarProps {
   onReviewDetails?: () => void
   onCompare?: (planId: string) => void
   comparing?: string | null
+  scheduleOpen?: boolean
+  onToggleSchedule?: () => void
   locked?: boolean
 }
 
@@ -166,7 +168,7 @@ function dropNote(dropped: string[], scenario: Scenario): string {
   return `снимает ${shown.join(', ')}${dropped.length > 2 ? '…' : ''}`
 }
 
-export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, comparing = null, locked = false }: VariantBarProps) {
+export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, comparing = null, scheduleOpen = false, onToggleSchedule, locked = false }: VariantBarProps) {
   const elapsed = useElapsed(job?.startedAt ?? null)
   const running = job !== null
   const idle = !running && review === null && variants.length === 0 && ownMine === null
@@ -209,6 +211,11 @@ export function VariantBar({ job, variants, mine: ownMine = null, review = null,
     <div className="vb-side">
       {planControl}
       {tools}
+      {canCompare && onToggleSchedule && (
+        <button type="button" className={cx('ghost small vb-schedule', scheduleOpen && 'on')} aria-pressed={scheduleOpen} onClick={onToggleSchedule}>
+          {scheduleOpen ? 'Скрыть' : 'Подробнее'}
+        </button>
+      )}
     </div>
   )
 
