@@ -240,11 +240,12 @@ def test_manual_move_to_another_engineer(client):
     route = next(r for r in created["optimized"]["routes"] if r["stops"])
     order_id = route["stops"][0]["order_id"]
     card = client.get(f"/api/plans/{plan_id}/explain/{order_id}").json()
+    feasible = [line for line in card["alternatives"] if "км к его маршруту" in line]
     alternative = next(
         (
             engineer["id"]
             for engineer in created["scenario"]["engineers"]
-            if engineer["name"] in " ".join(card["alternatives"]) and "+" in " ".join(card["alternatives"])
+            if any(line.startswith(f"{engineer['name']}:") for line in feasible)
         ),
         None,
     )
