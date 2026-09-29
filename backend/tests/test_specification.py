@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from planner.core import baseline, explain, metrics, replan, reasons, solver, travel
+from planner.core import baseline, explain, metrics, replan, reasons, solver
 from planner.core.models import (
     CancelOrderEvent,
     EngineerUnavailableEvent,
@@ -50,12 +50,14 @@ def test_2_1_1_loads_prepared_data():
     assert {"vostok", "yugo-vostok", "yugocentr", "demo"} <= scenarios
 
 
+@pytest.mark.slow
 def test_2_1_2_distributes_orders_between_engineers(demo_plan):
     """2."""
     assert demo_plan.metrics.assigned > 0
     assert len({route.engineer_id for route in demo_plan.routes if route.stops}) > 1
 
 
+@pytest.mark.slow
 def test_2_1_3_defines_visit_order(demo_plan):
     """3."""
     for route in demo_plan.routes:
@@ -83,6 +85,7 @@ def test_2_1_5_plan_says_who_where_when(demo_plan, demo):
 @pytest.mark.parametrize(
     "event_type", ["urgent_order", "cancel_order", "engineer_unavailable"]
 )
+@pytest.mark.slow
 def test_2_1_6_replans_after_each_event(demo, demo_plan, event_type):
     """6."""
     working = demo.model_copy(deep=True)
@@ -261,6 +264,7 @@ def test_2_4_2_result_contains_everything_required(demo, demo_plan):
     assert demo_plan.plan_explanation
 
 
+@pytest.mark.slow
 def test_3_2_solution_runs_without_network(demo, monkeypatch):
     """Сервис обязан считать план без сети: координаты уже лежат в данных."""
     import httpx
@@ -290,6 +294,7 @@ def test_4_demo_scenario_exists_with_events(demo):
     assert {event.type for event in demo.events} >= {"urgent_order", "cancel_order"}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("objective", ["min_engineers", "min_distance"])
 def test_4_prepared_events_apply_one_after_another(demo, objective):
     """Заготовленные события защиты применяются по очереди, отмена не попадает на визит, к которому уже выехали."""
@@ -374,6 +379,7 @@ def test_8_1_result_is_understandable_without_reading_code(demo_plan):
     assert any(word in blob for word in ("инженер", "заявк", "маршрут"))
 
 
+@pytest.mark.slow
 def test_8_1_reacts_correctly_to_intraday_change(demo, demo_plan):
     """Визиты, начатые до события, не должны измениться."""
     at = "13:00"
@@ -399,6 +405,7 @@ def test_8_1_reacts_correctly_to_intraday_change(demo, demo_plan):
         assert after[order_id] == value
 
 
+@pytest.mark.slow
 def test_8_1_cancellation_does_not_bring_out_another_engineer(demo, demo_plan):
     """Инженер, уже работающий с утра, ничего не стоит, поэтому отмена не перекладывает его заявки на нового человека."""
     cancel = next(event for event in demo.events if event.type == "cancel_order")

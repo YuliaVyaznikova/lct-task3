@@ -1,12 +1,13 @@
-"""Оптимизатор распределения и маршрутов на Google OR-Tools."""
+"""Оптимизатор распределения и маршрутов на Google OR-Tools (веса: docs/algorithm.md, «Целевая функция»)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from multiprocessing import get_context
 from queue import Empty
 from time import monotonic
-from typing import Callable
 
 import numpy as np
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
@@ -26,13 +27,24 @@ from planner.core.models import (
     Unassigned,
 )
 from planner.core.timeutil import min_to_hhmm
-from planner.core.validate import Geo, StartState, check_static, evaluate
+from planner.core.validate import (
+    LUNCH_DURATION_MIN,
+    Geo,
+    StartState,
+    check_static,
+    evaluate,
+    lunch_starts,
+)
+
+logger = logging.getLogger(__name__)
 
 DROP_PENALTY_BY_TIER = {
     1: 10_000_000,
     2: 2_000_000,
     3: 1_000_000,
 }
+
+REQUIRED_DROP_PENALTY = 1_000_000_000
 
 ENGINEER_FIXED_COST = 100_000
 
@@ -55,8 +67,6 @@ HORIZON_MIN = 1_800
 class SolveResult:
     assignment: dict[str, list[str]]
     unassigned_ids: list[str]
-    dropped_by_prefilter: list[str] = field(default_factory=list)
-    status: str = ""
 
 
 ProgressCallback = Callable[[dict], None]
@@ -69,7 +79,7 @@ def transit_matrices(
     zone_of_node: list[int],
     dummy_end: int,
 ) -> tuple[np.ndarray, dict[Transport, np.ndarray]]:
-    """Матрицы содержат ровно те же слагаемые, что прежние дуговые callbacks."""
+    """Стоимости дуг OR-Tools: пробег со штрафом за смену зоны и время в пути с обслуживанием."""
     distance = distance_m.copy()
     for i in range(len(zone_of_node)):
         for j in range(dummy_end):
@@ -96,12 +106,12 @@ def vehicle_distance_matrix(
     return adjusted
 
 
-def _drop_penalty(order) -> int:
-    """Цена отказа от заявки: чем выше ярус, тем дороже её не выполнить."""
-    tier = getattr(order, "priority_tier", 3)
-    if order.priority is Priority.URGENT:
-        tier = min(tier, 1)
-    return DROP_PENALTY_BY_TIER.get(tier, DROP_PENALTY_BY_TIER[3])
+def _drop_penalty(order: Order, required: bool = False) -> int:
+    """Цена отказа от заявки: обязательную дороже всех, иначе чем выше ярус, тем дороже."""
+    if required:
+        return REQUIRED_DROP_PENALTY
+    tier = 1 if order.priority is Priority.URGENT else order.priority_tier
+    return DROP_PENALTY_BY_TIER[tier]
 
 
 def _lateness_weight(order: Order) -> int:
@@ -226,7 +236,12 @@ def _add_load_balance(
 
 
 def _add_order_constraints(
-    routing, manager, engineers: list[Engineer], orders: list[Order], node_of_order: dict[str, int]
+    routing,
+    manager,
+    engineers: list[Engineer],
+    orders: list[Order],
+    node_of_order: dict[str, int],
+    required: set[str],
 ) -> None:
     for order in orders:
         allowed = [
@@ -235,7 +250,7 @@ def _add_order_constraints(
         ]
         index = manager.NodeToIndex(node_of_order[order.id])
         routing.VehicleVar(index).SetValues([-1, *allowed])
-        routing.AddDisjunction([index], _drop_penalty(order))
+        routing.AddDisjunction([index], _drop_penalty(order, order.id in required))
 
 
 def _add_equipment_constraints(
@@ -349,11 +364,54 @@ def solve(
     ]
 
     servable = [o for o in pool if _capable(scenario, o)]
-    prefiltered = [o.id for o in pool if o not in servable]
     if not servable or not engineers:
-        return SolveResult({e.id: [] for e in engineers}, [o.id for o in pool], prefiltered, "EMPTY")
+        return SolveResult({e.id: [] for e in engineers}, [o.id for o in pool])
 
     node_of_order = {order.id: i for i, order in enumerate(servable)}
+    model = _build_model(scenario, geo, params, starts, previous, engineers, servable, node_of_order)
+    routing = model.routing
+    manager = model.manager
+
+    tracker = _SearchTracker(scenario, geo, params, starts, pool, model, on_progress)
+    routing.AddAtSolutionCallback(tracker.at_solution)
+    idle_limit = _IdleLimit(routing, tracker)
+    routing.AddSearchMonitor(idle_limit)
+
+    solution = _solve_model(routing, _search_parameters(params), engineers, previous, node_of_order, seed)
+    tracker.flush()
+
+    assignment: dict[str, list[str]] = {e.id: [] for e in scenario.engineers}
+    if solution is None:
+        return SolveResult(assignment, [o.id for o in pool])
+
+    assignment.update(_route_sequences(
+        routing, manager, engineers, servable,
+        lambda index: solution.Value(routing.NextVar(index)),
+    ))
+    assigned = {order_id for sequence in assignment.values() for order_id in sequence}
+    unassigned_ids = [o.id for o in pool if o.id not in assigned]
+    return SolveResult(assignment, unassigned_ids)
+
+
+@dataclass
+class _Model:
+    routing: pywrapcp.RoutingModel
+    manager: pywrapcp.RoutingIndexManager
+    engineers: list[Engineer]
+    servable: list[Order]
+
+
+def _build_model(
+    scenario: Scenario,
+    geo: Geo,
+    params: PlanParams,
+    starts: dict[str, StartState],
+    previous: dict[str, str],
+    engineers: list[Engineer],
+    servable: list[Order],
+    node_of_order: dict[str, int],
+) -> _Model:
+    """Модель OR-Tools со всеми ограничениями и стоимостями."""
     geo_nodes, start_nodes = _travel_nodes(geo, servable, engineers, starts)
     dummy_end = len(geo_nodes)
     total_nodes = dummy_end + 1
@@ -379,7 +437,7 @@ def solve(
     time_dim = _add_time_constraints(
         routing, manager, engineers, servable, node_of_order, starts, params, time_callback_indices
     )
-    _add_order_constraints(routing, manager, engineers, servable, node_of_order)
+    _add_order_constraints(routing, manager, engineers, servable, node_of_order, set(params.required_orders))
     _add_equipment_constraints(
         routing, manager, geo, engineers, servable, node_of_order, starts, total_nodes
     )
@@ -395,81 +453,109 @@ def solve(
     if params.lunch:
         _add_lunch_breaks(routing, manager, time_dim, engineers, service_min, starts)
 
-    search = _search_parameters(params)
+    return _Model(routing, manager, engineers, servable)
 
-    started = monotonic()
-    last_improvement = started
-    best_cost: int | None = None
-    last_published = float("-inf")
-    best_metrics = None
 
-    def at_solution() -> None:
-        nonlocal last_improvement, best_cost, last_published, best_metrics
+class _SearchTracker:
+    """Следит за улучшениями поиска и публикует допустимые промежуточные планы."""
+
+    def __init__(
+        self,
+        scenario: Scenario,
+        geo: Geo,
+        params: PlanParams,
+        starts: dict[str, StartState],
+        pool: list[Order],
+        model: _Model,
+        on_progress: ProgressCallback | None,
+    ) -> None:
+        self.scenario = scenario
+        self.geo = geo
+        self.params = params
+        self.starts = starts
+        self.pool = pool
+        self.model = model
+        self.on_progress = on_progress
+        self.started = monotonic()
+        self.last_improvement = self.started
+        self.best_cost: int | None = None
+        self.last_published = float("-inf")
+        self.pending: dict[str, list[str]] | None = None
+
+    def at_solution(self) -> None:
+        """Вызывается решателем на каждом найденном решении."""
         now = monotonic()
-        cost = routing.CostVar().Value()
-        if best_cost is not None and cost >= best_cost:
+        cost = self.model.routing.CostVar().Value()
+        if self.best_cost is not None and cost >= self.best_cost:
             return
-        best_cost = cost
-        last_improvement = now
-        if on_progress is None or now - last_published < 0.25:
+        self.best_cost = cost
+        self.last_improvement = now
+        if self.on_progress is None:
             return
 
-        snapshot = _route_sequences(
-            routing, manager, engineers, servable,
+        routing = self.model.routing
+        self.pending = _route_sequences(
+            routing, self.model.manager, self.model.engineers, self.model.servable,
             lambda index: routing.NextVar(index).Value(),
         )
+        self.publish_pending(now)
+
+    def publish_pending(self, now: float) -> None:
+        """Публикует последнее улучшение не чаще чем раз в 0,25 с."""
+        if self.pending is None or now - self.last_published < 0.25:
+            return
+        snapshot, self.pending = self.pending, None
+        self._publish(snapshot, now)
+
+    def flush(self) -> None:
+        """Публикует то, что не успели отправить до конца поиска."""
+        if self.pending is not None:
+            self._publish(self.pending, monotonic())
+
+    def is_idle(self, now: float) -> bool:
+        """Есть решение, и оно не улучшалось дольше no_improve_s."""
+        return self.best_cost is not None and now - self.last_improvement >= self.params.no_improve_s
+
+    def _publish(self, snapshot: dict[str, list[str]], now: float) -> None:
+        params = self.params
         routes, violations = evaluate(
-            geo, snapshot, starts,
-            allow_late=params.allow_reschedule and bool(starts),
+            self.geo, snapshot, self.starts,
+            allow_late=params.allow_reschedule and bool(self.starts),
             lunch=params.lunch,
         )
         if violations:
             return
+
         assigned = {stop.order_id for route in routes for stop in route.stops}
         missing = [
             Unassigned(order_id=o.id, reason_code=ReasonCode.CAPACITY, reason="")
-            for o in pool if o.id not in assigned
+            for o in self.pool if o.id not in assigned
         ]
-        current = metrics_module.compute(scenario, routes, missing)
-        if best_metrics is not None and not metrics_module.is_better(current, best_metrics):
-            return
-        best_metrics = current
-        last_published = now
-        on_progress({
-            "elapsed_s": round(now - started, 3),
+        current = metrics_module.compute(self.scenario, routes, missing)
+        self.last_published = now
+        self.on_progress({
+            "elapsed_s": round(now - self.started, 3),
             "variant": params.objective,
             "assigned": current.assigned,
-            "total": len(scenario.orders),
+            "total": len(self.scenario.orders),
             "engineers_used": current.engineers_used,
             "distance_km": current.distance_total_km,
             "routes": {route.engineer_id: route.order_ids for route in routes},
         })
-    routing.AddAtSolutionCallback(at_solution)
 
-    class IdleLimit(pywrapcp.SearchMonitor):
-        def __init__(self):
-            super().__init__(routing.solver())
 
-        def BeginNextDecision(self, decision) -> None:
-            if best_cost is not None and monotonic() - last_improvement >= params.no_improve_s:
-                self.solver().FinishCurrentSearch()
+class _IdleLimit(pywrapcp.SearchMonitor):
+    """Останавливает поиск, когда решение перестало улучшаться."""
 
-    idle_limit = IdleLimit()
-    routing.AddSearchMonitor(idle_limit)
+    def __init__(self, routing, tracker: _SearchTracker) -> None:
+        super().__init__(routing.solver())
+        self.tracker = tracker
 
-    solution = _solve_model(routing, search, engineers, previous, node_of_order, seed)
-
-    assignment: dict[str, list[str]] = {e.id: [] for e in scenario.engineers}
-    if solution is None:
-        return SolveResult(assignment, [o.id for o in pool], prefiltered, "NO_SOLUTION")
-
-    assignment.update(_route_sequences(
-        routing, manager, engineers, servable,
-        lambda index: solution.Value(routing.NextVar(index)),
-    ))
-    assigned = {order_id for sequence in assignment.values() for order_id in sequence}
-    unassigned_ids = [o.id for o in pool if o.id not in assigned]
-    return SolveResult(assignment, unassigned_ids, prefiltered, routing.status())
+    def BeginNextDecision(self, decision) -> None:
+        now = monotonic()
+        self.tracker.publish_pending(now)
+        if self.tracker.is_idle(now):
+            self.solver().FinishCurrentSearch()
 
 
 def _seed_routes(
@@ -494,7 +580,7 @@ def _initial_routes(
 
 
 def _add_lunch_breaks(routing, manager, time_dim, engineers, service_min, starts) -> None:
-    """Необязательный обед: 45 минут в окне 13:00–15:00."""
+    """Обед по правилу валидатора (lunch_starts): не раньше, чем инженер свободен."""
     node_visit = [int(service_min[manager.IndexToNode(i)]) if i < len(service_min) else 0
                   for i in range(routing.Size())]
     solver = routing.solver()
@@ -502,12 +588,30 @@ def _add_lunch_breaks(routing, manager, time_dim, engineers, service_min, starts
         state = starts.get(engineer.id)
         if state is not None and state.lunch_break is not None:
             continue
-        if engineer.shift_start_min > 13 * 60 or engineer.shift_end_min < 15 * 60:
+        available = state.available_min if state is not None else engineer.shift_start_min
+        starts_range = lunch_starts(engineer, available)
+        if starts_range is None:
             continue
         interval = solver.FixedDurationIntervalVar(
-            13 * 60, 15 * 60 - 45, 45, False, f"обед {engineer.id}"
+            starts_range[0],
+            starts_range[1],
+            LUNCH_DURATION_MIN,
+            False,
+            f"обед {engineer.id}",
         )
         time_dim.SetBreakIntervalsOfVehicle([interval], vehicle, node_visit)
+
+
+AUTO_OBJECTIVES = ("min_engineers", "min_distance")
+
+
+def best_index(attempts: list[Plan]) -> int:
+    """Номер лучшего плана по is_better; при равенстве тот, что раньше в списке."""
+    best = 0
+    for index in range(1, len(attempts)):
+        if metrics_module.is_better(attempts[index].metrics, attempts[best].metrics):
+            best = index
+    return best
 
 
 def plan(
@@ -527,14 +631,10 @@ def plan(
 
     if params.objective == "auto":
         attempts = parallel_plans(
-            scenario, params, ("min_engineers", "min_distance"), plan_id,
+            scenario, params, AUTO_OBJECTIVES, plan_id,
             starts, order_ids, previous, on_progress, seed,
         )
-        best = attempts[0]
-        for attempt in attempts[1:]:
-            if metrics_module.is_better(attempt.metrics, best.metrics):
-                best = attempt
-        return best
+        return attempts[best_index(attempts)]
 
     if params.objective == "balanced" and seed is None:
         first = solve(
@@ -555,7 +655,7 @@ def plan(
             "солвер вернул недопустимый план: " + "; ".join(v.text for v in violations[:3])
         )
 
-    unassigned = reasons.diagnose_all(geo, result.unassigned_ids, routes, starts)
+    unassigned = reasons.diagnose_all(geo, result.unassigned_ids, routes, starts, params.lunch)
     planned_from = (
         min_to_hhmm(min(s.available_min for s in starts.values()))
         if starts
@@ -604,6 +704,7 @@ def _plan_worker(queue, scenario, params, objective, plan_id, starts, order_ids,
         )
         queue.put(("done", objective, attempt.model_dump(mode="json")))
     except Exception as exc:
+        logger.exception("вариант %s завершился ошибкой", objective)
         queue.put(("error", objective, f"{type(exc).__name__}: {exc}"))
 
 

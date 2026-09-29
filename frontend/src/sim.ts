@@ -1,6 +1,34 @@
-import { minutes } from './colors'
 import { orderPoint, pointAlong, startPoint, type LatLon } from './geo'
+import { engineerName } from './labels'
+import { departureMin, minutes } from './time'
 import type { Engineer, Order, PlanEvent, Route, Scenario } from './types'
+
+export type Speed = 30 | 60 | 120
+
+export interface SimEvent {
+  id: string
+  event: PlanEvent
+  source: 'scenario' | 'added'
+  status: 'pending' | 'running' | 'done' | 'rejected' | 'failed'
+  error?: string
+  summary?: { moved: number; frozen: number; planId: string; seconds: number; added?: string; rejected?: boolean }
+}
+
+export interface Simulation {
+  clock: number
+  clockLabel: string
+  playing: boolean
+  speed: Speed
+  setSpeed: (speed: Speed) => void
+  events: SimEvent[]
+  busy: boolean
+  resumeIn: number | null
+  setClock: (minute: number) => void
+  toggle: () => void
+  reset: (prepared: PlanEvent[], start: number) => void
+  add: (event: PlanEvent) => void
+  range: [number, number]
+}
 
 export type SimStatus =
   | 'moving'
@@ -18,9 +46,9 @@ export const STATUS_RU: Record<SimStatus, string> = {
   waiting: 'ждёт окна',
   lunch: 'обед',
   idle: 'свободен',
-  done: 'смена окончена',
-  unavailable: 'недоступен',
   delayed: 'задержка',
+  unavailable: 'недоступен',
+  done: 'смена окончена',
 }
 
 export interface EngineerState {
@@ -69,7 +97,7 @@ export function engineerState(
     status: 'idle',
     position: startPoint(engineer, scenario),
     orderId: stops[0]?.order_id ?? null,
-    until: stops.length ? (stops[0].departure ? minutes(stops[0].departure) : minutes(stops[0].arrival) - stops[0].travel_min) : null,
+    until: stops.length ? departureMin(stops[0]) : null,
     done: stops.filter((stop) => minutes(stop.finish) <= clock).length,
     total: stops.length,
   }
@@ -84,11 +112,13 @@ export function engineerState(
   for (let i = 0; i < stops.length; i += 1) {
     const stop = stops[i]
     const arrival = minutes(stop.arrival)
-    const departure = stop.departure ? minutes(stop.departure) : arrival - stop.travel_min
+    const departure = departureMin(stop)
     const start = minutes(stop.start)
     const finish = minutes(stop.finish)
     const stopPoint = orderPoint(orders[stop.order_id])
-    if (clock < departure) break
+    if (clock < departure) {
+      break
+    }
     if (clock < arrival) {
       const drivingMinutes = arrival - departure - lunchMinutesWithin(departure, arrival)
       const travelShare = drivingMinutes > 0 ? (clock - departure - lunchMinutesWithin(departure, clock)) / drivingMinutes : 1
@@ -109,12 +139,14 @@ export function engineerState(
       status: 'idle',
       position: stopPoint,
       orderId: next?.order_id ?? null,
-      until: next ? (next.departure ? minutes(next.departure) : minutes(next.arrival) - next.travel_min) : null,
+      until: next ? departureMin(next) : null,
     }
   }
 
   if (!stops.length || clock >= minutes(stops[stops.length - 1].finish)) {
-    if (clock >= minutes(engineer.shift_end)) state = { ...state, status: 'done', orderId: null, until: null }
+    if (clock >= minutes(engineer.shift_end)) {
+      state = { ...state, status: 'done', orderId: null, until: null }
+    }
   }
 
   if (lunch && clock >= lunchFrom && clock < lunchTo && state.status !== 'onsite') {
@@ -123,7 +155,9 @@ export function engineerState(
 
   if (marks) {
     const delay = marks.delays.find((period) => clock >= period.from && clock < period.to)
-    if (delay && state.status !== 'onsite') state = { ...state, status: 'delayed', until: delay.to }
+    if (delay && state.status !== 'onsite') {
+      state = { ...state, status: 'delayed', until: delay.to }
+    }
     if (marks.unavailableFrom !== undefined && clock >= marks.unavailableFrom && state.status !== 'onsite') {
       state = { ...state, status: 'unavailable', until: null }
     }
@@ -138,4 +172,18 @@ export function dayRange(scenario: Scenario, routes: Route[]): [number, number] 
   const from = Math.min(...starts, 9 * 60)
   const to = Math.max(...ends, ...finishes, 18 * 60)
   return [Math.floor(from / 30) * 30, Math.ceil(to / 30) * 30]
+}
+
+export function describeEvent(event: PlanEvent, scenario: Scenario): string {
+  switch (event.type) {
+    case 'urgent_order':
+    case 'new_order':
+      return `${event.order.id}${event.order.district ? `, ${event.order.district}` : ''}`
+    case 'cancel_order':
+      return `заявка ${event.order_id}`
+    case 'engineer_unavailable':
+      return engineerName(scenario.engineers, event.engineer_id)
+    case 'engineer_delayed':
+      return `${engineerName(scenario.engineers, event.engineer_id)} на ${event.minutes} мин`
+  }
 }

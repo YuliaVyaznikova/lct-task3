@@ -1,28 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { hhmm, minutes } from './colors'
+import type { SimEvent, Simulation, Speed } from './sim'
+import { hhmm, minutes } from './time'
 import type { PlanEvent } from './types'
-
-export type Speed = 30 | 60 | 120
 
 const MIN_CLOCK_STEP_MINUTES = 0.25
 const MAX_FRAME_INTERVAL_SECONDS = 0.066
 const RESUME_COUNTDOWN_SECONDS = 3
 
-export interface SimEvent {
-  id: string
-  event: PlanEvent
-  source: 'scenario' | 'added'
-  status: 'pending' | 'running' | 'done' | 'failed'
-  error?: string
-  summary?: { moved: number; frozen: number; planId: string; seconds: number; added?: string }
-}
-
 export function eventId(event: PlanEvent): string {
-  if (event.type === 'urgent_order') return `urgent:${event.order.id}`
-  if (event.type === 'new_order') return `new:${event.order.id}`
-  if (event.type === 'cancel_order') return `cancel:${event.order_id}`
-  if (event.type === 'engineer_delayed') return `delay:${event.engineer_id}:${event.time}`
+  if (event.type === 'urgent_order') {
+    return `urgent:${event.order.id}`
+  }
+  if (event.type === 'new_order') {
+    return `new:${event.order.id}`
+  }
+  if (event.type === 'cancel_order') {
+    return `cancel:${event.order_id}`
+  }
+  if (event.type === 'engineer_delayed') {
+    return `delay:${event.engineer_id}:${event.time}`
+  }
   return `off:${event.engineer_id}`
 }
 
@@ -31,7 +29,7 @@ interface Options {
   run: (event: PlanEvent) => Promise<SimEvent['summary']>
 }
 
-export function useSimulation({ range, run }: Options) {
+export function useSimulation({ range, run }: Options): Simulation {
   const [clock, setClockState] = useState(range[0])
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<Speed>(60)
@@ -43,11 +41,13 @@ export function useSimulation({ range, run }: Options) {
   const runningRef = useRef(false)
   const wasPlayingRef = useRef(false)
   const runRef = useRef(run)
+  const generationRef = useRef(0)
   clockRef.current = clock
   eventsRef.current = events
   runRef.current = run
 
   const reset = useCallback((prepared: PlanEvent[], start: number) => {
+    generationRef.current += 1
     setPlaying(false)
     setResumeIn(null)
     setClockState(start)
@@ -60,15 +60,23 @@ export function useSimulation({ range, run }: Options) {
   }, [])
 
   const fire = useCallback(async (item: SimEvent) => {
+    const generation = generationRef.current
+    const settle = (patch: Partial<SimEvent>) => {
+      if (generation !== generationRef.current) {
+        return
+      }
+      setEvents((list) => list.map((e) => (e.id === item.id ? { ...e, ...patch } : e)))
+      if (wasPlayingRef.current) {
+        setResumeIn(RESUME_COUNTDOWN_SECONDS)
+      }
+    }
     runningRef.current = true
     setEvents((list) => list.map((e) => (e.id === item.id ? { ...e, status: 'running' } : e)))
     try {
       const summary = await runRef.current(item.event)
-      setEvents((list) => list.map((e) => (e.id === item.id ? { ...e, status: 'done', summary } : e)))
-      if (wasPlayingRef.current) setResumeIn(RESUME_COUNTDOWN_SECONDS)
+      settle({ status: summary?.rejected ? 'rejected' : 'done', summary })
     } catch (err) {
-      setEvents((list) => list.map((e) => (e.id === item.id ? { ...e, status: 'failed', error: (err as Error).message } : e)))
-      if (wasPlayingRef.current) setResumeIn(RESUME_COUNTDOWN_SECONDS)
+      settle({ status: 'failed', error: (err as Error).message })
     } finally {
       runningRef.current = false
     }
@@ -76,7 +84,9 @@ export function useSimulation({ range, run }: Options) {
 
   const setClock = useCallback(
     (target: number, fromPlayback = false) => {
-      if (runningRef.current) return
+      if (runningRef.current) {
+        return
+      }
       const boundedTarget = Math.max(range[0], Math.min(range[1], target))
       const nextPendingEvent = eventsRef.current
         .filter((event) => event.status === 'pending' && minutes(event.event.time) <= boundedTarget)
@@ -92,13 +102,17 @@ export function useSimulation({ range, run }: Options) {
       }
       clockRef.current = boundedTarget
       setClockState(boundedTarget)
-      if (boundedTarget >= range[1]) setPlaying(false)
+      if (boundedTarget >= range[1]) {
+        setPlaying(false)
+      }
     },
     [range, fire],
   )
 
   useEffect(() => {
-    if (!playing) return
+    if (!playing) {
+      return
+    }
     let frame = 0
     let lastFrameAt = performance.now()
     let accumulatedMinutes = 0
@@ -117,7 +131,9 @@ export function useSimulation({ range, run }: Options) {
   }, [playing, speed, setClock])
 
   useEffect(() => {
-    if (runningRef.current) return
+    if (runningRef.current) {
+      return
+    }
     const dueEvent = events.find((event) => event.status === 'pending' && minutes(event.event.time) <= clockRef.current)
     if (dueEvent) {
       wasPlayingRef.current = playing
@@ -127,7 +143,9 @@ export function useSimulation({ range, run }: Options) {
   }, [events, fire, playing])
 
   useEffect(() => {
-    if (resumeIn === null) return
+    if (resumeIn === null) {
+      return
+    }
     if (resumeIn <= 0) {
       setResumeIn(null)
       setPlaying(true)
@@ -144,7 +162,9 @@ export function useSimulation({ range, run }: Options) {
 
   const toggle = useCallback(() => {
     setResumeIn(null)
-    if (runningRef.current) return
+    if (runningRef.current) {
+      return
+    }
     setPlaying((p) => {
       if (!p && clockRef.current >= range[1]) {
         clockRef.current = range[0]
@@ -163,7 +183,6 @@ export function useSimulation({ range, run }: Options) {
     events,
     busy: events.some((e) => e.status === 'running'),
     resumeIn,
-    cancelResume: () => setResumeIn(null),
     setClock: (t: number) => {
       setResumeIn(null)
       setClock(t)
@@ -174,5 +193,3 @@ export function useSimulation({ range, run }: Options) {
     range,
   }
 }
-
-export type Simulation = ReturnType<typeof useSimulation>

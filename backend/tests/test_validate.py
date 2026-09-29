@@ -15,6 +15,8 @@ from planner.core.validate import (
     evaluate,
     evaluate_route,
     first_blocking_violation,
+    lunch_starts,
+    lunch_window,
 )
 from tests.conftest import make_engineer, make_order, make_scenario
 
@@ -243,6 +245,40 @@ def test_lunch_during_travel_delays_arrival_and_records_departure():
     assert stop.departure == "12:45"
     assert hhmm_to_min(stop.arrival) - hhmm_to_min(stop.departure) == stop.travel_min + 45
     assert stop.start >= stop.arrival
+
+
+def test_lunch_window_follows_the_shift():
+    assert lunch_window(make_engineer("D")) == (13 * 60, 15 * 60)
+    assert lunch_window(make_engineer("E", shift=("14:00", "23:00"))) == (17 * 60 + 30, 19 * 60 + 30)
+    assert lunch_window(make_engineer("S", shift=("15:00", "19:00"))) is None
+
+
+def test_evening_shift_lunches_around_the_middle():
+    order = make_order("A", 0, window=("16:00", "16:00"))
+    engineer = make_engineer("E01", shift=("14:00", "23:00"))
+    scenario = make_scenario([order], [engineer])
+    route, violations = evaluate_route(Geo(scenario), engineer, ["A"], lunch=True)
+
+    assert not violations
+    assert route.lunch_break == LunchBreak(start="17:30", finish="18:15")
+
+
+def test_lunch_starts_no_earlier_than_the_engineer_is_free():
+    engineer = make_engineer("E01")
+    assert lunch_starts(engineer, 9 * 60) == (13 * 60, 14 * 60 + 15)
+    assert lunch_starts(engineer, 13 * 60 + 48) == (13 * 60 + 48, 14 * 60 + 15)
+    assert lunch_starts(engineer, 14 * 60 + 30) is None
+
+
+def test_lunch_missed_in_the_frozen_past_is_not_required():
+    order = make_order("A", 0, window=("15:00", "16:00"))
+    engineer = make_engineer("E01")
+    scenario = make_scenario([order], [engineer])
+    state = StartState(node=0, available_min=14 * 60 + 30)
+    route, violations = evaluate_route(Geo(scenario), engineer, ["A"], state, lunch=True)
+
+    assert not violations
+    assert route.lunch_break is None
 
 
 def test_completed_lunch_is_reused_after_freeze():

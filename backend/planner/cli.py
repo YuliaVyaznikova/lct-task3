@@ -5,9 +5,12 @@ from __future__ import annotations
 import argparse
 import collections
 import sys
+from pathlib import Path
 
-from planner.core.models import Scenario
-from planner.ingest import beeline, equipment, store
+from planner.core import equipment
+from planner.core.models import CancelOrderEvent, NewOrderEvent, Scenario, UrgentOrderEvent
+from planner.core.travel import PUBLIC_OSRM
+from planner.ingest import beeline, store
 from planner.paths import CACHE_DIR, RAW_DIR, ensure_dirs
 
 
@@ -23,13 +26,15 @@ def _specs(region: str) -> list[beeline.RegionSpec]:
 
 
 def cmd_build(args: argparse.Namespace) -> int:
+    from planner.core.control import control_brigades
+
     ensure_dirs()
     for spec in _specs(args.region):
         synthetic, control = beeline.find_region_files(spec, RAW_DIR)
         scenario = beeline.load_region(synthetic, control, spec=spec)
         equipment.populate(scenario)
         path = store.save(scenario)
-        brigades = beeline.control_brigades(scenario)
+        brigades = control_brigades(scenario)
         cancelled = beeline.cancelled_orders(scenario)
         needs_equipment = sum(1 for o in scenario.orders if o.attributes.get("equipment"))
         print(
@@ -65,24 +70,29 @@ def cmd_engineers(args: argparse.Namespace) -> int:
     return 0
 
 
+def _event_target(event) -> str:
+    if isinstance(event, (UrgentOrderEvent, NewOrderEvent)):
+        return event.order.id
+    if isinstance(event, CancelOrderEvent):
+        return event.order_id
+    return event.engineer_id
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     from planner.ingest import demo
 
     ensure_dirs()
     print(f"подбираем демо-набор на основе региона «{args.base}»…")
-    scenario, report = demo.build(args.base, verbose=args.verbose)
+    scenario, report = demo.build(args.base, progress=(print if args.verbose else None))
     path = store.save(scenario)
 
     print(f"\n{scenario.name}: {len(scenario.orders)} заявок, {len(scenario.engineers)} инженеров")
     for requirement in report:
         mark = "+" if requirement.ok else "-"
         print(f"  [{mark}] {requirement.title}" + (f": {requirement.detail}" if requirement.detail else ""))
-    print(f"\n  события для демонстрации:")
+    print("\n  события для демонстрации:")
     for event in scenario.events:
-        target = getattr(event, "order_id", None) or getattr(event, "engineer_id", None)
-        if target is None:
-            target = event.order.id
-        print(f"    {event.time}  {event.type:<22} {target}")
+        print(f"    {event.time}  {event.type:<22} {_event_target(event)}")
     print(f"\n  -> {path}")
     return 0
 
@@ -122,19 +132,38 @@ def cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def _configured_keys(providers) -> list[str]:
+    keys = (("DaData", providers.dadata_key), ("Яндекс", providers.yandex_key))
+    return [name for name, key in keys if key]
+
+
+def _scenario_report_lines(scenario: Scenario, report: list) -> list[str]:
+    lines = [f"## {scenario.name} ({scenario.id})", ""]
+    lines.append(
+        f"офис: {scenario.office.address} -> {scenario.office.lat:.5f}, {scenario.office.lon:.5f}"
+    )
+    lines.append("")
+    lines.append("| заявка | адрес | качество | провайдер | координаты |")
+    lines.append("|---|---|---|---|---|")
+    for order, result, log in report:
+        lines.append(
+            f"| {order.id} | {order.address} | {result.quality.value} | "
+            f"{result.provider} | {result.lat:.5f}, {result.lon:.5f} |"
+        )
+        for entry in log:
+            lines.append(f"| | ↳ {entry} | | | |")
+    lines.append("")
+    return lines
+
+
 def cmd_geocode(args: argparse.Namespace) -> int:
     from planner.ingest import geocode
 
     ensure_dirs()
-    specs = _specs(args.region)
-    scenarios = [store.load(spec.id) for spec in specs]
+    scenarios = [store.load(spec.id) for spec in _specs(args.region)]
 
     providers = geocode.Providers()
-    keys = [
-        name
-        for name, key in (("DaData", providers.dadata_key), ("Яндекс", providers.yandex_key))
-        if key
-    ]
+    keys = _configured_keys(providers)
     print(f"ключи: {', '.join(keys) if keys else 'нет (работаем на Nominatim/Photon)'}")
 
     districts = geocode.Districts()
@@ -157,23 +186,9 @@ def cmd_geocode(args: argparse.Namespace) -> int:
         cache.save()
         store.save(scenario)
 
-        lines.append(f"## {scenario.name} ({scenario.id})")
-        lines.append("")
-        lines.append(f"офис: {scenario.office.address} -> {scenario.office.lat:.5f}, {scenario.office.lon:.5f}")
-        lines.append("")
-        lines.append("| заявка | адрес | качество | провайдер | координаты |")
-        lines.append("|---|---|---|---|---|")
-        counts: collections.Counter[str] = collections.Counter()
-        for order, result, log in report:
-            counts[result.quality.value] += 1
-            totals[result.quality.value] += 1
-            lines.append(
-                f"| {order.id} | {order.address} | {result.quality.value} | "
-                f"{result.provider} | {result.lat:.5f}, {result.lon:.5f} |"
-            )
-            for entry in log:
-                lines.append(f"| | ↳ {entry} | | | |")
-        lines.append("")
+        lines += _scenario_report_lines(scenario, report)
+        counts = collections.Counter(result.quality.value for _, result, _ in report)
+        totals.update(counts)
         print("  итог:", dict(counts))
 
     if providers.errors:
@@ -194,16 +209,36 @@ def _plan_scenario_ids(region: str) -> list[str]:
     return [spec.id for spec in beeline.REGIONS] + ["demo"]
 
 
+def _print_plan_details(geo, plan) -> None:
+    from planner.core import explain
+
+    for route in plan.routes:
+        if not route.stops:
+            continue
+        print("\n" + plan.route_explanations[route.engineer_id])
+        for line in explain.timeline_summary(geo, route):
+            print("   " + line)
+
+    if plan.unassigned:
+        print("\nНе назначены:")
+        for item in plan.unassigned:
+            print(f"   {item.order_id}: {item.reason}")
+
+
+def _load_for_plan(scenario_id: str, scenarios_dir: Path | None) -> Scenario:
+    try:
+        return store.load(scenario_id, scenarios_dir)
+    except FileNotFoundError as error:
+        raise SystemExit(f"{error}; соберите сценарий командой build или demo") from None
+
+
 def cmd_plan(args: argparse.Namespace) -> int:
     from planner.core import baseline, explain, metrics, solver
     from planner.core.models import PlanParams
-    from planner.core.validate import Geo
+    from planner.core.validate import Geo, evaluate
 
     for spec_id in _plan_scenario_ids(args.region):
-        try:
-            scenario = store.load(spec_id)
-        except FileNotFoundError:
-            continue
+        scenario = _load_for_plan(spec_id, args.scenarios_dir)
         if not scenario.engineers:
             print(f"{spec_id}: нет инженеров, запустите «engineers»")
             continue
@@ -213,20 +248,26 @@ def cmd_plan(args: argparse.Namespace) -> int:
         plan = solver.plan(scenario, geo, params)
         explain.attach(geo, plan)
         base = baseline.plan(scenario, geo)
+        assignment = {route.engineer_id: route.order_ids for route in plan.routes}
+        _, violations = evaluate(geo, assignment)
 
         print(f"\n=== {scenario.name} ===")
         print(metrics.comparison_table(plan.metrics, base.metrics))
+        print(f"\nнарушений по evaluate(): {len(violations)}")
+        for violation in violations:
+            print(f"   {violation.code}: {violation.text}")
         print(f"\n{plan.plan_explanation}")
         if args.verbose:
-            for route in plan.routes:
-                if route.stops:
-                    print("\n" + plan.route_explanations[route.engineer_id])
-                    for line in explain.timeline_summary(geo, route):
-                        print("   " + line)
-            if plan.unassigned:
-                print("\nНе назначены:")
-                for item in plan.unassigned:
-                    print(f"   {item.order_id}: {item.reason}")
+            _print_plan_details(geo, plan)
+    return 0
+
+
+def cmd_dop_dni(args: argparse.Namespace) -> int:
+    from planner.ingest import dop_dni
+
+    for result in dop_dni.convert_files(args.csv, args.out):
+        print(dop_dni.describe(result))
+        print(f"{'':<4} новые типы HD: {sorted(result.new_hd_types)}")
     return 0
 
 
@@ -256,23 +297,23 @@ def cmd_control(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_calibrate(args: argparse.Namespace) -> int:
-    """Сверяет офлайн-модель расстояний с реальной дорожной сетью (OSRM)."""
-    import numpy as np
+CALIBRATION_RANGES_KM = ((0.2, 1), (1, 3), (3, 10), (10, 30), (30, 500))
 
-    from planner.core.travel import OsrmTravel, TravelModel, _haversine_matrix
+
+def _calibration_pairs(regions: list[beeline.RegionSpec], osrm_url: str) -> list[tuple[float, float, float]]:
+    from planner.core.travel import OsrmTravel, TravelModel, haversine_matrix
 
     pairs: list[tuple[float, float, float]] = []
-    for spec in _specs(args.region):
+    for spec in regions:
         scenario = store.load(spec.id)
         points = [o.coords for o in scenario.orders] + [scenario.office.coords]
-        if len(points) > OsrmTravel.MAX_POINTS:
-            points = points[: OsrmTravel.MAX_POINTS]
-        road_model = OsrmTravel(points, args.osrm)
+        points = points[: OsrmTravel.MAX_POINTS]
+        road_model = OsrmTravel(points, osrm_url)
         if not road_model.connected:
             print(f"{scenario.name}: OSRM недоступен ({'; '.join(road_model.errors[:1])})")
             continue
-        straight = _haversine_matrix(points)
+
+        straight = haversine_matrix(points)
         offline = TravelModel(points)
         for i in range(len(points)):
             for j in range(len(points)):
@@ -281,10 +322,11 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
                         (straight[i, j], road_model.distance_km(i, j), offline.distance_km(i, j))
                     )
         print(f"{scenario.name:<12} точек {len(points):>3}")
+    return pairs
 
-    if not pairs:
-        print("нет данных для калибровки")
-        return 1
+
+def _print_calibration(pairs: list[tuple[float, float, float]]) -> None:
+    import numpy as np
 
     data = np.array(pairs)
     straight, road, offline = data[:, 0], data[:, 1], data[:, 2]
@@ -292,7 +334,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     print(f"пар точек: {len(data)}")
     print()
     print(f"{'диапазон, км':<16}{'пар':>7}{'дорога/прямая':>16}{'ошибка модели':>16}")
-    for low, high in ((0.2, 1), (1, 3), (3, 10), (10, 30), (30, 500)):
+    for low, high in CALIBRATION_RANGES_KM:
         mask = (straight >= low) & (straight < high)
         if not mask.any():
             continue
@@ -302,6 +344,16 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     total_error = float(np.median(np.abs(offline - road) / road) * 100)
     print()
     print(f"медианная ошибка офлайн-модели против дорожной сети: {total_error:.1f}%")
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Сверяет офлайн-модель расстояний с реальной дорожной сетью (OSRM)."""
+    pairs = _calibration_pairs(_specs(args.region), args.osrm)
+    if not pairs:
+        print("нет данных для калибровки")
+        return 1
+
+    _print_calibration(pairs)
     return 0
 
 
@@ -345,9 +397,15 @@ def main(argv: list[str] | None = None) -> int:
     plan_cmd.add_argument("--region", default="demo")
     plan_cmd.add_argument("--objective", default="auto",
                           choices=["auto", "min_engineers", "min_distance"])
+    plan_cmd.add_argument("--scenarios-dir", type=Path, default=None, dest="scenarios_dir")
     plan_cmd.add_argument("--time-limit", type=int, default=20, dest="time_limit")
     plan_cmd.add_argument("--verbose", action="store_true", help="печатать маршруты и отказы")
     plan_cmd.set_defaults(func=cmd_plan)
+
+    dop_dni_cmd = sub.add_parser("dop-dni", help="собрать сценарии из нормализованных доп. дней")
+    dop_dni_cmd.add_argument("csv", type=Path, nargs="+")
+    dop_dni_cmd.add_argument("--out", type=Path, required=True)
+    dop_dni_cmd.set_defaults(func=cmd_dop_dni)
 
     control_cmd = sub.add_parser(
         "control", help="справочное сравнение с фактическим ручным распределением"
@@ -360,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
         "calibrate", help="сверить модель расстояний с реальной дорожной сетью"
     )
     calibrate_cmd.add_argument("--region", default="all")
-    calibrate_cmd.add_argument("--osrm", default="https://router.project-osrm.org")
+    calibrate_cmd.add_argument("--osrm", default=PUBLIC_OSRM)
     calibrate_cmd.set_defaults(func=cmd_calibrate)
 
     serve_cmd = sub.add_parser("serve", help="запустить веб-сервис")

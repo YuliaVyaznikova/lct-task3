@@ -1,22 +1,19 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { engineerColor } from '../colors'
+import { cx } from '../classes'
+import { useEngineerColor } from '../colors'
+import { engineerName } from '../labels'
 import type { Engineer } from '../types'
 
-export function Disclosure({
-  title,
-  children,
-  defaultOpen = false,
-  className = '',
-}: {
+interface DisclosureProps {
   title: ReactNode
   children: ReactNode
-  defaultOpen?: boolean
-  className?: string
-}) {
-  const [open, setOpen] = useState(defaultOpen)
+}
+
+export function Disclosure({ title, children }: DisclosureProps) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className={`disclosure ${open ? 'open' : ''} ${className}`}>
+    <div className={`disclosure ${open ? 'open' : ''}`}>
       <button type="button" className="disclosure-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <span className="chevron" aria-hidden>
           ▸
@@ -28,39 +25,51 @@ export function Disclosure({
   )
 }
 
-export function EngineerDot({ ids, id }: { ids: string[]; id: string }) {
-  return <i className="dot" style={{ background: engineerColor(ids, id) }} aria-hidden />
+interface EngineerDotProps {
+  id: string
+}
+
+export function EngineerDot({ id }: EngineerDotProps) {
+  const colorOf = useEngineerColor()
+  return <i className="dot" style={{ background: colorOf(id) }} aria-hidden />
+}
+
+interface EngineerNameProps {
+  engineers: Engineer[]
+  id: string | null
+  onClick?: (id: string) => void
 }
 
 export function EngineerName({
   engineers,
   id,
   onClick,
-}: {
-  engineers: Engineer[]
-  id: string | null
-  onClick?: (id: string) => void
-}) {
-  if (!id) return <span className="muted">не назначена</span>
-  const ids = engineers.map((e) => e.id)
-  const label = engineers.find((e) => e.id === id)?.name ?? id
+}: EngineerNameProps) {
+  if (!id) {
+    return <span className="muted">не назначена</span>
+  }
+  const label = engineerName(engineers, id)
   if (!onClick) {
     return (
       <span className="eng-name-inline">
-        <EngineerDot ids={ids} id={id} />
+        <EngineerDot id={id} />
         {label}
       </span>
     )
   }
   return (
     <button type="button" className="link eng-name-inline" onClick={() => onClick(id)}>
-      <EngineerDot ids={ids} id={id} />
+      <EngineerDot id={id} />
       {label}
     </button>
   )
 }
 
-export function LockIcon({ title }: { title?: string }) {
+interface LockIconProps {
+  title?: string
+}
+
+export function LockIcon({ title }: LockIconProps) {
   return (
     <svg className="lock" viewBox="0 0 12 12" width="11" height="11" aria-label={title} role="img">
       {title && <title>{title}</title>}
@@ -73,13 +82,74 @@ export function LockIcon({ title }: { title?: string }) {
 export function useElapsed(startedAt: number | null): number {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
-    if (startedAt === null) return
+    if (startedAt === null) {
+      return
+    }
     const timer = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(timer)
   }, [startedAt])
   return startedAt === null ? 0 : Math.max(0, (now - startedAt) / 1000)
 }
 
-export function EmptyNote({ children }: { children: ReactNode }) {
-  return <div className="empty-note">{children}</div>
+interface AddressLinkProps {
+  children: ReactNode
+  onGo: () => void
+}
+
+export function AddressLink({ children, onGo }: AddressLinkProps) {
+  const go = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    onGo()
+  }
+  return (
+    <span
+      role="link"
+      tabIndex={0}
+      className="addr-link"
+      onClick={go}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          go(e)
+        }
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+interface RequiredToggleProps {
+  on: boolean
+  onToggle: () => void
+  compact?: boolean
+}
+
+export function RequiredToggle({ on, onToggle, compact = false }: RequiredToggleProps) {
+  const label = on ? 'Обязательная' : 'Сделать обязательной'
+  const toggle = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    onToggle()
+  }
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={cx('req-toggle', on && 'on', compact && 'compact')}
+      onClick={toggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          toggle(e)
+        }
+      }}
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M6 2h4l-.5 4 2.5 2.5V10H4V8.5L6.5 6zM8 10v4.5" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      {!compact && <span>{label}</span>}
+    </span>
+  )
 }

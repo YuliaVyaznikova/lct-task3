@@ -21,6 +21,8 @@ from planner.ingest import store
 
 FAST = PlanParams(time_limit_s=5)
 
+pytestmark = pytest.mark.slow
+
 
 @pytest.fixture(scope="module")
 def scenarios():

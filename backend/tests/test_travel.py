@@ -21,6 +21,10 @@ def test_haversine_symmetric_and_zero_on_diagonal():
     assert haversine_km(*a, *a) == 0.0
 
 
+def test_haversine_known_distance():
+    assert 7.3 < haversine_km(55.7520, 37.6175, 55.8197, 37.6117) < 7.8
+
+
 def test_matrix_applies_detour_factor():
     points = [(55.700, 37.700), (55.700, 37.7159)]
     model = TravelModel(points)
@@ -50,7 +54,7 @@ def test_road_distance_grows_with_straight_distance():
 
 def test_matrix_diagonal_is_zero():
     model = TravelModel([(55.70, 37.70), (55.71, 37.72), (55.72, 37.74)])
-    for i in range(model.size):
+    for i in range(len(model.points)):
         assert model.distance_km(i, i) == 0.0
         for transport in Transport:
             assert model.time_min(transport)[i, i] == 0
@@ -153,11 +157,15 @@ def test_build_returns_offline_model_without_configuration(monkeypatch):
 
 
 def test_build_falls_back_to_offline_on_bad_url(monkeypatch):
+    """Оценка по прямой, но в названии модели видно, что OSRM не ответил;
+    раньше модель выдавала себя за обычную оценку."""
     from planner.core import travel as travel_module
 
     monkeypatch.setenv("OSRM_URL", "http://127.0.0.1:1")
-    model = travel_module.build([(55.70, 37.70), (55.71, 37.72)])
-    assert type(model) is TravelModel, "при недоступном сервисе возвращаем обычную модель"
+    points = [(55.70, 37.70), (55.71, 37.72)]
+    model = travel_module.build(points)
+    assert model.distance_km(0, 1) == TravelModel(points).distance_km(0, 1)
+    assert model.name.startswith("haversine (osrm недоступен: ")
 
 
 def test_osrm_refuses_oversized_requests():

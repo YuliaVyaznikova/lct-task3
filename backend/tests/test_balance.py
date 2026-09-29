@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from planner.core import solver
 from planner.core.models import PlanParams
 from planner.core.validate import Geo
 from tests.conftest import make_engineer, make_order, make_scenario
+
+pytestmark = pytest.mark.slow
 
 QUICK = PlanParams(time_limit_s=3, no_improve_s=2)
 

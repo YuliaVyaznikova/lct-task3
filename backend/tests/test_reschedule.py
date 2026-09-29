@@ -26,6 +26,7 @@ def test_reschedule_is_off_by_default():
     assert PlanParams().allow_reschedule is False
 
 
+@pytest.mark.slow
 def test_window_is_hard_on_the_first_plan():
     """Первичный расчёт не имеет права двигать обещанное клиенту время."""
     scenario = tight_day()
@@ -100,6 +101,7 @@ def _replan(demo, allow: bool):
     )
 
 
+@pytest.mark.slow
 def test_reschedule_lets_the_plan_cover_more(demo):
     """Смысл послабления: приехать позже лучше, чем не приехать вовсе."""
     _, (strict, _) = _replan(demo, allow=False)
@@ -108,6 +110,7 @@ def test_reschedule_lets_the_plan_cover_more(demo):
     assert strict.metrics.rescheduled == 0
 
 
+@pytest.mark.slow
 def test_rescheduled_visits_are_marked_and_counted(demo):
     working, (plan, _) = _replan(demo, allow=True)
     late = [stop for route in plan.routes for stop in route.stops if stop.late_min > 0]
@@ -117,6 +120,7 @@ def test_rescheduled_visits_are_marked_and_counted(demo):
         assert stop.start > orders[stop.order_id].window_end
 
 
+@pytest.mark.slow
 def test_plan_stays_valid_under_its_own_policy(demo):
     working, (plan, _) = _replan(demo, allow=True)
     _, violations = evaluate(
@@ -127,6 +131,7 @@ def test_plan_stays_valid_under_its_own_policy(demo):
     assert not violations
 
 
+@pytest.mark.slow
 def test_summary_tells_support_to_call(demo):
     _, (plan, diff) = _replan(demo, allow=True)
     if plan.metrics.rescheduled == 0:

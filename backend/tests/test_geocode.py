@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from planner.core.models import GeocodeQuality
+from planner.core.travel import haversine_km
 from planner.ingest import store
 from planner.ingest.address import normalize
 from planner.ingest.geocode import (
@@ -14,15 +15,9 @@ from planner.ingest.geocode import (
     _jitter,
     _plausible,
     geocode_one,
-    haversine_km,
 )
 
 OFFICE_VOSTOK = (55.7006, 37.7623)
-
-
-def test_haversine_known_distance():
-    assert 7.3 < haversine_km((55.7520, 37.6175), (55.8197, 37.6117)) < 7.8
-    assert haversine_km((55.75, 37.61), (55.75, 37.61)) == 0.0
 
 
 def test_plausible_accepts_moscow_point():
@@ -57,7 +52,7 @@ def test_jitter_is_deterministic_and_bounded():
     a = _jitter(55.44, 37.75, "адрес")
     b = _jitter(55.44, 37.75, "адрес")
     assert a == b
-    assert haversine_km(a, (55.44, 37.75)) <= 0.31
+    assert haversine_km(*a, 55.44, 37.75) <= 0.31
     assert _jitter(55.44, 37.75, "другой адрес") != a
 
 
@@ -139,7 +134,7 @@ def test_moscow_regions_are_compact(scenarios):
         far = [
             o
             for o in scenario.orders
-            if haversine_km(o.coords, scenario.office.coords) > 25
+            if haversine_km(*o.coords, *scenario.office.coords) > 25
         ]
         assert not far, f"{region}: {[o.id for o in far]}"
 
@@ -147,5 +142,5 @@ def test_moscow_regions_are_compact(scenarios):
 def test_yugo_vostok_has_distant_orders(scenarios):
     """У Юго-Востока есть Домодедово, Кашира и Ступино это влияет на достижимость."""
     scenario = scenarios["yugo-vostok"]
-    far = [o for o in scenario.orders if haversine_km(o.coords, scenario.office.coords) > 25]
+    far = [o for o in scenario.orders if haversine_km(*o.coords, *scenario.office.coords) > 25]
     assert len(far) >= 15

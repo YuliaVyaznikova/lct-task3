@@ -15,11 +15,37 @@ from planner.core.models import (
     Stop,
     Violation,
 )
+from planner.core import equipment as equipment_module
 from planner.core import zones as zones_module
 from planner.core.timeutil import min_to_hhmm
-from planner.ingest import equipment as equipment_module
 from planner.core.travel import TravelModel
 from planner.core.travel import build as build_travel
+
+LUNCH_FROM_MIN = 13 * 60
+LUNCH_UNTIL_MIN = 15 * 60
+LUNCH_DURATION_MIN = 45
+LUNCH_MIN_SHIFT_MIN = 6 * 60
+LUNCH_HALF_WINDOW_MIN = 60
+
+
+def lunch_window(engineer: Engineer) -> tuple[int, int] | None:
+    """Окно обеда: 13:00–15:00, если смена его накрывает, иначе середина смены ± 1 час."""
+    if engineer.shift_start_min <= LUNCH_FROM_MIN and engineer.shift_end_min >= LUNCH_UNTIL_MIN:
+        return LUNCH_FROM_MIN, LUNCH_UNTIL_MIN
+    if engineer.shift_end_min - engineer.shift_start_min < LUNCH_MIN_SHIFT_MIN:
+        return None
+    middle = (engineer.shift_start_min + engineer.shift_end_min) // 2
+    return middle - LUNCH_HALF_WINDOW_MIN, middle + LUNCH_HALF_WINDOW_MIN
+
+
+def lunch_starts(engineer: Engineer, available_min: int) -> tuple[int, int] | None:
+    """Допустимые начала обеда для инженера, свободного с available_min, или None."""
+    window = lunch_window(engineer)
+    if window is None:
+        return None
+    earliest = max(window[0], available_min)
+    latest = window[1] - LUNCH_DURATION_MIN
+    return (earliest, latest) if earliest <= latest else None
 
 
 class Geo:
@@ -121,61 +147,76 @@ def _schedule_with_lunch(
     allow_late: bool,
 ) -> _LunchSchedule | None:
     """Подбирает допустимый обед в пути, ожидании или после последнего визита."""
-    earliest, latest, duration = 13 * 60, 15 * 60 - 45, 45
     choices: list[tuple[int, int, int, _LunchSchedule]] = []
     for slot in range(2 * len(order_ids) + 1):
-        node, clock = start.node, start.available_min
-        visits: list[_VisitTimes] = []
-        break_start: int | None = None
-        valid = True
-        for index, order_id in enumerate(order_ids):
-            order = geo.orders[order_id]
-            _, travel_min = geo.leg(engineer, node, geo.node(order_id))
-            departure = clock
-            arrival = clock + travel_min
-            if slot == 2 * index:
-                candidate = max(clock, earliest)
-                if candidate > latest or candidate >= arrival:
-                    valid = False
-                    break
-                break_start = candidate
-                arrival += duration
-                if candidate == clock:
-                    departure += duration
-            if slot == 2 * index + 1:
-                candidate = max(arrival, earliest)
-                if candidate > latest:
-                    valid = False
-                    break
-                break_start = candidate
-                begin = max(arrival, order.window_start_min, candidate + duration)
-                wait = begin - arrival - duration
-            else:
-                begin = max(arrival, order.window_start_min)
-                wait = begin - arrival
-            finish = begin + order.duration_min
-            if (begin > order.window_end_min and not allow_late) or finish > engineer.shift_end_min:
-                valid = False
-                break
-            visits.append(_VisitTimes(departure, arrival, begin, finish, wait))
-            node, clock = geo.node(order_id), finish
-        if not valid:
+        candidate = _schedule_lunch_in_slot(geo, engineer, order_ids, start, allow_late, slot)
+        if candidate is None:
             continue
-        if slot == 2 * len(order_ids):
-            candidate = max(clock, earliest)
-            if candidate > latest:
-                continue
-            break_start = candidate
-            clock = candidate + duration
-        if break_start is None or clock > engineer.shift_end_min:
-            continue
-        lunch_break = LunchBreak(
-            start=min_to_hhmm(break_start), finish=min_to_hhmm(break_start + duration)
-        )
-        choices.append((clock, break_start, slot, _LunchSchedule(lunch_break, visits, clock)))
+        break_start, schedule = candidate
+        choices.append((schedule.end_min, break_start, slot, schedule))
     if not choices:
         return None
+
     return min(choices, key=lambda item: item[:3])[3]
+
+
+def _schedule_lunch_in_slot(
+    geo: Geo,
+    engineer: Engineer,
+    order_ids: list[str],
+    start: StartState,
+    allow_late: bool,
+    slot: int,
+) -> tuple[int, _LunchSchedule] | None:
+    """Расписание с обедом в заданном слоте: перед поездкой, после неё или в конце дня."""
+    earliest, latest = lunch_starts(engineer, start.available_min)
+    duration = LUNCH_DURATION_MIN
+    node, clock = start.node, start.available_min
+    visits: list[_VisitTimes] = []
+    break_start: int | None = None
+
+    for index, order_id in enumerate(order_ids):
+        order = geo.orders[order_id]
+        _, travel_min = geo.leg(engineer, node, geo.node(order_id))
+        departure = clock
+        arrival = clock + travel_min
+        if slot == 2 * index:
+            candidate = max(clock, earliest)
+            if candidate > latest or candidate >= arrival:
+                return None
+            break_start = candidate
+            arrival += duration
+            if candidate == clock:
+                departure += duration
+        if slot == 2 * index + 1:
+            candidate = max(arrival, earliest)
+            if candidate > latest:
+                return None
+            break_start = candidate
+            begin = max(arrival, order.window_start_min, candidate + duration)
+            wait = begin - arrival - duration
+        else:
+            begin = max(arrival, order.window_start_min)
+            wait = begin - arrival
+        finish = begin + order.duration_min
+        if (begin > order.window_end_min and not allow_late) or finish > engineer.shift_end_min:
+            return None
+        visits.append(_VisitTimes(departure, arrival, begin, finish, wait))
+        node, clock = geo.node(order_id), finish
+
+    if slot == 2 * len(order_ids):
+        candidate = max(clock, earliest)
+        if candidate > latest:
+            return None
+        break_start = candidate
+        clock = candidate + duration
+    if break_start is None or clock > engineer.shift_end_min:
+        return None
+
+    lunch_break = LunchBreak(
+        start=min_to_hhmm(break_start), finish=min_to_hhmm(break_start + duration)
+    )
+    return break_start, _LunchSchedule(lunch_break, visits, clock)
 
 
 def check_static(engineer: Engineer, order: Order) -> Violation | None:
@@ -279,6 +320,45 @@ def _time_violations(
     return violations
 
 
+def _lunch_violation(engineer: Engineer) -> Violation:
+    """Нарушение: обед не помещается в окно обеда."""
+    earliest, until = lunch_window(engineer)
+    return Violation(
+        engineer_id=engineer.id,
+        order_id=None,
+        code="LUNCH",
+        text=(
+            "не удалось разместить обед с "
+            f"{min_to_hhmm(earliest)} до {min_to_hhmm(until)}"
+        ),
+    )
+
+
+def _planned_stop(
+    order_id: str,
+    seq: int,
+    leg_km: float,
+    leg_min: int,
+    times: _VisitTimes,
+    late: int,
+    allow_late: bool,
+) -> Stop:
+    """Остановка маршрута по рассчитанным временам визита."""
+    return Stop(
+        order_id=order_id,
+        seq=seq,
+        travel_km=round(leg_km, 2),
+        travel_min=leg_min,
+        departure=min_to_hhmm(times.departure),
+        arrival=min_to_hhmm(times.arrival),
+        wait_min=times.wait,
+        start=min_to_hhmm(times.begin),
+        finish=min_to_hhmm(times.finish),
+        locked=False,
+        late_min=late if allow_late else 0,
+    )
+
+
 def evaluate_route(
     geo: Geo,
     engineer: Engineer,
@@ -302,23 +382,10 @@ def evaluate_route(
     wait_min = start.wait_min
     lunch_break = start.lunch_break
     lunch_schedule = None
-    if (
-        lunch
-        and order_ids
-        and lunch_break is None
-        and engineer.shift_start_min <= 13 * 60
-        and engineer.shift_end_min >= 15 * 60
-    ):
+    if lunch and order_ids and lunch_break is None and lunch_starts(engineer, start.available_min):
         lunch_schedule = _schedule_with_lunch(geo, engineer, order_ids, start, allow_late)
         if lunch_schedule is None:
-            violations.append(
-                Violation(
-                    engineer_id=engineer.id,
-                    order_id=None,
-                    code="LUNCH",
-                    text="не удалось разместить обед с 13:00 до 15:00",
-                )
-            )
+            violations.append(_lunch_violation(engineer))
         else:
             lunch_break = lunch_schedule.lunch_break
 
@@ -336,21 +403,7 @@ def evaluate_route(
             _time_violations(engineer, order, times.begin, times.finish, late, allow_late)
         )
 
-        stops.append(
-            Stop(
-                order_id=order_id,
-                seq=len(stops) + 1,
-                travel_km=round(leg_km, 2),
-                travel_min=leg_min,
-                departure=min_to_hhmm(times.departure),
-                arrival=min_to_hhmm(times.arrival),
-                wait_min=times.wait,
-                start=min_to_hhmm(times.begin),
-                finish=min_to_hhmm(times.finish),
-                locked=False,
-                late_min=late if allow_late else 0,
-            )
-        )
+        stops.append(_planned_stop(order_id, len(stops) + 1, leg_km, leg_min, times, late, allow_late))
 
         distance_km += leg_km
         travel_min += leg_min

@@ -1,40 +1,50 @@
-import { km } from '../labels'
-import type { JobProgress, Metrics, Variant } from '../types'
+import type { ReactNode } from 'react'
+
+import { cx } from '../classes'
+import { km, MINE_TITLE, VARIANT_NOTE, VARIANT_ORDER, VARIANT_TITLE } from '../labels'
+import type { EventReview } from '../derive'
+import type { BarVariant, Metrics, MineVariant, RunningJob, Scenario } from '../types'
 import { useElapsed } from './common'
+import { droppedLabel, ReviewCard } from './ReviewCard'
+import { verdictAgainst } from '../variant-diff'
 
-export const VARIANT_TITLE: Record<string, string> = {
-  min_engineers: 'Меньше инженеров',
-  min_distance: 'Меньше пробега',
-  balanced: 'Равномерно',
-}
-const ORDER = ['min_engineers', 'min_distance', 'balanced']
+const LOCK_HINT = 'Поставьте симуляцию на паузу, чтобы сменить план'
 
-export interface RunningJob {
-  kind: 'plan' | 'event'
-  label: string
-  startedAt: number
-  budgetS: number
-  streaming: boolean
-  last: JobProgress | null
-  byVariant: Record<string, JobProgress>
-  improvements: number
-  expected: string[]
-}
-
-interface Props {
+interface VariantBarProps {
   job: RunningJob | null
-  variants: Variant[]
+  variants: BarVariant[]
+  mine?: MineVariant | null
+  review?: EventReview | null
+  tools?: ReactNode
+  planControl?: ReactNode
   currentPlanId: string | null
   hovered: string | null
   onHover: (planId: string | null) => void
   onSelect: (planId: string) => void
   selecting: string | null
+  watching?: string | null
+  onWatch?: (key: string) => void
+  onPeek?: (key: string | null) => void
+  onReviewDetails?: () => void
+  onCompare?: (planId: string) => void
+  comparing?: string | null
+  scheduleOpen?: boolean
+  onToggleSchedule?: () => void
+  locked?: boolean
 }
 
-function Figures({ assigned, total, engineers, distance, peak }: { assigned: number; total: number; engineers: number; distance: number; peak?: number }) {
+interface FiguresProps {
+  assigned: number
+  total: number
+  engineers: number
+  distance: number
+  peak?: number
+}
+
+function Figures({ assigned, total, engineers, distance, peak }: FiguresProps) {
   return (
-    <span className="vc-figures">
-      <b>{assigned}</b>/{total} заявок · <b>{engineers}</b> инж. · <b>{km(distance, 0)}</b> км
+    <span className="vc-figures" title={`${assigned}/${total} заявок · ${engineers} инж. · ${km(distance, 0)} км`}>
+      <b>{assigned}</b>/{total}<span className="vc-orders"> заявок</span> · <b>{engineers}</b> инж. · <b>{km(distance, 0)}</b> км
       {peak !== undefined && <span title="Самая большая загрузка инженера за смену"> · до <b>{Math.round(peak * 100)}</b>%</span>}
     </span>
   )
@@ -48,79 +58,256 @@ const fromMetrics = (m: Metrics) => ({
   peak: Math.max(0, ...Object.values(m.utilization_by_engineer ?? {})),
 })
 
-export function VariantBar({ job, variants, currentPlanId, hovered, onHover, onSelect, selecting }: Props) {
+interface VerdictLine {
+  sign: '+' | '−'
+  text: string
+}
+
+const MAX_LINES = 3
+
+function isSameOutcome(a: Metrics, b: Metrics): boolean {
+  const { pros, cons } = verdictAgainst(a, b)
+  return pros.length === 0 && cons.length === 0
+}
+
+function verdictLines(metrics: Metrics, reference: Metrics): VerdictLine[] {
+  const { pros, cons } = verdictAgainst(metrics, reference)
+  const lines: VerdictLine[] = [
+    ...pros.map((text) => ({ sign: '+' as const, text })),
+    ...cons.map((text) => ({ sign: '−' as const, text })),
+  ]
+  return lines.slice(0, MAX_LINES)
+}
+
+interface VerdictLinesProps {
+  lines: VerdictLine[]
+  twinOf: string
+}
+
+function VerdictLines({ lines, twinOf }: VerdictLinesProps) {
+  if (!lines.length) {
+    return <span className="vc-note">совпадает с «{twinOf}»</span>
+  }
+  return (
+    <span className="vc-lines">
+      {lines.map((line) => (
+        <span key={line.text} className={cx('vc-line', line.sign === '+' ? 'pro' : 'con')}>
+          {line.sign} {line.text}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+interface CardProps {
+  title: string
+  note?: string
+  figures: FiguresProps | null
+  lines?: VerdictLine[]
+  twinOf?: string
+  idle?: boolean
+  on: boolean
+  hover: boolean
+  searching: boolean
+  disabled: boolean
+  hint?: string
+  mine?: boolean
+  spinning?: boolean
+  warn?: boolean
+  onEnter: () => void
+  onClick: () => void
+  onCompare?: () => void
+  comparing?: boolean
+  current?: boolean
+}
+
+function verdictTip(lines: VerdictLine[] | undefined, twinOf: string): string | undefined {
+  if (!lines) {
+    return undefined
+  }
+  return lines.length ? lines.map((line) => `${line.sign} ${line.text}`).join('\n') : `совпадает с «${twinOf}»`
+}
+
+function Card({ title, note, figures, lines, twinOf = '', idle, on, hover, searching, disabled, hint, mine, spinning, warn, onEnter, onClick, onCompare, comparing = false, current = false }: CardProps) {
+  return (
+    <div className="vc-slot">
+      <button
+        type="button"
+        role="radio"
+        aria-checked={on}
+        disabled={disabled}
+        title={hint ?? verdictTip(lines, twinOf)}
+        className={cx('vc', on && 'on', hover && 'hover', searching && 'searching', mine && 'mine')}
+        onMouseEnter={onEnter}
+        onFocus={onEnter}
+        onClick={onClick}
+      >
+        <i className="radio" aria-hidden />
+        <span className="vc-body">
+          <span className="vc-title">
+            {title}
+            {spinning && <span className="spinner" aria-hidden />}
+          </span>
+          {figures ? <Figures {...figures} /> : <span className="vc-figures muted">{idle ? '\u00a0' : 'ищем…'}</span>}
+          {lines ? <VerdictLines lines={lines} twinOf={twinOf} /> : <span className={`vc-note ${warn ? 'warn' : ''}`}>{note}</span>}
+        </span>
+      </button>
+      {onCompare && (
+        <button type="button" className={cx('vc-compare', comparing && 'on')} aria-pressed={comparing} onClick={onCompare}>
+          {comparing ? 'скрыть ‹' : current ? 'подробнее ›' : 'сравнить ›'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function dropNote(dropped: string[], scenario: Scenario): string {
+  if (!dropped.length) {
+    return 'ничего не снимает'
+  }
+  const shown = dropped.slice(0, 2).map((id) => droppedLabel(scenario, id))
+  return `снимает ${shown.join(', ')}${dropped.length > 2 ? '…' : ''}`
+}
+
+export function VariantBar({ job, variants, mine: ownMine = null, review = null, tools = null, planControl = null, currentPlanId, hovered, onHover, onSelect, selecting, watching = null, onWatch, onPeek, onReviewDetails = () => {}, onCompare = () => {}, comparing = null, scheduleOpen = false, onToggleSchedule, locked = false }: VariantBarProps) {
   const elapsed = useElapsed(job?.startedAt ?? null)
   const running = job !== null
+  const idle = !running && review === null && variants.length === 0 && ownMine === null
+  const reviewing = review !== null && !running
+  const simLocked = locked && !reviewing
+  const shownVariants = reviewing ? review.variants : variants
+  const mine = reviewing ? null : ownMine
+  const currentId = reviewing ? review.chosen : currentPlanId
+  const hoveredId = reviewing ? review.previewed : hovered
+  const hoverCard = reviewing ? review.onPreview : onHover
+  const selectCard = reviewing ? review.onChoose : onSelect
   const liveKeys = job ? Object.keys(job.byVariant) : []
   const keys = running
-    ? job!.streaming && job!.kind === 'plan'
-      ? [...new Set([...ORDER.filter((k) => job!.expected.includes(k) || liveKeys.includes(k)), ...liveKeys])]
+    ? job.kind === 'plan'
+      ? [...new Set([...VARIANT_ORDER.filter((k) => job.expected.includes(k) || liveKeys.includes(k)), ...liveKeys])]
       : []
-    : variants.map((v) => v.key)
+    : idle
+      ? VARIANT_ORDER
+      : shownVariants.map((v) => v.key)
   const share = job ? Math.min(elapsed / Math.max(job.budgetS, 1), 1) : 1
+  const mineActive = !running && mine !== null && mine.planId === currentId
+  const cardCount = keys.length + (mine && !running ? 1 : 0)
+  const currentVariant = mineActive ? null : shownVariants.find((v) => v.plan_id === currentId)
+  const referenceMetrics = mineActive ? mine.metrics : currentVariant?.metrics ?? null
+  const referenceTitle = mineActive ? mine.title ?? MINE_TITLE : currentVariant?.title ?? ''
+  const canCompare = !running && !reviewing && !idle
+  const linesFor = (planId: string, metrics: Metrics): VerdictLine[] | undefined => {
+    if (running || reviewing || !referenceMetrics || planId === currentId) {
+      return undefined
+    }
+    return twinOf(planId, metrics) ? [] : verdictLines(metrics, referenceMetrics)
+  }
+  const twinOf = (planId: string, metrics: Metrics): string | null => {
+    const earlier = shownVariants.slice(0, shownVariants.findIndex((v) => v.plan_id === planId))
+    const twin = earlier.find((v) => v.plan_id !== currentId && isSameOutcome(metrics, v.metrics))
+    return twin?.title ?? null
+  }
+  const compareFor = (planId: string) => {
+    if (!canCompare) {
+      return undefined
+    }
+    return planId === currentId ? onToggleSchedule : () => onCompare(planId)
+  }
+  const isOpen = (planId: string) => (planId === currentId ? scheduleOpen : planId === comparing)
+  const side = !reviewing && (
+    <div className="vb-side">
+      {planControl}
+      {tools}
+    </div>
+  )
 
   return (
-    <section className={`variant-bar ${running ? 'running' : ''}`} aria-label="Расчёт и варианты плана">
-      <div className="vb-status" role="status" aria-live="polite">
-        {running ? (
-          <>
-            <span className="spinner lg" aria-hidden />
-            <span className="vb-text">
-              <b>{job!.label}…</b>
-              <span className="muted">
-                {Math.floor(elapsed)} с из {job!.budgetS} с
-                {job!.streaming && job!.improvements > 0 && ` · улучшений ${job!.improvements}`}
-                {job!.kind === 'event' && job!.last && (
-                  <>
-                    {' '}
-                    · {job!.last.assigned}/{job!.last.total} заявок · {job!.last.engineers_used} инж. · {km(job!.last.distance_km, 0)} км
-                  </>
-                )}
-              </span>
-              <span className={`vb-track ${job!.streaming ? '' : 'indeterminate'}`}>
-                <i style={job!.streaming ? { width: `${share * 100}%` } : undefined} />
-              </span>
-            </span>
-          </>
+    <section className={cx('variant-bar', running && 'running', reviewing && 'deciding')} aria-label="Расчёт и варианты плана">
+      {side}
+      <div className={`vb-main ${reviewing ? 'reviewing' : ''}`}>
+        {reviewing ? (
+          <ReviewCard review={review} scenario={review.scenario} onDetails={onReviewDetails} />
         ) : (
-          <span className="vb-text">
-            <b>Варианты плана</b>
-            <span className="muted">{variants.length} из расчёта</span>
-          </span>
-        )}
-      </div>
-      <div className="vb-cards" role="radiogroup" aria-label="Вариант плана" onMouseLeave={() => onHover(null)}>
-        {keys.map((key) => {
-          const variant = variants.find((v) => v.key === key)
-          const live = job?.byVariant[key]
-          const current = !running && variant?.plan_id === currentPlanId
-          const figures = running
-            ? live && { assigned: live.assigned, total: live.total, engineers: live.engineers_used, distance: live.distance_km }
-            : variant && fromMetrics(variant.metrics)
-          const searching = running && job?.last?.variant === key
-          return (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={current}
-              disabled={running || !variant}
-              className={`vc ${current ? 'on' : ''} ${hovered && variant?.plan_id === hovered ? 'hover' : ''} ${searching ? 'searching' : ''}`}
-              onMouseEnter={() => variant && !running && onHover(variant.plan_id)}
-              onFocus={() => variant && !running && onHover(variant.plan_id)}
-              onClick={() => variant && onSelect(variant.plan_id)}
-            >
-              <i className="radio" aria-hidden />
-              <span className="vc-body">
-                <span className="vc-title">
-                  {variant?.title || VARIANT_TITLE[key] || key}
-                  {selecting === variant?.plan_id && <span className="spinner" aria-hidden />}
+          running && (
+            <div className="vb-status" role="status" aria-live="polite">
+              <span className="vb-progress">
+                <span className="vb-progress-line">
+                  <b>{job.label}</b>
+                  <span className="vb-progress-time">
+                    {Math.floor(elapsed)} из {job.budgetS} с
+                  </span>
                 </span>
-                {figures ? <Figures {...figures} /> : <span className="vc-figures muted">ищем…</span>}
+                <span className="vb-track">
+                  <i style={{ width: `${share * 100}%` }} />
+                </span>
+                <span className="vb-progress-note">
+                  {job.kind === 'event' && job.last && (
+                    <>
+                      {job.last.assigned}/{job.last.total} заявок · {job.last.engineers_used} инж. · {km(job.last.distance_km, 0)} км
+                    </>
+                  )}
+                </span>
               </span>
-            </button>
+            </div>
           )
-        })}
+        )}
+        <div className="vb-cards" role="radiogroup" aria-label="Вариант плана" style={{ ['--cards' as string]: Math.max(cardCount, 1) }} onMouseLeave={() => {
+            hoverCard(null)
+            onPeek?.(null)
+          }}
+        >
+          {keys.map((key) => {
+            const variant = shownVariants.find((v) => v.key === key)
+            const live = job?.byVariant[key]
+            const figures = running
+              ? live ? { assigned: live.assigned, total: live.total, engineers: live.engineers_used, distance: live.distance_km } : null
+              : variant ? fromMetrics(variant.metrics) : null
+            return (
+              <Card
+                key={key}
+                title={variant?.title || VARIANT_TITLE[key] || key}
+                note={reviewing ? dropNote(review.dropsByPlan[variant?.plan_id ?? ''] ?? [], review.scenario) : VARIANT_NOTE[key]}
+                warn={reviewing && (review.dropsByPlan[variant?.plan_id ?? '']?.length ?? 0) > 0}
+                figures={figures}
+                lines={variant ? linesFor(variant.plan_id, variant.metrics) : undefined}
+                twinOf={(variant && twinOf(variant.plan_id, variant.metrics)) ?? referenceTitle}
+                onCompare={variant ? compareFor(variant.plan_id) : undefined}
+                comparing={Boolean(variant) && isOpen(variant!.plan_id)}
+                current={variant?.plan_id === currentId}
+                idle={idle}
+                on={running ? key === watching : !mineActive && variant?.plan_id === currentId}
+                hover={Boolean(hoveredId && variant?.plan_id === hoveredId)}
+                searching={running}
+                disabled={running ? !live || !onWatch : !variant || simLocked}
+                hint={simLocked && variant ? LOCK_HINT : undefined}
+                spinning={!reviewing && selecting !== null && selecting === variant?.plan_id}
+                onEnter={() => (running ? onPeek?.(key) : variant && hoverCard(variant.plan_id))}
+                onClick={() => (running ? onWatch?.(key) : variant && selectCard(variant.plan_id))}
+              />
+            )
+          })}
+          {mine && !running && (
+            <Card
+              title={mine.title ?? MINE_TITLE}
+              note={mine.from ? `${mine.draft ? 'копия' : 'из'} «${mine.from}»` : undefined}
+              figures={fromMetrics(mine.metrics)}
+              lines={linesFor(mine.planId, mine.metrics)}
+              twinOf={referenceTitle}
+              onCompare={compareFor(mine.planId)}
+              comparing={isOpen(mine.planId)}
+              current={mine.planId === currentId}
+              on={mineActive}
+              hover={hoveredId === mine.planId}
+              searching={false}
+              disabled={simLocked}
+              hint={simLocked ? LOCK_HINT : undefined}
+              mine
+              spinning={selecting === mine.planId}
+              onEnter={() => hoverCard(mine.planId)}
+              onClick={() => selectCard(mine.planId)}
+            />
+          )}
+        </div>
       </div>
     </section>
   )

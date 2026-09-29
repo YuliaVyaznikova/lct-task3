@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -12,14 +13,18 @@ from planner.core.models import Diff, Plan, Scenario
 from planner.core.validate import Geo
 from planner.paths import PLANS_DIR
 
+logger = logging.getLogger(__name__)
+
 _counter = itertools.count(1)
 _lock = threading.Lock()
 
 
 def next_plan_id(prefix: str = "p") -> str:
     with _lock:
-        number = next(_counter)
-    return f"{prefix}{number:04d}"
+        while True:
+            plan_id = f"{prefix}{next(_counter):04d}"
+            if not store.has(plan_id):
+                return plan_id
 
 
 @dataclass
@@ -30,7 +35,7 @@ class PlanRecord:
     diff: Diff | None = None
     variants: list[dict] = field(default_factory=list)
     selected_plan_id: str | None = None
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    created_at: str = field(default_factory=lambda: datetime.now().astimezone().isoformat(timespec="seconds"))
     _geo: Geo | None = field(default=None, repr=False)
     _geo_key: tuple[str, ...] = field(default=(), repr=False)
 
@@ -66,9 +71,6 @@ class PlanStore:
     def has(self, plan_id: str) -> bool:
         return plan_id in self._records
 
-    def all(self) -> list[PlanRecord]:
-        return sorted(self._records.values(), key=lambda r: r.created_at, reverse=True)
-
     def select(self, plan_id: str) -> PlanRecord:
         record = self.get(plan_id)
         related = {item["plan_id"] for item in record.variants}
@@ -95,8 +97,8 @@ class PlanStore:
             (PLANS_DIR / f"{record.id}.json").write_text(
                 json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
             )
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.warning("план %s не сохранён на диск: %s", record.id, exc)
 
 
 store = PlanStore()

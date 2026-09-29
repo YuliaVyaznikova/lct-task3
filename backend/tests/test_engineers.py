@@ -6,7 +6,7 @@ import collections
 
 import pytest
 
-from planner.core.models import Point, Skill, Transport
+from planner.core.models import Skill, Transport
 from planner.ingest import engineers as gen
 from planner.ingest import store
 

@@ -1,26 +1,17 @@
 import { useCallback, useRef, useState } from 'react'
 
-import { api, ApiError, isMissing, streamJob, type PlanRequest } from './api'
-import type { RunningJob } from './components/VariantBar'
-import type { JobProgress, Plan, PlanEvent, PlanResponse, ReplanResponse } from './types'
+import { api, ApiError, streamJob, type PlanRequest } from './api'
+import { VARIANT_ORDER } from './labels'
+import type { JobProgress, Plan, PlanEvent, PlanResponse, ReplanResponse, RunningJob } from './types'
 
 const BALANCE_PHASE_S = 6
 
 function parseReplan(data: unknown): ReplanResponse {
-  const body = data as Partial<ReplanResponse> & { optimized?: ReplanResponse['plan'] }
-  const plan = body.plan ?? body.optimized
-  if (!plan || !body.scenario) throw new ApiError('Сервис прислал неполный итог перепланирования.', 0)
-  return { plan, diff: body.diff as ReplanResponse['diff'], scenario: body.scenario }
-}
-
-export async function loadSelectedVariant(planId: string): Promise<PlanResponse> {
-  try {
-    const body = await api.select(planId)
-    if (body && 'optimized' in body) return body as PlanResponse
-  } catch (error) {
-    if (!isMissing(error)) throw error
+  const body = data as Partial<ReplanResponse>
+  if (!body.plan || !body.diff || !body.scenario) {
+    throw new ApiError('Сервис прислал неполный итог перепланирования.', 0)
   }
-  return api.getPlan(planId)
+  return body as ReplanResponse
 }
 
 export function usePlanningRequests() {
@@ -34,7 +25,6 @@ export function usePlanningRequests() {
             ...current,
             last: progress,
             byVariant: { ...current.byVariant, [progress.variant || 'plan']: progress },
-            improvements: current.improvements + 1,
           }
         : current,
     )
@@ -51,25 +41,18 @@ export function usePlanningRequests() {
       label: 'Идёт расчёт',
       startedAt: Date.now(),
       budgetS: request.objective === 'auto' || request.objective === 'balanced' ? request.timeLimit + BALANCE_PHASE_S : request.timeLimit,
-      streaming: true,
       last: null,
       byVariant: {},
-      improvements: 0,
-      expected: request.objective === 'auto' ? ['min_engineers', 'min_distance', 'balanced'] : [request.objective],
+      expected: request.objective === 'auto' ? VARIANT_ORDER : [request.objective],
     })
     try {
-      let response: PlanResponse
-      try {
-        const { job_id } = await api.planJob(request, controller.signal)
-        response = await streamJob<PlanResponse>(job_id, { onProgress, signal: controller.signal })
-      } catch (error) {
-        if (!isMissing(error)) throw error
-        setJob((current) => (current ? { ...current, streaming: false } : current))
-        response = await api.plan(request, controller.signal)
-      }
+      const { job_id } = await api.planJob(request, controller.signal)
+      const response = await streamJob<PlanResponse>(job_id, { onProgress, signal: controller.signal })
       return abortRef.current === controller ? response : null
     } finally {
-      if (abortRef.current === controller) setJob(null)
+      if (abortRef.current === controller) {
+        setJob(null)
+      }
     }
   }, [onProgress])
 
@@ -79,21 +62,13 @@ export function usePlanningRequests() {
       label: 'Перестраиваем план',
       startedAt: Date.now(),
       budgetS: before.params.time_limit_s,
-      streaming: true,
       last: null,
       byVariant: {},
-      improvements: 0,
       expected: [],
     })
     try {
-      try {
-        const { job_id } = await api.eventJob(before.id, event)
-        return await streamJob<ReplanResponse>(job_id, { onProgress, parse: parseReplan })
-      } catch (error) {
-        if (!isMissing(error)) throw error
-        setJob((current) => (current ? { ...current, streaming: false } : current))
-        return await api.event(before.id, event)
-      }
+      const { job_id } = await api.eventJob(before.id, event)
+      return await streamJob<ReplanResponse>(job_id, { onProgress, parse: parseReplan })
     } finally {
       setJob(null)
     }

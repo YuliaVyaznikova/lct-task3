@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from planner.api import app as api_module
+from planner.api import lookup, manual
+from planner.api.schemas import ManualRequest
 from planner.api.candidates import list_candidates
 from planner.api.store import PlanRecord
 from planner.core.models import Plan, Skill
@@ -59,11 +60,11 @@ def test_candidates_endpoint_checks_order_and_returns_each_engineer(monkeypatch,
     record = PlanRecord(plan=plan, scenario=geo.scenario)
     record._geo = geo
     record._geo_key = tuple(order.id for order in geo.scenario.orders)
-    monkeypatch.setattr(api_module, "_record", lambda _: record)
+    monkeypatch.setattr(lookup, "record", lambda _: record)
 
-    assert len(api_module.get_candidates(plan.id, "A")) == len(geo.scenario.engineers)
+    assert len(manual.get_candidates(plan.id, "A")) == len(geo.scenario.engineers)
     with pytest.raises(HTTPException) as error:
-        api_module.get_candidates(plan.id, "missing")
+        manual.get_candidates(plan.id, "missing")
     assert error.value.status_code == 404
 
 
@@ -77,12 +78,13 @@ def test_manual_accepts_candidate_position(monkeypatch, candidate_plan):
     )
     record._geo = geo
     record._geo_key = tuple(order.id for order in geo.scenario.orders)
-    monkeypatch.setattr(api_module, "_record", lambda _: record)
-    monkeypatch.setattr(api_module.store, "put", lambda _: None)
+    monkeypatch.setattr(lookup, "record", lambda _: record)
+    monkeypatch.setattr(manual.store, "put", lambda _: None)
+    monkeypatch.setattr(manual.store, "select", lambda _: None)
 
-    response = api_module.manual_assign(
+    response = manual.manual_assign(
         plan.id,
-        api_module.ManualRequest(order_id="A", engineer_id="E2", position=row["position"]),
+        ManualRequest(order_id="A", engineer_id="E2", position=row["position"]),
     )
     assert response.optimized.routes_by_engineer["E2"].order_ids == row["preview_routes"]["E2"]
     assert response.optimized.routes_by_engineer["E1"].order_ids == row["preview_routes"]["E1"]

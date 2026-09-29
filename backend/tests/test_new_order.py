@@ -60,6 +60,7 @@ def apply(demo, base_plan, event):
     return plan, diff, working
 
 
+@pytest.mark.slow
 def test_new_order_keeps_its_normal_priority(demo, base_plan):
     order = order_like(demo, "NEW-801", Skill.CONNECTION, Priority.NORMAL, ("16:00", "18:00"))
     plan, _, working = apply(demo, base_plan, NewOrderEvent(time="12:30", order=order))
@@ -72,6 +73,7 @@ def test_new_order_keeps_its_normal_priority(demo, base_plan):
     assert "NEW-801" in known
 
 
+@pytest.mark.slow
 def test_new_order_is_called_new_not_urgent(demo, base_plan):
     order = order_like(demo, "NEW-802", Skill.CONNECTION, Priority.NORMAL, ("16:00", "18:00"))
     _, diff, _ = apply(demo, base_plan, NewOrderEvent(time="12:30", order=order))
@@ -80,6 +82,7 @@ def test_new_order_is_called_new_not_urgent(demo, base_plan):
     assert "срочная заявка" not in diff.summary
 
 
+@pytest.mark.slow
 def test_urgent_event_still_says_urgent(demo, base_plan):
     order = order_like(demo, "SOS-803", Skill.EMERGENCY, Priority.URGENT, ("12:30", "23:59"), 80)
     _, diff, _ = apply(demo, base_plan, UrgentOrderEvent(time="12:30", order=order))
@@ -87,6 +90,7 @@ def test_urgent_event_still_says_urgent(demo, base_plan):
     assert "срочная заявка" in diff.summary
 
 
+@pytest.mark.slow
 def test_legacy_urgent_event_upgrades_priority(demo, base_plan):
     """Старый тип события помечает заявку срочной, даже если прислали обычную."""
     order = order_like(demo, "SOS-804", Skill.EMERGENCY, Priority.NORMAL, ("12:30", "23:59"), 80)
@@ -95,6 +99,7 @@ def test_legacy_urgent_event_upgrades_priority(demo, base_plan):
     assert "срочная заявка" in diff.summary
 
 
+@pytest.mark.slow
 def test_new_order_does_not_move_orders_between_engineers(demo, base_plan):
     order = order_like(demo, "NEW-805", Skill.CONNECTION, Priority.NORMAL, ("16:00", "18:00"))
     _, diff, _ = apply(demo, base_plan, NewOrderEvent(time="12:30", order=order))
@@ -103,6 +108,7 @@ def test_new_order_does_not_move_orders_between_engineers(demo, base_plan):
     assert not moved, f"обычная заявка перетасовала план: {moved}"
 
 
+@pytest.mark.slow
 def test_emergency_is_allowed_to_rebuild_more_than_a_normal_order(demo, base_plan):
     normal = NewOrderEvent(
         time="12:30",

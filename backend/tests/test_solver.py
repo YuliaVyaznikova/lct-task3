@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from planner.core import baseline, metrics, solver
-from planner.core.models import PlanParams, Priority, Skill, Transport
+from planner.core.models import Order, PlanParams, Priority, Skill, Transport
 from planner.core.validate import Geo, evaluate
 from planner.ingest import store
 from tests.conftest import make_engineer, make_order, make_scenario
@@ -13,18 +14,21 @@ from tests.conftest import make_engineer, make_order, make_scenario
 FAST = PlanParams(objective="min_engineers", time_limit_s=2)
 
 
+@pytest.mark.slow
 def test_assigns_everything_it_can(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST)
     assert plan.metrics.assigned >= 5, "на игрушечном сценарии почти всё выполнимо"
     assert plan.metrics.assigned + plan.metrics.unassigned == len(toy.orders)
 
 
+@pytest.mark.slow
 def test_result_is_always_feasible(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST)
     _, violations = evaluate(toy_geo, {r.engineer_id: r.order_ids for r in plan.routes})
     assert not violations
 
 
+@pytest.mark.slow
 def test_unique_skill_goes_to_its_only_owner():
     orders = [make_order("E", 2, Skill.EMERGENCY, ("10:00", "16:00"), duration=80)]
     engineers = [
@@ -36,6 +40,7 @@ def test_unique_skill_goes_to_its_only_owner():
     assert plan.assignment == {"E": "E02"}
 
 
+@pytest.mark.slow
 def test_required_transport_is_respected():
     orders = [make_order("F", 2, required_transport=Transport.CAR)]
     engineers = [
@@ -47,6 +52,7 @@ def test_required_transport_is_respected():
     assert plan.assignment == {"F": "E03"}
 
 
+@pytest.mark.slow
 def test_time_windows_are_respected(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST)
     orders = toy.orders_by_id
@@ -56,6 +62,7 @@ def test_time_windows_are_respected(toy, toy_geo):
             assert order.window_start <= stop.start <= order.window_end
 
 
+@pytest.mark.slow
 def test_shift_is_respected(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST)
     engineers = toy.engineers_by_id
@@ -64,6 +71,7 @@ def test_shift_is_respected(toy, toy_geo):
             assert route.end_time <= engineers[route.engineer_id].shift_end
 
 
+@pytest.mark.slow
 def test_impossible_order_is_dropped_with_a_reason():
     """Навыка нет ни у кого: заявка обязана попасть в неназначенные с причиной."""
     orders = [make_order("A", 1, Skill.LOCAL), make_order("X", 1, Skill.EMERGENCY, duration=80)]
@@ -73,6 +81,7 @@ def test_impossible_order_is_dropped_with_a_reason():
     assert plan.unassigned[0].reason
 
 
+@pytest.mark.slow
 def test_urgent_orders_are_never_dropped_for_normal_ones():
     """Штраф за пропуск срочной на порядок выше она вытесняет обычную."""
     window = ("10:00", "11:00")
@@ -86,6 +95,7 @@ def test_urgent_orders_are_never_dropped_for_normal_ones():
     assert plan.metrics.urgent_assigned == 1
 
 
+@pytest.mark.slow
 def test_urgent_order_is_scheduled_early():
     """Аварию с окном на целые сутки нужно выполнять как можно раньше."""
     orders = [
@@ -98,6 +108,7 @@ def test_urgent_order_is_scheduled_early():
     assert urgent_stop.start <= "10:30"
 
 
+@pytest.mark.slow
 def test_min_engineers_uses_fewer_people_than_min_distance():
     """Классический размен: меньше людей ценой лишних километров."""
     orders = [make_order(f"O{i}", i * 1.5, Skill.LOCAL, ("09:00", "18:00")) for i in range(1, 9)]
@@ -111,6 +122,7 @@ def test_min_engineers_uses_fewer_people_than_min_distance():
     assert few.metrics.engineers_used <= short.metrics.engineers_used
 
 
+@pytest.mark.slow
 def test_auto_objective_picks_the_better_plan():
     orders = [make_order(f"O{i}", i * 1.5, Skill.LOCAL, ("09:00", "18:00")) for i in range(1, 9)]
     engineers = [make_engineer(f"E{i:02d}") for i in range(1, 7)]
@@ -124,18 +136,21 @@ def test_auto_objective_picks_the_better_plan():
     assert auto.params.objective in ("min_engineers", "min_distance")
 
 
+@pytest.mark.slow
 def test_beats_the_baseline(toy, toy_geo):
     ours = solver.plan(toy, toy_geo, FAST)
     base = baseline.plan(toy, toy_geo)
     assert not metrics.is_better(base.metrics, ours.metrics)
 
 
+@pytest.mark.slow
 def test_every_order_is_accounted_for(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST)
     covered = set(plan.assignment) | {u.order_id for u in plan.unassigned}
     assert covered == {o.id for o in toy.orders}
 
 
+@pytest.mark.slow
 def test_plan_metadata_is_filled(toy, toy_geo):
     plan = solver.plan(toy, toy_geo, FAST, plan_id="p1")
     assert plan.id == "p1"
@@ -144,6 +159,7 @@ def test_plan_metadata_is_filled(toy, toy_geo):
     assert plan.planned_from == min(e.shift_start for e in toy.engineers)
 
 
+@pytest.mark.slow
 def test_lunch_break_option_keeps_the_plan_valid(toy, toy_geo):
     """Обед необязательная настройка: план обязан остаться допустимым."""
     with_lunch = solver.plan(toy, toy_geo, PlanParams(objective="min_engineers", time_limit_s=2, lunch=True))
@@ -152,6 +168,7 @@ def test_lunch_break_option_keeps_the_plan_valid(toy, toy_geo):
     assert with_lunch.params.lunch is True
 
 
+@pytest.mark.slow
 def test_lunch_break_costs_capacity_but_is_not_default():
     """Перерыв отнимает мощность, поэтому по умолчанию выключен."""
     assert PlanParams().lunch is False
@@ -184,6 +201,7 @@ def real():
 
 
 @pytest.mark.parametrize("region", ["vostok", "yugo-vostok", "yugocentr"])
+@pytest.mark.slow
 def test_real_region_is_solved_and_valid(real, region):
     scenario = next(s for s in real if s.id == region)
     geo = Geo(scenario)
@@ -194,6 +212,7 @@ def test_real_region_is_solved_and_valid(real, region):
 
 
 @pytest.mark.parametrize("region", ["vostok", "yugo-vostok", "yugocentr"])
+@pytest.mark.slow
 def test_beats_baseline_on_real_data(real, region):
     """Главное обещание решения: на тех же данных мы не хуже жадного варианта."""
     scenario = next(s for s in real if s.id == region)
@@ -225,6 +244,15 @@ def test_priority_order_is_emergency_then_connection_then_the_rest():
     assert penalties["дозаказ"] == penalties["ремонт"], "дозаказ и ремонт в одном ярусе"
 
 
+@pytest.mark.parametrize("tier", [0, 4])
+def test_priority_tier_outside_the_three_tiers_is_rejected(tier):
+    """Неизвестный ярус: ошибка данных; солвер не должен подставлять ярус 3."""
+    order = make_order("X", 1)
+    with pytest.raises(ValidationError):
+        Order.model_validate({**order.model_dump(), "priority_tier": tier})
+
+
+@pytest.mark.slow
 def test_connection_wins_over_a_repair_when_only_one_fits():
     """При нехватке времени выбирается подключение, а не ремонт."""
     window = ("10:00", "11:00")
@@ -239,3 +267,39 @@ def test_connection_wins_over_a_repair_when_only_one_fits():
     plan = solver.plan(scenario, Geo(scenario), FAST)
     assert plan.metrics.assigned == 1
     assert "CONN" in plan.assignment, "подключение приоритетнее ремонта"
+
+
+@pytest.mark.slow
+def test_required_order_is_kept_even_over_a_higher_tier():
+    """Обязательная заявка ставится в план, даже если без неё план лучше."""
+    window = ("10:00", "11:00")
+    connection = make_order("CONN", 1, Skill.CONNECTION, window, duration=55).model_copy(update={"priority_tier": 2})
+    repair = make_order("REP", 12, Skill.LOCAL, window, duration=55).model_copy(update={"priority_tier": 3})
+    scenario = make_scenario([repair, connection], [make_engineer("E01", [Skill.LOCAL, Skill.CONNECTION])])
+
+    pinned = FAST.model_copy(update={"required_orders": ["REP"]})
+    plan = solver.plan(scenario, Geo(scenario), pinned)
+
+    assert plan.metrics.assigned == 1
+    assert "REP" in plan.assignment, "обязательная заявка вытесняет подключение"
+    assert plan.params.required_orders == ["REP"]
+
+
+@pytest.mark.slow
+def test_required_order_that_cannot_fit_is_reported_not_crashing():
+    """Невыполнимая обязательная заявка остаётся неразмещённой с причиной, план строится."""
+    impossible = make_order("LATE", 2, Skill.LOCAL, ("23:30", "23:50"), duration=60)
+    fine = make_order("OK", 3, Skill.LOCAL, ("10:00", "12:00"), duration=30)
+    scenario = make_scenario([impossible, fine], [make_engineer("E01", [Skill.LOCAL])])
+
+    plan = solver.plan(scenario, Geo(scenario), FAST.model_copy(update={"required_orders": ["LATE"]}))
+
+    assert "OK" in plan.assignment
+    assert [u.order_id for u in plan.unassigned] == ["LATE"]
+
+
+def test_required_order_costs_more_than_any_tier():
+    from planner.core.solver import DROP_PENALTY_BY_TIER, _drop_penalty
+
+    order = make_order("X", 1, Skill.LOCAL)
+    assert _drop_penalty(order, required=True) > 10 * max(DROP_PENALTY_BY_TIER.values())

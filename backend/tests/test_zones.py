@@ -71,6 +71,7 @@ def zone_sequence(geo, scenario, route) -> list[int]:
     return [zone for index, zone in enumerate(visited) if index == 0 or zone != visited[index - 1]]
 
 
+@pytest.mark.slow
 def test_no_engineer_zigzags_between_zones(scenarios):
     """Одна поездка в удалённый город и обратно допустима, если без неё заявка останется невыполненной, метания туда-обратно нет."""
     scenario = scenarios["yugo-vostok"]

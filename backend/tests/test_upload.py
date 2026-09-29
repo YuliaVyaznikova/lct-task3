@@ -56,6 +56,7 @@ def test_json_scenario_is_accepted(client, isolated_store, small_scenario):
     assert len(loaded["orders"]) == 12
 
 
+@pytest.mark.slow
 def test_uploaded_scenario_can_be_planned(client, isolated_store, small_scenario):
     body = small_scenario.model_dump_json().encode("utf-8")
     assert upload(client, "scenario.json", body, "application/json").status_code == 200
@@ -87,11 +88,11 @@ def test_upload_with_taken_id_gets_a_new_one(client, isolated_store, small_scena
 
 
 def test_numbered_copy_keeps_region_settings():
-    from planner.api.app import _config_region
+    from planner.api.lookup import config_region
 
-    assert _config_region("yugo-vostok-2") == "yugo-vostok"
-    assert _config_region("yugocentr") == "yugocentr"
-    assert _config_region("uploaded-2") == "vostok"
+    assert config_region("yugo-vostok-2") == "yugo-vostok"
+    assert config_region("yugocentr") == "yugocentr"
+    assert config_region("uploaded-2") == "vostok"
 
 
 def test_broken_json_is_refused_in_russian(client, isolated_store):
@@ -142,3 +143,29 @@ def test_upload_does_not_touch_the_repository(client, isolated_store, small_scen
     assert written == {"uploaded.json"}
     saved = json.loads((isolated_store / "uploaded.json").read_text(encoding="utf-8"))
     assert saved["id"] == "uploaded"
+
+
+@pytest.mark.skipif(not RAW_EXPORT.is_file(), reason="нет data/raw с выгрузкой")
+def test_ungeocodable_addresses_are_refused_in_russian(client, isolated_store, monkeypatch):
+    from planner.ingest import geocode
+
+    def fail(*args, **kwargs):
+        raise geocode.GeocodeError("не удалось определить координаты")
+
+    monkeypatch.setattr(geocode, "apply_to_scenario", fail)
+    response = upload(client, RAW_EXPORT.name, RAW_EXPORT.read_bytes(), "text/csv")
+    assert response.status_code == 422
+    assert "координаты" in response.json()["detail"]
+
+
+@pytest.mark.skipif(not RAW_EXPORT.is_file(), reason="нет data/raw с выгрузкой")
+def test_a_geocoding_bug_is_not_blamed_on_the_file(client, isolated_store, monkeypatch):
+    """Раньше любая ошибка геокодера превращалась в 422 «проверьте формат файла»."""
+    from planner.ingest import geocode
+
+    def bug(*args, **kwargs):
+        raise KeyError("lat")
+
+    monkeypatch.setattr(geocode, "apply_to_scenario", bug)
+    with pytest.raises(KeyError):
+        upload(client, RAW_EXPORT.name, RAW_EXPORT.read_bytes(), "text/csv")
