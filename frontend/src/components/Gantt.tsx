@@ -296,24 +296,16 @@ export function Gantt({
                         stop.late_min > 0 ? ` · позже окна на ${stop.late_min} мин` : ''
                       }`}
                     >
-                      {stop.locked ? (
-                        <LockIcon />
-                      ) : (
-                        <span className="g-work-content">
-                          {received?.has(stop.order_id) ? (
-                            <span>←</span>
-                          ) : (
-                            <>
-                              <span className="g-order-id">{stop.order_id}</span>
-                              {detailed && order && (
-                                <span className="g-work-detail">
-                                  {order.work_type}{order.address && ` · ${displayAddress(order.address)}`}
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </span>
-                      )}
+                      <span className="g-work-content">
+                        {stop.locked && <LockIcon />}
+                        {received?.has(stop.order_id) && <span aria-hidden>←</span>}
+                        <span className="g-order-id">{stop.order_id}</span>
+                        {detailed && order && (
+                          <span className="g-work-detail">
+                            {order.work_type}{order.address && ` · ${displayAddress(order.address)}`}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   </span>
                 )
