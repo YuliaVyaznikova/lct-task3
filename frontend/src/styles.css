@@ -249,7 +249,7 @@ input[type='checkbox'] { accent-color: var(--signal); margin: 0; }
   height: 22px;
   border-radius: 6px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, transparent 45%, #fff 45%, #fff 55%, transparent 55%), var(--signal);
+  background: var(--signal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M-1 23 23-1' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 .area { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .area-label { color: var(--muted); font-size: 13px; }
